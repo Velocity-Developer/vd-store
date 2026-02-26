@@ -24,9 +24,11 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
       weightKg: 1,
       services: [],
       loading: false,
+      errorMessage: '',
       isLoadingProvinces: false,
       isLoadingCities: false,
       isLoadingSubdistricts: false,
+      captchaVerified: false,
       currency: '<?php echo esc_js($currency); ?>',
       formatPrice(n) {
         const v = typeof n === 'number' ? n : parseFloat(n || 0);
@@ -37,6 +39,9 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
         }).format(v);
       },
       captchaRequired: <?php echo is_user_logged_in() ? 'false' : 'true'; ?>,
+      recomputeAllow() {
+        this.captchaVerified = this.isCaptchaReady();
+      },
       isCaptchaReady() {
         if (!this.captchaRequired) return true;
         const root = document.getElementById('shipping-captcha');
@@ -117,6 +122,7 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
         }
         this.loading = true;
         this.services = [];
+        this.errorMessage = '';
         const grams = Math.max(1, Math.round((parseFloat(this.weightKg || 0) || 0) * 1000));
         try {
           const res = await fetch(wpStoreSettings.restUrl + 'rajaongkir/calculate', {
@@ -133,20 +139,28 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
             })
           });
           const data = await res.json();
-          if (res.ok && data && data.success && Array.isArray(data.services)) {
-            this.services = data.services.map(s => ({
-              courier: s.courier || '',
+          if (res.ok && data && data.success && data.data && Array.isArray(data.data.data)) {
+            this.services = data.data.data.map(s => ({
+              courier: s.code || '',
               service: s.service || '',
               description: s.description || '',
               cost: s.cost || 0,
               etd: s.etd || ''
             }));
+            if (this.services.length === 0) {
+              this.errorMessage = 'Tidak ada layanan kurir tersedia untuk rute ini.';
+            }
+          } else {
+            this.errorMessage = data.message || 'Gagal menghitung ongkos kirim.';
           }
-        } catch (e) {}
+        } catch (e) {
+          this.errorMessage = 'Terjadi kesalahan saat menghubungkan ke server.';
+        }
         this.loading = false;
       },
       init() {
         this.loadProvinces();
+        this.recomputeAllow();
       }
     }
   }
@@ -196,7 +210,7 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
         <?php echo \WpStore\Frontend\Template::render('components/captcha'); ?>
       </div>
       <div class="wps-mt-4">
-        <button type="button" class="wps-btn wps-btn-primary" @click="checkShipping()" :disabled="loading || !selectedSubdistrict || couriers.length === 0 || (captchaRequired && !isCaptchaReady())">
+        <button type="button" class="wps-btn wps-btn-primary" @click="checkShipping()" :disabled="loading || !selectedSubdistrict || couriers.length === 0 || (captchaRequired && !captchaVerified)">
           <span x-show="!loading">Cek Ongkir</span>
           <span x-show="loading">Menghitung...</span>
         </button>
@@ -207,10 +221,13 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
   </div>
   <div class="wps-card wps-p-4">
     <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mb-2">Hasil</div>
-    <template x-if="services.length === 0">
+    <template x-if="errorMessage">
+      <div class="wps-text-sm wps-text-red-600 wps-mb-2" x-text="errorMessage"></div>
+    </template>
+    <template x-if="!errorMessage && services.length === 0">
       <div class="wps-text-sm wps-text-gray-500">Belum ada hasil. Isi alamat dan tekan Cek Ongkir.</div>
     </template>
-    <div class="wps-grid wps-grid-cols-2 wps-gap-3" x-show="services.length > 0">
+    <div class="wps-grid wps-grid-cols-2 wps-gap-3" x-show="!errorMessage && services.length > 0">
       <template x-for="s in services" :key="s.courier + ':' + s.service">
         <div class="wps-box-gray wps-p-3 wps-rounded">
           <div class="wps-text-sm wps-text-gray-900 wps-font-medium" x-text="(s.courier || '').toUpperCase() + ' ' + (s.service || '')"></div>
