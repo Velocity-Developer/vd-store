@@ -119,6 +119,10 @@ class ProductController
                 $priceNum = $price !== '' ? (float) $price : null;
                 $saleNum = $sale !== '' ? (float) $sale : null;
                 $saleActive = $saleNum !== null && $saleNum > 0 && (($priceNum !== null && $saleNum < $priceNum) || $priceNum === null) && ($untilTs === 0 || $untilTs > $nowTs);
+                $settings = get_option('wp_store_settings', []);
+                if (!empty($settings['members_only_discount']) && !is_user_logged_in()) {
+                    $saleActive = false;
+                }
                 $percent = ($saleActive && $priceNum !== null && $priceNum > 0) ? round((($priceNum - $saleNum) / $priceNum) * 100) : 0;
                 $label = get_post_meta($id, '_store_label', true);
                 $image = get_the_post_thumbnail_url($id, 'medium');

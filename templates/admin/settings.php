@@ -508,6 +508,17 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         </select>
                         <p class="wp-store-helper">Mengatur apakah halaman edit produk memakai Classic Editor atau Gutenberg/FSE.</p>
                     </div>
+                    <div>
+                        <label class="wp-store-label">Diskon Hanya untuk Member</label>
+                        <div>
+                            <label class="wp-store-checkbox-label">
+                                <input type="hidden" name="members_only_discount" value="0">
+                                <input type="checkbox" name="members_only_discount" value="1" <?php echo !empty($settings['members_only_discount']) ? 'checked' : ''; ?>>
+                                Hanya tampilkan harga promo untuk pengguna yang login
+                            </label>
+                        </div>
+                        <p class="wp-store-helper">Jika aktif, pengunjung yang belum login tidak akan melihat harga promo maupun badge diskon.</p>
+                    </div>
                     <div class="wp-store-grid-2">
                         <div>
                             <label class="wp-store-label" for="recaptcha_site_key">reCAPTCHA Site Key</label>

@@ -175,6 +175,12 @@ class SettingsController
         if (isset($params['recaptcha_site_key'])) $settings['recaptcha_site_key'] = sanitize_text_field($params['recaptcha_site_key']);
         if (isset($params['recaptcha_secret_key'])) $settings['recaptcha_secret_key'] = sanitize_text_field($params['recaptcha_secret_key']);
 
+        // Discounts visibility
+        if (isset($params['members_only_discount'])) {
+            $val = (string) $params['members_only_discount'];
+            $settings['members_only_discount'] = ($val === '1') ? 1 : 0;
+        }
+
         // Theme colors
         if (isset($params['theme_primary'])) {
             $hex = sanitize_hex_color($params['theme_primary']);

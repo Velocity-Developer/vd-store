@@ -165,6 +165,10 @@ function wps_label_badge_html($product_id)
 }
 function wps_discount_badge_html($product_id)
 {
+    $settings = get_option('wp_store_settings', []);
+    if (!empty($settings['members_only_discount']) && !is_user_logged_in()) {
+        return '';
+    }
     $price = get_post_meta((int) $product_id, '_store_price', true);
     $sale = get_post_meta((int) $product_id, '_store_sale_price', true);
     $price = $price !== '' ? (float) $price : null;

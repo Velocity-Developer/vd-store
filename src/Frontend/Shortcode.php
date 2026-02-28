@@ -816,6 +816,11 @@ class Shortcode
         $untilTs = $untilRaw ? strtotime($untilRaw) : 0;
         $nowTs = current_time('timestamp');
         $saleActive = $sale !== null && $sale > 0 && (($price !== null && $sale < $price) || $price === null) && ($untilTs === 0 || $untilTs > $nowTs);
+        $settings = get_option('wp_store_settings', []);
+        $membersOnly = !empty($settings['members_only_discount']);
+        if ($membersOnly && !is_user_logged_in()) {
+            $saleActive = false;
+        }
         $html = '<div class="wps-price">';
         if ($saleActive) {
             $html .= '<div class="wps-flex wps-items-baseline wps-gap-2 wps-price-group">';
