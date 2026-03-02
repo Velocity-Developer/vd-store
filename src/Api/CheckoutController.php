@@ -215,7 +215,9 @@ class CheckoutController
             delete_transient($actor_lock_key);
         }
         $payment_method = isset($data['payment_method']) ? sanitize_key($data['payment_method']) : 'bank_transfer';
-        if (!in_array($payment_method, ['bank_transfer', 'qris'], true)) {
+        
+        $allowed_methods = apply_filters('wp_store_allowed_payment_methods', ['bank_transfer', 'qris']);
+        if (!in_array($payment_method, $allowed_methods, true)) {
             $payment_method = 'bank_transfer';
         }
         $payment_method = apply_filters('wp_store_payment_method', $payment_method, $data, $order_id);
