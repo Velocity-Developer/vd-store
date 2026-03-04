@@ -1,54 +1,23 @@
 <?php
 $order_id = isset($order_id) ? (int) $order_id : 0;
 $currency = isset($currency) ? (string) $currency : 'Rp';
-$post_type = get_post_type($order_id);
-$order_exists = ($order_id > 0 && in_array($post_type, ['store_order', 'event_order']));
-
-if ($order_exists && $post_type === 'event_order') {
-    $total = (float) get_post_meta($order_id, 'total_price', true);
-    $event_id = get_post_meta($order_id, 'event_id', true);
-    $quantity = (int) get_post_meta($order_id, 'quantity', true);
-    $event_post = get_post($event_id);
-    $event_title = $event_post ? $event_post->post_title : 'Tiket Event';
-    
-    $items = [
-        [
-            'title' => $event_title,
-            'qty' => $quantity,
-            'price' => $quantity > 0 ? ($total / $quantity) : $total,
-            'subtotal' => $total
-        ]
-    ];
-    
-    $shipping_courier = '';
-    $shipping_service = '';
-    $shipping_cost = 0;
-    $address = get_post_meta($order_id, 'city', true);
-    $province_name = '';
-    $city_name = '';
-    $subdistrict_name = '';
-    $postal_code = '';
-    $payment_method = get_post_meta($order_id, 'payment_method', true);
-    $order_number = get_post_meta($order_id, 'invoice_number', true);
-} else {
-    $total = $order_exists ? (float) get_post_meta($order_id, '_store_order_total', true) : 0;
-    $items = $order_exists ? get_post_meta($order_id, '_store_order_items', true) : [];
-    $items = is_array($items) ? $items : [];
-    $shipping_courier = $order_exists ? get_post_meta($order_id, '_store_order_shipping_courier', true) : '';
-    $shipping_service = $order_exists ? get_post_meta($order_id, '_store_order_shipping_service', true) : '';
-    $shipping_cost = $order_exists ? (float) get_post_meta($order_id, '_store_order_shipping_cost', true) : 0;
-    $address = $order_exists ? get_post_meta($order_id, '_store_order_address', true) : '';
-    $province_name = $order_exists ? get_post_meta($order_id, '_store_order_province_name', true) : '';
-    $city_name = $order_exists ? get_post_meta($order_id, '_store_order_city_name', true) : '';
-    $subdistrict_name = $order_exists ? get_post_meta($order_id, '_store_order_subdistrict_name', true) : '';
-    $postal_code = $order_exists ? get_post_meta($order_id, '_store_order_postal_code', true) : '';
-    $payment_method = $order_exists ? get_post_meta($order_id, '_store_order_payment_method', true) : '';
-    $order_number = $order_exists ? get_post_meta($order_id, '_store_order_number', true) : '';
-}
-
+$order_exists = ($order_id > 0 && get_post_type($order_id) === 'store_order');
+$total = $order_exists ? (float) get_post_meta($order_id, '_store_order_total', true) : 0;
+$items = $order_exists ? get_post_meta($order_id, '_store_order_items', true) : [];
+$items = is_array($items) ? $items : [];
+$shipping_courier = $order_exists ? get_post_meta($order_id, '_store_order_shipping_courier', true) : '';
+$shipping_service = $order_exists ? get_post_meta($order_id, '_store_order_shipping_service', true) : '';
+$shipping_cost = $order_exists ? (float) get_post_meta($order_id, '_store_order_shipping_cost', true) : 0;
+$address = $order_exists ? get_post_meta($order_id, '_store_order_address', true) : '';
+$province_name = $order_exists ? get_post_meta($order_id, '_store_order_province_name', true) : '';
+$city_name = $order_exists ? get_post_meta($order_id, '_store_order_city_name', true) : '';
+$subdistrict_name = $order_exists ? get_post_meta($order_id, '_store_order_subdistrict_name', true) : '';
+$postal_code = $order_exists ? get_post_meta($order_id, '_store_order_postal_code', true) : '';
+$payment_method = $order_exists ? get_post_meta($order_id, '_store_order_payment_method', true) : '';
 $shop_archive = function_exists('get_post_type_archive_link') ? get_post_type_archive_link('store_product') : '';
 $shop_url = $shop_archive ?: site_url('/produk/');
 $settings = get_option('wp_store_settings', []);
+$order_number = $order_exists ? get_post_meta($order_id, '_store_order_number', true) : '';
 if (!$order_number) {
     $order_number = $order_id;
 }
@@ -149,7 +118,6 @@ if (!$order_number) {
                                         <div class="wps-text-sm wps-text-green-700">-<?php echo esc_html(($currency ?: 'Rp') . ' ' . number_format($discount_amount, 0, ',', '.')); ?></div>
                                     </div>
                                 <?php endif; ?>
-                                <?php if ($shipping_cost > 0 || !empty($shipping_courier)) : ?>
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
                                     <?php
                                     $courier_labels = [
@@ -171,7 +139,6 @@ if (!$order_number) {
                                     <div class="wps-text-sm wps-text-gray-500">Ongkir (<?php echo esc_html($courier_label . ' ' . $shipping_service); ?>)</div>
                                     <div class="wps-text-sm wps-text-gray-900"><?php echo esc_html(($currency ?: 'Rp') . ' ' . number_format($shipping_cost, 0, ',', '.')); ?></div>
                                 </div>
-                                <?php endif; ?>
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-2" style="border-top:1px dashed #e5e7eb; padding-top:12px;">
                                     <div class="wps-text-sm wps-text-gray-900 wps-font-medium">Total Tagihan</div>
                                     <div class="wps-text-sm wps-text-gray-900 wps-font-medium"><?php echo esc_html(($currency ?: 'Rp') . ' ' . number_format($total, 0, ',', '.')); ?></div>
@@ -179,20 +146,12 @@ if (!$order_number) {
                             </div>
                         <?php endif; ?>
                     </div>
-                        <?php if ($address || $city_name || $province_name) : ?>
-                        <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-4">Alamat Pengiriman</div>
-                        <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
-                            <?php if ($address) : ?><div><?php echo esc_html($address); ?></div><?php endif; ?>
-                            <div>
-                                <?php 
-                                $parts = array_filter([$subdistrict_name, $city_name, $province_name]);
-                                echo esc_html(implode(', ', $parts));
-                                if ($postal_code) echo ' ' . esc_html($postal_code);
-                                ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
+                    <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-4">Alamat Pengiriman</div>
+                    <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
+                        <div><?php echo esc_html($address); ?></div>
+                        <div><?php echo esc_html($subdistrict_name); ?>, <?php echo esc_html($city_name); ?>, <?php echo esc_html($province_name); ?> <?php echo esc_html($postal_code); ?></div>
                     </div>
+                </div>
                 <div>
                     <div class="wps-text-lg wps-font-medium wps-text-gray-900">Informasi Pembayaran</div>
                     <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>

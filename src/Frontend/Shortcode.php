@@ -359,22 +359,13 @@ class Shortcode
         if (empty($input)) return 0;
 
         $args = [
-            'post_type' => ['store_order', 'event_order'],
-            'meta_key' => 'invoice_number',
+            'post_type' => 'store_order',
+            'meta_key' => '_store_order_number',
             'meta_value' => $input,
             'posts_per_page' => 1,
             'fields' => 'ids',
             'post_status' => 'any'
         ];
-        
-        // Try invoice_number (event_order)
-        $query = new \WP_Query($args);
-        if ($query->have_posts()) {
-            return $query->posts[0];
-        }
-
-        // Try _store_order_number (store_order)
-        $args['meta_key'] = '_store_order_number';
         $query = new \WP_Query($args);
         if ($query->have_posts()) {
             return $query->posts[0];
@@ -382,13 +373,10 @@ class Shortcode
 
         if (is_numeric($input)) {
             $id = absint($input);
-            if ($id > 0 && in_array(get_post_type($id), ['store_order', 'event_order'])) {
+            if ($id > 0 && get_post_type($id) === 'store_order') {
                 $has_token = get_post_meta($id, '_store_order_number', true);
                 if (!$has_token) {
-                    $has_invoice = get_post_meta($id, 'invoice_number', true);
-                    if (!$has_invoice) {
-                        return $id;
-                    }
+                    return $id;
                 }
             }
         }
