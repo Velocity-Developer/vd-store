@@ -193,14 +193,6 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             </div>
                         </div>
                     </div>
-                    <div class="wp-store-box-gray wp-store-mt-4">
-                        <h4 class="wp-store-subtitle-small">Opsi Pengiriman</h4>
-                        <label class="wp-store-checkbox-label">
-                            <input type="hidden" name="disable_shipping_for_digital" value="0">
-                            <input type="checkbox" name="disable_shipping_for_digital" value="1" <?php echo !empty($settings['disable_shipping_for_digital']) ? 'checked' : ''; ?>>
-                            Matikan ongkir untuk produk digital (sembunyikan alamat & ongkir jika semua item digital)
-                        </label>
-                    </div>
                 </div>
             </div>
 
@@ -298,6 +290,15 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                     <p class="wp-store-helper">Konfigurasi API VD Ongkir dan metode pengiriman.</p>
 
                     <div class="wp-store-box-gray wp-store-mt-4">
+                        <h4 class="wp-store-subtitle-small">Opsi Pengiriman</h4>
+                        <label class="wp-store-checkbox-label">
+                            <input type="hidden" name="disable_shipping_for_digital" value="0">
+                            <input type="checkbox" name="disable_shipping_for_digital" value="1" <?php echo !empty($settings['disable_shipping_for_digital']) ? 'checked' : ''; ?>>
+                            Matikan ongkir untuk produk digital (sembunyikan alamat & ongkir jika semua item digital)
+                        </label>
+                    </div>
+
+                    <div class="wp-store-box-gray wp-store-mt-4">
                         <h4 class="wp-store-subtitle-small">API VD Ongkir</h4>
                         <div class="wp-store-mt-2 wp-store-flex wp-store-items-center">
                             <input name="rajaongkir_api_key" type="text" id="rajaongkir_api_key" x-ref="apiKeyInput" value="<?php echo esc_attr($settings['rajaongkir_api_key'] ?? ''); ?>" class="wp-store-input" placeholder="Masukkan API Key Starter/Basic/Pro Anda">
@@ -382,6 +383,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             <?php endforeach; ?>
                         </div>
                     </div>
+
                 </div>
             </div>
 
