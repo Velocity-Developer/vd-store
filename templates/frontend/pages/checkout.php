@@ -798,8 +798,13 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                 <label class="wps-label">Kode Pos</label>
                                 <input class="wps-input" type="text" x-model="postalCode" placeholder="" id="checkout-postal-code" name="postal_code">
                             </div>
+                        </div>
+                    </div>
+                    <div class="wps-card">
+                        <div class="wps-p-4">
                             <div class="wps-form-group">
                                 <label class="wps-label">Catatan</label>
+                                <?php do_action('wp_store_checkout_notes'); ?>
                                 <textarea class="wps-textarea" rows="3" x-model="notes" placeholder="Catatan tambahan untuk pesanan" id="checkout-notes" name="notes"></textarea>
                             </div>
                         </div>
