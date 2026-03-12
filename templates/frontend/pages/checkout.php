@@ -547,6 +547,12 @@
                             total: 0
                         }
                     }));
+
+                    if (data && data.payment_url) {
+                        window.location.href = data.payment_url;
+                        return;
+                    }
+
                     try {
                         const base = typeof wpStoreSettings !== 'undefined' && wpStoreSettings.thanksUrl ? wpStoreSettings.thanksUrl : '<?php echo esc_js(site_url('/thanks/')); ?>';
                         const url = new URL(base, window.location.origin);
@@ -897,6 +903,9 @@
                                             </span>
                                             <span x-show="'qris' === method.id">
                                                 <?php echo wps_icon(['name' => 'qr', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                            </span>
+                                            <span x-show="!['bank_transfer', 'qris'].includes(method.id)">
+                                                <?php echo wps_icon(['name' => 'credit-card', 'size' => 16, 'class' => 'wps-mr-2']); ?>
                                             </span>
                                             <span class="wps-text-sm wps-text-gray-900" x-text="method.name"></span>
                                         </button>

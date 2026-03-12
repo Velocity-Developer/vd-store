@@ -243,6 +243,8 @@ class SettingsController
             }
         }
 
+        $settings = apply_filters('wp_store_save_settings', $settings, $params);
+
         update_option('wp_store_settings', $settings);
 
         return new WP_REST_Response([
