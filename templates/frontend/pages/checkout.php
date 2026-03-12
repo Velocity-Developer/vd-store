@@ -1,3 +1,5 @@
+<?php $settings = get_option('wp_store_settings', []);
+$disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']); ?>
 <script>
     if (typeof window.wpStoreSettings === 'undefined') {
         window.wpStoreSettings = {
@@ -31,6 +33,7 @@
                 }, 0);
             },
             paymentMethods: [],
+            disableShippingForDigital: <?php echo $disable_shipping_for_digital ? 'true' : 'false'; ?>,
             paymentMethod: 'bank_transfer',
             name: '',
             email: '',
@@ -126,7 +129,25 @@
                     console.error(e);
                 }
             },
+            allDigitalSelected() {
+                if (!Array.isArray(this.cart)) return false;
+                const selected = this.cart.filter(i => i.selected !== false);
+                if (selected.length === 0) return false;
+                return selected.every(i => !!i.is_digital);
+            },
+            shouldHideShipping() {
+                return this.disableShippingForDigital && this.allDigitalSelected();
+            },
             async calculateAllShipping() {
+                if (this.shouldHideShipping()) {
+                    this.shippingOptions = [];
+                    this.selectedShippingKey = '';
+                    this.shippingCourier = '';
+                    this.shippingService = '';
+                    this.shippingCost = 0;
+                    this.recomputeAllow();
+                    return;
+                }
                 if (!this.selectedSubdistrict || !Array.isArray(this.shippingCouriers) || this.shippingCouriers.length === 0) {
                     this.recomputeAllow();
                     return;
@@ -190,19 +211,12 @@
             },
             totalWithShipping() {
                 const t = this.totalSelected();
-                const s = typeof this.shippingCost === 'number' ? this.shippingCost : parseFloat(this.shippingCost || 0);
+                const s = this.shouldHideShipping() ? 0 : (typeof this.shippingCost === 'number' ? this.shippingCost : parseFloat(this.shippingCost || 0));
                 const d = typeof this.discountAmount === 'number' ? this.discountAmount : parseFloat(this.discountAmount || 0);
                 return Math.max(0, t - (isNaN(d) ? 0 : d)) + (isNaN(s) ? 0 : s);
             },
             getValidationError() {
-                // if (!this.name) return 'Nama wajib diisi.';
-                // if (!Array.isArray(this.cart) || this.cart.length === 0) return 'Keranjang kosong.';
-                // if (!this.cart.find(i => i.selected !== false)) return 'Pilih setidaknya satu produk.';
-                // if (!this.selectedProvince) return 'Provinsi wajib diisi.';
-                // if (!this.selectedCity) return 'Kota/Kabupaten wajib diisi.';
-                // if (!this.selectedSubdistrict) return 'Kecamatan wajib diisi.';
-                // if (!this.address || String(this.address).trim() === '') return 'Alamat wajib diisi.';
-                if (Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
+                if (!this.shouldHideShipping() && Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
                     if (!this.selectedShippingKey) return 'Wajib pilih ongkir.';
                     const parts = String(this.selectedShippingKey || '').split(':');
                     const c = parts[0] || '';
@@ -221,14 +235,7 @@
                 if (!this.cart.find(i => i.selected !== false)) {
                     return ['Tidak ada produk yang dipilih.'];
                 }
-                // if (!this.name) reasons.push('Nama wajib diisi.');
-                // if (!this.email) reasons.push('Email wajib diisi.');
-                // if (!this.phone) reasons.push('Telepon wajib diisi.');
-                // if (!this.selectedProvince) reasons.push('Provinsi wajib diisi.');
-                // if (!this.selectedCity) reasons.push('Kota/Kabupaten wajib diisi.');
-                // if (!this.selectedSubdistrict) reasons.push('Kecamatan wajib diisi.');
-                // if (!this.address || String(this.address).trim() === '') reasons.push('Alamat wajib diisi.');
-                if (Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
+                if (!this.shouldHideShipping() && Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
                     if (!this.selectedShippingKey) {
                         reasons.push('Wajib pilih ongkir.');
                     } else {
@@ -494,18 +501,18 @@
                             name: this.name,
                             email: this.email,
                             phone: this.phone,
-                            address: this.address,
-                            province_id: this.selectedProvince || '',
-                            province_name: (this.provinces.find(p => String(p.province_id) === String(this.selectedProvince)) || {}).province || '',
-                            city_id: this.selectedCity || '',
-                            city_name: (this.cities.find(c => String(c.city_id) === String(this.selectedCity)) || {}).city_name || '',
-                            subdistrict_id: this.selectedSubdistrict || '',
-                            subdistrict_name: (this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || '',
-                            postal_code: this.postalCode || '',
+                            address: this.shouldHideShipping() ? '' : this.address,
+                            province_id: this.shouldHideShipping() ? '' : (this.selectedProvince || ''),
+                            province_name: this.shouldHideShipping() ? '' : ((this.provinces.find(p => String(p.province_id) === String(this.selectedProvince)) || {}).province || ''),
+                            city_id: this.shouldHideShipping() ? '' : (this.selectedCity || ''),
+                            city_name: this.shouldHideShipping() ? '' : ((this.cities.find(c => String(c.city_id) === String(this.selectedCity)) || {}).city_name || ''),
+                            subdistrict_id: this.shouldHideShipping() ? '' : (this.selectedSubdistrict || ''),
+                            subdistrict_name: this.shouldHideShipping() ? '' : ((this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || ''),
+                            postal_code: this.shouldHideShipping() ? '' : (this.postalCode || ''),
                             notes: this.notes || '',
-                            shipping_courier: this.shippingCourier || String(this.selectedShippingKey || '').split(':')[0] || '',
-                            shipping_service: this.shippingService || '',
-                            shipping_cost: this.shippingCost || 0,
+                            shipping_courier: this.shouldHideShipping() ? '' : (this.shippingCourier || String(this.selectedShippingKey || '').split(':')[0] || ''),
+                            shipping_service: this.shouldHideShipping() ? '' : (this.shippingService || ''),
+                            shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
                             payment_method: this.paymentMethod || 'bank_transfer',
                             coupon_code: this.couponCode || '',
                             items: this.cart.filter(i => i.selected !== false).map(i => ({
@@ -729,7 +736,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="wps-card">
+                    <div class="wps-card" x-show="!shouldHideShipping()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Alamat Penerima</div>
                             <div class="wps-form-group" x-show="addresses && addresses.length">
@@ -799,7 +806,7 @@
                     </div>
                 </div>
                 <div>
-                    <div class="wps-card wps-mb-4">
+                    <div class="wps-card wps-mb-4" x-show="!shouldHideShipping()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Metode Pengiriman</div>
                             <div class="wps-mb-2">

@@ -108,6 +108,7 @@ class RajaOngkirController
     public function calculate_rajaongkir_cost(WP_REST_Request $request)
     {
         $settings = get_option('wp_store_settings', []);
+        $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
         $api_key = $settings['rajaongkir_api_key'] ?? '';
         $origin_subdistrict = isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '';
         $params = $request->get_json_params();
@@ -121,6 +122,37 @@ class RajaOngkirController
             ];
         }
         $params = apply_filters('wp_store_before_calculate_shipping', $params, $request);
+        if ($disable_shipping_for_digital) {
+            $items = isset($params['items']) && is_array($params['items']) ? $params['items'] : null;
+            $all_digital = null;
+            if (is_array($items)) {
+                $all_digital = true;
+                foreach ($items as $it) {
+                    $pid = isset($it['id']) ? (int) $it['id'] : 0;
+                    if ($pid > 0 && get_post_type($pid) === 'store_product') {
+                        $ptype = get_post_meta($pid, '_store_product_type', true);
+                        $is_digital = ($ptype === 'digital') || (bool) get_post_meta($pid, '_store_is_digital', true);
+                        if (!$is_digital) {
+                            $all_digital = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            if ($all_digital === true) {
+                return new WP_REST_Response([
+                    'success' => true,
+                    'data' => [
+                        'meta' => [
+                            'message' => 'No shipping required for digital items',
+                            'code' => 200,
+                            'status' => 'success'
+                        ],
+                        'data' => []
+                    ]
+                ], 200);
+            }
+        }
         $destination_subdistrict = isset($params['destination_subdistrict']) ? sanitize_text_field($params['destination_subdistrict']) : '';
         $destination_city = isset($params['destination_city']) ? sanitize_text_field($params['destination_city']) : '';
         $destination_province = isset($params['destination_province']) ? sanitize_text_field($params['destination_province']) : '';

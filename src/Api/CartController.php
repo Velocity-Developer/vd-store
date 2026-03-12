@@ -306,6 +306,8 @@ class CartController
             $price = $this->resolve_price_with_options($product_id, $opts);
             $subtotal = $price * $qty;
             $total += $subtotal;
+            $ptype = get_post_meta($product_id, '_store_product_type', true);
+            $is_digital = ($ptype === 'digital') || (bool) get_post_meta($product_id, '_store_is_digital', true);
 
             $items[] = [
                 'id' => $product_id,
@@ -316,6 +318,7 @@ class CartController
                 'image' => get_the_post_thumbnail_url($product_id, 'thumbnail') ?: null,
                 'link' => get_permalink($product_id),
                 'options' => $opts,
+                'is_digital' => $is_digital,
             ];
         }
 

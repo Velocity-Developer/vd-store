@@ -136,6 +136,10 @@ class SettingsController
             $settings['shipping_couriers'] = array_map('sanitize_text_field', $params['shipping_couriers']);
         }
 
+        if (isset($params['disable_shipping_for_digital'])) {
+            $settings['disable_shipping_for_digital'] = ((string) $params['disable_shipping_for_digital'] === '1') ? 1 : 0;
+        }
+
         if (isset($params['custom_shipping_rates']) && is_array($params['custom_shipping_rates'])) {
             $rates = [];
             foreach ($params['custom_shipping_rates'] as $rate) {

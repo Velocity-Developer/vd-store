@@ -193,6 +193,14 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             </div>
                         </div>
                     </div>
+                    <div class="wp-store-box-gray wp-store-mt-4">
+                        <h4 class="wp-store-subtitle-small">Opsi Pengiriman</h4>
+                        <label class="wp-store-checkbox-label">
+                            <input type="hidden" name="disable_shipping_for_digital" value="0">
+                            <input type="checkbox" name="disable_shipping_for_digital" value="1" <?php echo !empty($settings['disable_shipping_for_digital']) ? 'checked' : ''; ?>>
+                            Matikan ongkir untuk produk digital (sembunyikan alamat & ongkir jika semua item digital)
+                        </label>
+                    </div>
                 </div>
             </div>
 
