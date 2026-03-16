@@ -101,6 +101,7 @@ class CartController
         $product_id = isset($data['id']) ? (int) $data['id'] : 0;
         $qty = isset($data['qty']) ? (int) $data['qty'] : 1;
         $options = isset($data['options']) && is_array($data['options']) ? $this->normalize_options($data['options']) : [];
+        $add_qty = isset($data['add_qty']) ? (int) $data['add_qty'] : null;
 
         if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
             return new WP_REST_Response(['message' => 'Produk tidak valid'], 400);
@@ -110,9 +111,39 @@ class CartController
             $qty = 0;
         }
 
+        $actor_key = $this->get_actor_key();
+        $op_fingerprint = md5(wp_json_encode([
+            'id' => $product_id,
+            'qty' => $qty,
+            'add_qty' => $add_qty,
+            'options' => $options,
+        ]));
+        $op_lock_key = 'wp_store_cart_op_' . md5($actor_key);
+        $existing_op = get_transient($op_lock_key);
+        if (is_string($existing_op) && $existing_op === $op_fingerprint) {
+            $cart = $this->read_cart();
+            return new WP_REST_Response($this->format_cart($cart), 200);
+        }
+        set_transient($op_lock_key, $op_fingerprint, 3);
+
+        $lock_key = 'wp_store_cart_lock_' . $actor_key;
+        if (get_transient($lock_key)) {
+            $cart = $this->read_cart();
+            return new WP_REST_Response($this->format_cart($cart), 200);
+        }
+        set_transient($lock_key, 1, 1);
+
         $cart = $this->read_cart();
+        if ($add_qty !== null) {
+            if ($add_qty < 0) {
+                $add_qty = 0;
+            }
+            $current = $this->find_current_qty($cart, $product_id, $options);
+            $qty = max(0, $current + $add_qty);
+        }
         $cart = $this->apply_upsert($cart, $product_id, $qty, $options);
         $this->write_cart($cart);
+        delete_transient($lock_key);
 
         return new WP_REST_Response($this->format_cart($cart), 200);
     }
@@ -155,6 +186,24 @@ class CartController
         }
 
         return $next;
+    }
+
+    private function find_current_qty($cart, $product_id, $options = [])
+    {
+        $cart = is_array($cart) ? $cart : [];
+        $options = $this->normalize_options(is_array($options) ? $options : []);
+        foreach ($cart as $row) {
+            $id = isset($row['id']) ? (int) $row['id'] : 0;
+            $row_qty = isset($row['qty']) ? (int) $row['qty'] : 0;
+            $row_opts = isset($row['opts']) && is_array($row['opts']) ? $this->normalize_options($row['opts']) : [];
+            if ($id <= 0 || $row_qty <= 0) {
+                continue;
+            }
+            if ($id === (int) $product_id && $this->options_equal($row_opts, $options)) {
+                return $row_qty;
+            }
+        }
+        return 0;
     }
 
     private function read_cart()
@@ -217,12 +266,10 @@ class CartController
     {
         if (isset($_COOKIE[$this->cookie_key]) && is_string($_COOKIE[$this->cookie_key]) && $_COOKIE[$this->cookie_key] !== '') {
             $key = sanitize_key($_COOKIE[$this->cookie_key]);
-            error_log("WpStore: Found existing cookie key: " . $key);
             return $key;
         }
 
         $key = sanitize_key(wp_generate_uuid4());
-        error_log("WpStore: Generated new key: " . $key);
 
         $secure = is_ssl();
         $path = '/'; // Force root path for testing
@@ -232,6 +279,14 @@ class CartController
         $_COOKIE[$this->cookie_key] = $key;
 
         return $key;
+    }
+
+    private function get_actor_key()
+    {
+        if (is_user_logged_in()) {
+            return 'u_' . get_current_user_id();
+        }
+        return 'g_' . $this->get_or_set_guest_key();
     }
 
     private function format_cart($cart)
@@ -251,6 +306,8 @@ class CartController
             $price = $this->resolve_price_with_options($product_id, $opts);
             $subtotal = $price * $qty;
             $total += $subtotal;
+            $ptype = get_post_meta($product_id, '_store_product_type', true);
+            $is_digital = ($ptype === 'digital') || (bool) get_post_meta($product_id, '_store_is_digital', true);
 
             $items[] = [
                 'id' => $product_id,
@@ -261,6 +318,7 @@ class CartController
                 'image' => get_the_post_thumbnail_url($product_id, 'thumbnail') ?: null,
                 'link' => get_permalink($product_id),
                 'options' => $opts,
+                'is_digital' => $is_digital,
             ];
         }
 

@@ -1,3 +1,56 @@
+:root {
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --green-50: #ecfdf5;
+  --green-100: #d1fae5;
+  --green-500: #10b981;
+  --green-600: #059669;
+  --green-800: #065f46;
+  --red-50: #fef2f2;
+  --red-200: #fca5a5;
+  --red-500: #ef4444;
+  --red-100: rgba(240, 67, 67, 0.1);
+  --amber-50: #fff7ed;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --gray-900-cc: #111827cc;
+
+  --primary-color: var(--blue-600);
+  --primary-color-hover: var(--blue-700);
+  --success-color: var(--green-500);
+  --success-color-hover: var(--green-600);
+  --secondary-text-color: var(--gray-700);
+  --secondary-border-color: var(--gray-300);
+  --border-color: var(--gray-200);
+  --muted-bg: var(--gray-50);
+  --light-bg: var(--gray-100);
+  --callout-border-color: var(--blue-200);
+  --callout-title-color: var(--blue-700);
+  --danger-border-color: var(--red-200);
+  --danger-bg-light: var(--red-50);
+  --alert-success-bg: var(--green-100);
+  --alert-success-text: var(--green-800);
+  --badge-bg: var(--gray-100);
+  --primary-focus-shadow: rgba(37, 99, 235, 0.1);
+  --primary-bg-light: var(--blue-50);
+  --success-bg-light: var(--green-50);
+  --dark-color: var(--gray-800);
+}
 .wps-profile-wrapper {
   font-family:
     ui-sans-serif,
@@ -9,7 +62,7 @@
     "Helvetica Neue",
     Arial,
     sans-serif;
-  color: #374151;
+  color: var(--secondary-text-color);
   line-height: 1.5;
   max-width: 1024px;
   margin: 0 auto;
@@ -58,12 +111,12 @@
   grid-column: span 2 / span 2;
 }
 .wps-card {
-  background-color: white;
+  background-color: var(--white);
   border-radius: 0.5rem;
   box-shadow:
     0 1px 3px 0 rgba(0, 0, 0, 0.1),
     0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   overflow: hidden;
 }
 
@@ -153,13 +206,13 @@
   font-weight: 900 !important;
 }
 .wps-text-gray-900 {
-  color: #111827;
+  color: var(--gray-900);
 }
 .wps-text-gray-500 {
-  color: #6b7280;
+  color: var(--gray-500);
 }
 .wps-text-gray-700 {
-  color: #374151;
+  color: var(--secondary-text-color);
 }
 .wps-text-sm {
   font-size: 0.875rem !important;
@@ -191,7 +244,7 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--secondary-text-color);
   margin-bottom: 0.25rem;
 }
 .wps-input,
@@ -201,11 +254,11 @@
 .wps-form-textarea {
   width: 100%;
   border-radius: 0.375rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--secondary-border-color);
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  color: #111827;
-  background-color: white;
+  color: var(--gray-900);
+  background-color: var(--white);
   transition:
     border-color 0.15s ease-in-out,
     box-shadow 0.15s ease-in-out;
@@ -214,12 +267,12 @@
 .wps-select:focus,
 .wps-textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-focus-shadow);
 }
 .wps-input:disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
+  background-color: var(--light-bg);
+  color: var(--gray-400);
 }
 .wps-btn {
   display: inline-flex;
@@ -239,14 +292,14 @@
 }
 .wps-btn-primary,
 button.wps-btn-primary {
-  background-color: #2563eb;
-  color: #ffffff !important;
+  background-color: var(--primary-color);
+  color: var(--white) !important;
 }
 .wps-btn-primary * {
-  color: #ffffff !important;
+  color: var(--white) !important;
 }
 .wps-btn-primary:hover {
-  background-color: #1d4ed8;
+  background-color: var(--primary-color-hover);
 }
 .wps-btn-primary:disabled {
   opacity: 0.5;
@@ -254,71 +307,101 @@ button.wps-btn-primary {
 }
 .wps-btn-dark,
 button.wps-btn-dark {
-  background-color: #1f2937;
-  color: #ffffff !important;
+  background-color: var(--dark-color);
+  color: var(--white) !important;
 }
 .wps-btn-dark * {
-  color: #ffffff !important;
+  color: var(--white) !important;
 }
 .wps-btn-dark:hover {
-  background-color: #111827;
+  background-color: var(--gray-900);
 }
 .wps-btn-secondary {
-  background-color: white;
-  border-color: #d1d5db;
-  color: #374151;
+  background-color: var(--white);
+  border-color: var(--secondary-border-color);
+  color: var(--secondary-text-color);
 }
 .wps-btn-secondary:hover {
-  background-color: #f9fafb;
+  background-color: var(--muted-bg);
 }
 .wps-btn-success {
-  background-color: #10b981;
-  color: #ffffff !important;
+  background-color: var(--success-color);
+  color: var(--white) !important;
 }
 .wps-btn-success * {
-  color: #ffffff !important;
+  color: var(--white) !important;
 }
 .wps-btn-success:hover {
-  background-color: #059669;
+  background-color: var(--success-color-hover);
 }
 .wps-btn-success:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.wps-btn-outline {
+  background-color: var(--white);
+  border-color: var(--secondary-border-color);
+  color: var(--secondary-text-color);
+}
+.wps-btn-outline:hover {
+  background-color: var(--muted-bg);
+}
+.wps-btn-outline-primary {
+  background-color: var(--white);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+.wps-btn-outline-primary *,
+.wps-btn-outline-primary span {
+  color: var(--primary-color) !important;
+}
+.wps-btn-outline-primary:hover {
+  background-color: var(--gray-900);
+  color: var(--light-bg) !important;
+}
+.wps-btn-outline-primary:hover svg {
+  stroke: var(--light-bg);
+}
 .wps-btn-outline-success {
-  background-color: white;
-  border-color: #10b981;
-  color: #10b981;
+  background-color: var(--white);
+  border-color: var(--success-color);
+  color: var(--success-color);
 }
 .wps-btn-outline-success *,
 .wps-btn-outline-success span {
-  color: #10b981 !important;
+  color: var(--success-color) !important;
 }
 .wps-btn-outline-success:hover {
-  background-color: #e6fcf5;
+  background-color: var(--success-bg-light);
 }
 .wps-position-relative {
   position: relative;
 }
 .wps-callout {
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background-color: var(--light);
+  border: 1px solid var(--callout-border-color);
   border-radius: 0.5rem;
   padding: 1rem;
 }
 .wps-callout-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1d4ed8;
+  color: var(--callout-title-color);
   margin-bottom: 0.5rem;
 }
 .wps-btn-danger {
-  background-color: white;
-  border-color: #fca5a5;
-  color: #ef4444;
+  background-color: var(--danger-text-color);
+  color: var(--white);
+  border: none;
+}
+.wps-btn-danger span {
+  color: var(--white);
+}
+.wps-btn-danger svg {
+  stroke: var(--blue-50);
 }
 .wps-btn-danger:hover {
-  background-color: #fef2f2;
+  background-color: var(--gray-900);
 }
 .wps-nav-item {
   display: flex;
@@ -329,19 +412,19 @@ button.wps-btn-dark {
   border-radius: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--secondary-text-color);
   background: none;
   border: none;
   cursor: pointer;
   margin-bottom: 0.25rem;
 }
 .wps-nav-item:hover {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: var(--light-bg);
+  color: var(--gray-900);
 }
 .wps-nav-item.active {
-  background-color: #eff6ff;
-  color: #1d4ed8;
+  background-color: var(--light);
+  color: var(--primary-color);
 }
 .wps-flex {
   display: flex;
@@ -395,8 +478,8 @@ button.wps-btn-dark {
   font-size: 0.875rem;
 }
 .wps-alert-success {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: var(--alert-success-bg);
+  color: var(--alert-success-text);
 }
 .wps-badge {
   display: inline-flex;
@@ -405,8 +488,8 @@ button.wps-btn-dark {
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: var(--badge-bg);
+  color: var(--secondary-text-color);
 }
 .wps-badge-sm {
   padding: 0.125rem 0.375rem;
@@ -416,7 +499,7 @@ button.wps-btn-dark {
 .wps-tabs {
   display: flex;
   gap: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 .wps-profile-wrapper .wps-tabs {
   overflow-x: auto;
@@ -429,30 +512,30 @@ button.wps-btn-dark {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--secondary-text-color);
   background: none;
   border: none;
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
 .wps-tab:hover {
-  color: #111827;
-  background-color: #f9fafb;
+  color: var(--gray-900);
+  background-color: var(--muted-bg);
 }
 .wps-tab.active {
-  color: #1d4ed8;
-  border-bottom-color: #1d4ed8;
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
 }
 
 /* Badge utilities */
 .wps-bg-blue-500 {
-  background-color: #3b82f6;
+  background-color: var(--blue-500);
 }
 .wps-bg-red-100 {
-  background-color: rgb(240, 67, 67, 0.1);
+  background-color: var(--red-100);
 }
 .wps-text-white {
-  color: #ffffff !important;
+  color: var(--white) !important;
 }
 .wps-text-xs {
   font-size: 0.75rem !important;
@@ -467,7 +550,7 @@ button.wps-btn-dark {
 .wps-checkbox {
   width: 16px;
   height: 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--secondary-border-color);
   border-radius: 0.2rem;
 }
 
@@ -483,7 +566,7 @@ button.wps-btn-dark {
   left: 0;
   width: 100%;
   height: 2px;
-  background-color: #e5e7eb;
+  background-color: var(--border-color);
   border-radius: 9999px;
   transform: translateY(-50%);
 }
@@ -491,7 +574,7 @@ button.wps-btn-dark {
   position: absolute;
   top: 0;
   height: 2px;
-  background-color: #2563eb;
+  background-color: var(--primary-color);
   border-radius: 9999px;
 }
 .wps-range {
@@ -515,8 +598,8 @@ button.wps-btn-dark {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  background-color: #2563eb;
-  border: 1px solid #1d4ed8;
+  background-color: var(--primary-color);
+  border: 1px solid var(--primary-color-hover);
   border-radius: 9999px;
   cursor: pointer;
 }
@@ -527,8 +610,8 @@ button.wps-btn-dark {
 .wps-range::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  background-color: #2563eb;
-  border: 1px solid #1d4ed8;
+  background-color: var(--primary-color);
+  border: 1px solid var(--primary-color-hover);
   border-radius: 9999px;
   cursor: pointer;
 }
@@ -595,6 +678,10 @@ button.wps-btn-dark {
 .wps-pl-1 {
   padding-left: 0.25rem;
 }
+.wps-pl-2 {
+  padding-left: 0.5rem;
+}
+
 .rounded-full {
   border-radius: 9999px;
 }
@@ -660,7 +747,7 @@ button.wps-btn-dark {
   width: 320px;
   max-width: 90vw;
   height: 100vh;
-  background: #ffffff;
+  background: var(--white);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
@@ -668,7 +755,7 @@ button.wps-btn-dark {
 }
 .wps-offcanvas-header {
   padding: 12px;
-  border-bottom: 1px solid #eeeeee;
+  border-bottom: 1px solid var(--gray-200);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -680,11 +767,12 @@ button.wps-btn-dark {
 }
 .wps-offcanvas-footer {
   padding: 12px;
-  border-top: 1px solid #eeeeee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  border-top: 1px solid var(--gray-200);
+}
+.wps-checkout-box {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-200);
 }
 .wps-total-box {
   display: flex;
@@ -807,8 +895,8 @@ button.wps-btn-dark {
   left: 8px;
   display: flex;
   align-items: center;
-  background: #111827cc;
-  color: #fff;
+  background: var(--gray-900-cc);
+  color: var(--white);
   border-radius: 9999px;
   padding: 2px 6px;
   backdrop-filter: saturate(180%) blur(4px);
@@ -835,23 +923,23 @@ button.wps-btn-dark {
   right: 8px;
   display: inline-flex;
   align-items: center;
-  color: #fff;
+  color: var(--white);
   border-radius: 9999px;
   padding: 2px 6px;
 }
 .wps-label-badge .txt {
-  color: #fff;
+  color: var(--white);
   font-size: 10px;
   margin-left: 4px;
 }
 .wps-label-badge.label-best {
-  background: #f59e0b;
+  background: var(--amber-500);
 }
 .wps-label-badge.label-limited {
-  background: #ef4444;
+  background: var(--red-500);
 }
 .wps-label-badge.label-new {
-  background: #10b981;
+  background: var(--green-500);
 }
 .wps-mb-2 {
   margin-bottom: 0.5rem;
@@ -903,26 +991,64 @@ button.wps-btn-dark {
   padding: 8px;
 }
 tr:not(:last-child) .wps-td {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--gray-100);
 }
 .wps-table-striped tbody tr:nth-child(odd) {
-  background: #fcfcfd;
+  background: var(--white);
+}
+
+.wps-skeleton {
+  position: relative;
+  background-color: var(--gray-200);
+  overflow: hidden;
+  border-radius: 4px;
+}
+.wps-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: wps-skeleton-shimmer 1.2s infinite;
+}
+.wps-skeleton-text {
+  height: 12px;
+}
+.wps-skeleton-img {
+  width: 40px;
+  height: 40px;
+}
+@keyframes wps-skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .wps-summary-box {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--gray-50);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
 }
 
 .wps-bg-primary-100 {
-  background-color: #eff6ff;
+  background-color: var(--blue-50);
+}
+.wps-bg-dark {
+  background-color: var(--gray-900);
 }
 .wps-text-white {
-  color: #fff;
+  color: var(--white);
 }
 .wps-text-primary-800 {
-  color: #1d4ed8;
+  color: var(--blue-700);
 }
 .wps-rounded-md {
   border-radius: 0.375rem;
@@ -950,12 +1076,12 @@ tr:not(:last-child) .wps-td {
   height: 30px;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.9);
-  color: #111827;
+  color: var(--gray-900);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
 }
 .wps-products-carousel .flickity-prev-next-button:hover {
-  background: #ffffff;
+  background: var(--white);
 }
 .wps-products-carousel .flickity-prev-next-button:disabled {
   opacity: 0.4;
@@ -1005,6 +1131,10 @@ tr:not(:last-child) .wps-td {
 .wps-products-carousel .carousel-main .carousel-cell img {
   width: 100%;
   display: block;
+}
+
+.wps-align-items-center {
+  align-items: center;
 }
 
 @media (max-width: 768px) {

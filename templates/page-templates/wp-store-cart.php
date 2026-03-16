@@ -2,4 +2,4 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-echo do_shortcode('[wp_store_cart]');
+echo do_shortcode('[store_cart]');

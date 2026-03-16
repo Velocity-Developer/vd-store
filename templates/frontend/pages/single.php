@@ -147,7 +147,11 @@
                                 </td>
                             </tr>
                         <?php endif; ?>
-                        <?php if ($sale_price !== '' && $sale_price !== null) : ?>
+                        <?php
+                        $wps_settings_tmp = get_option('wp_store_settings', []);
+                        $wps_hide_sale_for_guest = !empty($wps_settings_tmp['members_only_discount']) && !is_user_logged_in();
+                        ?>
+                        <?php if ($sale_price !== '' && $sale_price !== null && !$wps_hide_sale_for_guest) : ?>
                             <tr style="border-top: 1px solid #e5e7eb;">
                                 <td style="padding: 8px; color:#6b7280; font-size:12px;">Harga Promo</td>
                                 <td style="padding: 8px; text-align: right;" class="wps-text-sm wps-text-gray-900">

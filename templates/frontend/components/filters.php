@@ -251,8 +251,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
                   try {
                     if (typeof window.Alpine.initTree === 'function') {
                       requestAnimationFrame(() => window.Alpine.initTree(curBlock));
-                    } else if (typeof window.Alpine.start === 'function') {
-                      requestAnimationFrame(() => window.Alpine.start());
                     }
                   } catch (e) {}
                 }
@@ -295,8 +293,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
                     try {
                       if (typeof window.Alpine.initTree === 'function') {
                         requestAnimationFrame(() => window.Alpine.initTree(curBlock));
-                      } else if (typeof window.Alpine.start === 'function') {
-                        requestAnimationFrame(() => window.Alpine.start());
                       }
                     } catch (e) {}
                   }

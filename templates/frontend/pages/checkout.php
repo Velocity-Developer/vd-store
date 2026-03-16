@@ -1,3 +1,5 @@
+<?php $settings = get_option('wp_store_settings', []);
+$disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']); ?>
 <script>
     if (typeof window.wpStoreSettings === 'undefined') {
         window.wpStoreSettings = {
@@ -11,7 +13,11 @@
         return {
             loading: true,
             submitting: false,
+            _submitGuard: false,
+            requestId: String(Date.now()) + '-' + Math.random().toString(36).slice(2),
             allowSubmit: false,
+            importingProfile: false,
+            importingAddresses: '',
             warnShow: false,
             warnMessage: '',
             _warnTimer: null,
@@ -26,7 +32,9 @@
                     return sel ? (sum + (isNaN(sub) ? 0 : sub)) : sum;
                 }, 0);
             },
-            paymentMethod: 'transfer_bank',
+            paymentMethods: [],
+            disableShippingForDigital: <?php echo $disable_shipping_for_digital ? 'true' : 'false'; ?>,
+            paymentMethod: 'bank_transfer',
             name: '',
             email: '',
             phone: '',
@@ -102,7 +110,44 @@
                     minimumFractionDigits: 0
                 }).format(v);
             },
+            async getPaymentMethods() {
+                try {
+                    const res = await fetch(wpStoreSettings.restUrl + 'settings/payment-methods', {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-WP-Nonce': wpStoreSettings.nonce
+                        }
+                    });
+                    const data = await res.json();
+                    if (res.ok && data && data.success && Array.isArray(data.data)) {
+                        this.paymentMethods = data.data;
+
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+            allDigitalSelected() {
+                if (!Array.isArray(this.cart)) return false;
+                const selected = this.cart.filter(i => i.selected !== false);
+                if (selected.length === 0) return false;
+                return selected.every(i => !!i.is_digital);
+            },
+            shouldHideShipping() {
+                return this.disableShippingForDigital && this.allDigitalSelected();
+            },
             async calculateAllShipping() {
+                if (this.shouldHideShipping()) {
+                    this.shippingOptions = [];
+                    this.selectedShippingKey = '';
+                    this.shippingCourier = '';
+                    this.shippingService = '';
+                    this.shippingCost = 0;
+                    this.recomputeAllow();
+                    return;
+                }
                 if (!this.selectedSubdistrict || !Array.isArray(this.shippingCouriers) || this.shippingCouriers.length === 0) {
                     this.recomputeAllow();
                     return;
@@ -133,13 +178,14 @@
                         })
                     });
                     const data = await res.json();
-                    if (res.ok && data && data.success && Array.isArray(data.services)) {
-                        this.shippingOptions = data.services.map(s => ({
-                            courier: s.courier || '',
+                    if (res.ok && data && data.success && data.data && Array.isArray(data.data.data)) {
+                        this.shippingOptions = data.data.data.map(s => ({
+                            courier: s.code || '',
                             service: s.service || '',
                             description: s.description || '',
                             cost: s.cost || 0,
-                            etd: s.etd || ''
+                            etd: s.etd || '',
+                            name: s.name || ''
                         }));
                     }
                 } catch (e) {}
@@ -165,19 +211,12 @@
             },
             totalWithShipping() {
                 const t = this.totalSelected();
-                const s = typeof this.shippingCost === 'number' ? this.shippingCost : parseFloat(this.shippingCost || 0);
+                const s = this.shouldHideShipping() ? 0 : (typeof this.shippingCost === 'number' ? this.shippingCost : parseFloat(this.shippingCost || 0));
                 const d = typeof this.discountAmount === 'number' ? this.discountAmount : parseFloat(this.discountAmount || 0);
                 return Math.max(0, t - (isNaN(d) ? 0 : d)) + (isNaN(s) ? 0 : s);
             },
             getValidationError() {
-                if (!this.name) return 'Nama wajib diisi.';
-                if (!Array.isArray(this.cart) || this.cart.length === 0) return 'Keranjang kosong.';
-                if (!this.cart.find(i => i.selected !== false)) return 'Pilih setidaknya satu produk.';
-                if (!this.selectedProvince) return 'Provinsi wajib dipilih.';
-                if (!this.selectedCity) return 'Kota/Kabupaten wajib dipilih.';
-                if (!this.selectedSubdistrict) return 'Kecamatan wajib dipilih.';
-                if (!this.address || String(this.address).trim() === '') return 'Alamat wajib diisi.';
-                if (Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
+                if (!this.shouldHideShipping() && Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
                     if (!this.selectedShippingKey) return 'Wajib pilih ongkir.';
                     const parts = String(this.selectedShippingKey || '').split(':');
                     const c = parts[0] || '';
@@ -196,14 +235,7 @@
                 if (!this.cart.find(i => i.selected !== false)) {
                     return ['Tidak ada produk yang dipilih.'];
                 }
-                if (!this.name) reasons.push('Nama wajib diisi.');
-                if (!this.email) reasons.push('Email wajib diisi.');
-                if (!this.phone) reasons.push('Telepon wajib diisi.');
-                if (!this.selectedProvince) reasons.push('Provinsi wajib dipilih.');
-                if (!this.selectedCity) reasons.push('Kota/Kabupaten wajib dipilih.');
-                if (!this.selectedSubdistrict) reasons.push('Kecamatan wajib dipilih.');
-                if (!this.address || String(this.address).trim() === '') reasons.push('Alamat wajib diisi.');
-                if (Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
+                if (!this.shouldHideShipping() && Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
                     if (!this.selectedShippingKey) {
                         reasons.push('Wajib pilih ongkir.');
                     } else {
@@ -221,13 +253,20 @@
                 return this.getValidationError() === '';
             },
             recomputeAllow() {
-                this.allowSubmit = this.getBlockingReasons().length === 0;
+                const reasons = this.getBlockingReasons();
+                this.allowSubmit = reasons.length === 0;
                 if (this.captchaRequired && !this.isCaptchaReady()) {
                     this.allowSubmit = false;
+                }
+                if (this.allowSubmit) {
+                    if (this.warnShow) this.warnShow = false;
+                } else if (this.warnShow) {
+                    this.warnMessage = reasons[0] || 'Tidak dapat melanjutkan';
                 }
             },
             trySubmit() {
                 if (this.submitting) return;
+                this.warnShow = false;
                 if (this.captchaRequired && !this.isCaptchaReady()) {
                     this.warnMessage = 'Verifikasi captcha terlebih dahulu.';
                     this.warnShow = true;
@@ -246,6 +285,10 @@
                         this._warnTimer = null;
                     }, 3000);
                     return;
+                }
+                this.submitting = true;
+                if (!this.requestId) {
+                    this.requestId = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
                 }
                 this.submit();
             },
@@ -281,9 +324,11 @@
                 this.phone = this.profile.phone || this.phone;
             },
             async useAddressById() {
+                this.importingAddresses = String(this.selectedAddressId);
                 const addr = this.addresses.find(a => String(a.id) === String(this.selectedAddressId));
                 if (!addr) return;
                 await this.applyAddress(addr);
+                this.importingAddresses = '';
             },
             async applyAddress(addr) {
                 this.address = addr.address || '';
@@ -294,6 +339,7 @@
                 await this.loadSubdistricts();
                 this.selectedSubdistrict = addr.subdistrict_id ? String(addr.subdistrict_id) : '';
                 await this.calculateAllShipping();
+                this.recomputeAllow();
             },
             async loadProvinces() {
                 this.isLoadingProvinces = true;
@@ -313,6 +359,7 @@
                 }
             },
             async loadCities() {
+                console.log(this.selectedProvince);
                 if (!this.selectedProvince) {
                     this.cities = [];
                     return;
@@ -421,21 +468,25 @@
                 }
             },
             async importFromProfile() {
+                this.importingProfile = true;
                 await this.fetchProfile();
                 if (!this.profile || !this.profile.email) {
                     window.location.href = '<?php echo esc_js(site_url('/profil-saya/?tab=profile')); ?>';
                     return;
                 }
                 this.useProfile();
+                this.importingProfile = false;
             },
             async submit() {
+                if (this._submitGuard) return;
+                this._submitGuard = true;
                 const err = this.getValidationError();
                 if (err) {
                     this.message = err;
                     this.showToast(err, 'error');
+                    this._submitGuard = false;
                     return;
                 }
-                this.submitting = true;
                 this.message = '';
                 try {
                     const res = await fetch(wpStoreSettings.restUrl + 'checkout', {
@@ -446,22 +497,23 @@
                             'X-WP-Nonce': wpStoreSettings.nonce
                         },
                         body: JSON.stringify({
+                            request_id: this.requestId,
                             name: this.name,
                             email: this.email,
                             phone: this.phone,
-                            address: this.address,
-                            province_id: this.selectedProvince || '',
-                            province_name: (this.provinces.find(p => String(p.province_id) === String(this.selectedProvince)) || {}).province || '',
-                            city_id: this.selectedCity || '',
-                            city_name: (this.cities.find(c => String(c.city_id) === String(this.selectedCity)) || {}).city_name || '',
-                            subdistrict_id: this.selectedSubdistrict || '',
-                            subdistrict_name: (this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || '',
-                            postal_code: this.postalCode || '',
+                            address: this.shouldHideShipping() ? '' : this.address,
+                            province_id: this.shouldHideShipping() ? '' : (this.selectedProvince || ''),
+                            province_name: this.shouldHideShipping() ? '' : ((this.provinces.find(p => String(p.province_id) === String(this.selectedProvince)) || {}).province || ''),
+                            city_id: this.shouldHideShipping() ? '' : (this.selectedCity || ''),
+                            city_name: this.shouldHideShipping() ? '' : ((this.cities.find(c => String(c.city_id) === String(this.selectedCity)) || {}).city_name || ''),
+                            subdistrict_id: this.shouldHideShipping() ? '' : (this.selectedSubdistrict || ''),
+                            subdistrict_name: this.shouldHideShipping() ? '' : ((this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || ''),
+                            postal_code: this.shouldHideShipping() ? '' : (this.postalCode || ''),
                             notes: this.notes || '',
-                            shipping_courier: this.shippingCourier || '',
-                            shipping_service: this.shippingService || '',
-                            shipping_cost: this.shippingCost || 0,
-                            payment_method: this.paymentMethod || 'transfer_bank',
+                            shipping_courier: this.shouldHideShipping() ? '' : (this.shippingCourier || String(this.selectedShippingKey || '').split(':')[0] || ''),
+                            shipping_service: this.shouldHideShipping() ? '' : (this.shippingService || ''),
+                            shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
+                            payment_method: this.paymentMethod || 'bank_transfer',
                             coupon_code: this.couponCode || '',
                             items: this.cart.filter(i => i.selected !== false).map(i => ({
                                 id: i.id,
@@ -502,6 +554,12 @@
                             total: 0
                         }
                     }));
+
+                    if (data && data.payment_url) {
+                        window.location.href = data.payment_url;
+                        return;
+                    }
+
                     try {
                         const base = typeof wpStoreSettings !== 'undefined' && wpStoreSettings.thanksUrl ? wpStoreSettings.thanksUrl : '<?php echo esc_js(site_url('/thanks/')); ?>';
                         const url = new URL(base, window.location.origin);
@@ -516,12 +574,15 @@
                     this.message = 'Terjadi kesalahan jaringan.';
                 } finally {
                     this.submitting = false;
+                    this.requestId = '';
+                    this._submitGuard = false;
                 }
             },
             async init() {
                 this.loading = true;
                 try {
                     await this.fetchCart();
+                    await this.getPaymentMethods();
                     if (this.loggedIn) {
                         await this.fetchProfile();
                         await this.fetchAddresses();
@@ -539,12 +600,90 @@
 </script>
 <div class="">
     <div x-data="wpStoreCheckout()" x-init="init()" x-effect="recomputeAllow()">
-        <div x-show="loading" class="wps-flex wps-justify-center wps-items-center wps-p-12 wps-text-gray-500">
-            <svg class="wps-animate-spin wps-mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>Memuat data...</span>
+        <div x-show="loading" class="wps-p-4">
+            <div class="wps-grid wps-grid-cols-1 wps-md-grid-cols-2 wps-gap-4">
+                <div>
+                    <div class="wps-card wps-mb-4">
+                        <div class="wps-p-4">
+                            <div class="wps-skeleton wps-skeleton-text" style="width:40%; height:20px;"></div>
+                            <div class="wps-mt-3">
+                                <div class="wps-skeleton wps-skeleton-text" style="width:80%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:70%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:60%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wps-card">
+                        <div class="wps-p-4">
+                            <div class="wps-skeleton wps-skeleton-text" style="width:40%; height:20px;"></div>
+                            <div class="wps-mt-3">
+                                <div class="wps-skeleton wps-skeleton-text" style="width:80%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:80%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:70%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:60%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="wps-card wps-mb-4">
+                        <div class="wps-p-4">
+                            <div class="wps-skeleton wps-skeleton-text" style="width:40%; height:20px;"></div>
+                            <div class="wps-mt-3">
+                                <div class="wps-skeleton wps-skeleton-text" style="width:90%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:85%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:80%;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:75%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wps-card">
+                        <div class="wps-p-4">
+                            <div class="wps-skeleton wps-skeleton-text" style="width:40%; height:20px;"></div>
+                            <div class="wps-mt-3">
+                                <div class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
+                                    <div class="wps-skeleton wps-skeleton-img"></div>
+                                    <div style="flex:1;">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width:70%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:40%;"></div>
+                                    </div>
+                                </div>
+                                <div class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
+                                    <div class="wps-skeleton wps-skeleton-img"></div>
+                                    <div style="flex:1;">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width:70%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:40%;"></div>
+                                    </div>
+                                </div>
+                                <div class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
+                                    <div class="wps-skeleton wps-skeleton-img"></div>
+                                    <div style="flex:1;">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width:70%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:40%;"></div>
+                                    </div>
+                                </div>
+                                <div class="wps-mt-3">
+                                    <div class="wps-skeleton wps-skeleton-text" style="width:40%;"></div>
+                                    <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:30%;"></div>
+                                    <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:50%;"></div>
+                                    <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:60%;"></div>
+                                </div>
+                                <div class="wps-mt-3">
+                                    <div class="wps-flex wps-gap-2 wps-flex-wrap">
+                                        <div class="wps-skeleton" style="width:120px; height:28px; border-radius:4px;"></div>
+                                        <div class="wps-skeleton" style="width:110px; height:28px; border-radius:4px;"></div>
+                                        <div class="wps-skeleton" style="width:140px; height:28px; border-radius:4px;"></div>
+                                    </div>
+                                </div>
+                                <div class="wps-mt-4 wps-flex wps-justify-end">
+                                    <div class="wps-skeleton" style="width:200px; height:36px; border-radius:4px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div x-show="!loading" style="display: none;">
             <template x-if="cart.length === 0">
@@ -571,35 +710,49 @@
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Informasi Pemesan</div>
                             <?php if (is_user_logged_in()) : ?>
                                 <div class="wps-flex wps-items-center wps-gap-2 wps-mb-4">
-                                    <button type="button" class="wps-btn wps-btn-sm wps-btn-primary" @click="importFromProfile()"><?php echo wps_icon(['name' => 'cloud-arrow-down', 'size' => 16, 'class' => 'wps-mr-2']); ?>Impor Profil</button>
+                                    <button type="button" class="wps-btn wps-btn-sm wps-btn-primary" @click="importFromProfile()">
+                                        <span x-show="!importingProfile">
+                                            <?php echo wps_icon(['name' => 'cloud-arrow-down', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                        </span>
+                                        <span x-show="importingProfile">
+                                            <?php echo wps_icon(['name' => 'spinner', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                        </span>
+                                        Impor Profil
+                                    </button>
                                     <a href="<?php echo esc_url(site_url('/profil-saya/?tab=profile')); ?>" class="wps-btn wps-btn-sm wps-btn-secondary"><?php echo wps_icon(['name' => 'sliders2', 'size' => 16, 'class' => 'wps-mr-2']); ?>Kelola</a>
                                 </div>
                             <?php endif; ?>
                             <div class="wps-form-group">
                                 <label class="wps-label">Nama</label>
-                                <input class="wps-input" type="text" x-model="name" placeholder="Nama lengkap">
+                                <input class="wps-input" type="text" x-model="name" placeholder="Nama lengkap" id="checkout-name" name="name">
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Email</label>
-                                <input class="wps-input" type="email" x-model="email" placeholder="email@contoh.com">
+                                <input class="wps-input" type="email" x-model="email" placeholder="email@contoh.com" id="checkout-email" name="email">
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Telepon/WA</label>
-                                <input class="wps-input" type="text" x-model="phone" placeholder="08xxxxxxxxxx">
+                                <input class="wps-input" type="text" x-model="phone" placeholder="08xxxxxxxxxx" id="checkout-phone" name="phone">
                             </div>
                         </div>
                     </div>
-                    <div class="wps-card">
+                    <div class="wps-card" x-show="!shouldHideShipping()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Alamat Penerima</div>
                             <div class="wps-form-group" x-show="addresses && addresses.length">
                                 <div class="wps-flex wps-flex-wrap" style="gap:8px;">
                                     <template x-for="addr in addresses" :key="addr.id">
                                         <button type="button"
-                                            @click="selectedAddressId = addr.id; useAddressById()"
+                                            @click="selectedAddressId = String(addr.id); useAddressById()"
                                             class="wps-btn wps-btn-sm"
+                                            :disabled="String(importingAddresses) === String(addr.id)"
                                             :class="String(selectedAddressId) === String(addr.id) ? 'wps-btn-dark' : 'wps-btn-primary'">
-                                            <?php echo wps_icon(['name' => 'map-pin', 'size' => 16, 'class' => 'wps-mr-2', 'border-color' => '#fff']); ?>
+                                            <span x-show="importingAddresses !== String(addr.id) ">
+                                                <?php echo wps_icon(['name' => 'map-pin', 'size' => 16, 'class' => 'wps-mr-2', 'border-color' => '#fff']); ?>
+                                            </span>
+                                            <span x-show="importingAddresses === String(addr.id) ">
+                                                <?php echo wps_icon(['name' => 'spinner', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                            </span>
                                             <span
                                                 :style="String(selectedAddressId) === String(addr.id) ? 'color:#fff;' : 'color:#1f2937;'"
                                                 x-text="(addr.label ? addr.label + ' - ' : '') + (addr.city_name || '')"></span>
@@ -609,7 +762,7 @@
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Provinsi</label>
-                                <select class="wps-select" x-model="selectedProvince" @change="selectedCity=''; selectedSubdistrict=''; postalCode=''; loadCities()">
+                                <select class="wps-select" x-model="selectedProvince" @change="selectedCity=''; selectedSubdistrict=''; postalCode=''; loadCities()" id="checkout-province" name="province_id">
                                     <option value="">-- Pilih Provinsi --</option>
                                     <template x-for="prov in provinces" :key="prov.province_id">
                                         <option :value="prov.province_id" x-text="prov.province"></option>
@@ -619,7 +772,7 @@
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Kota/Kabupaten</label>
-                                <select class="wps-select" x-model="selectedCity" @change="selectedSubdistrict=''; postalCode=(cities.find(c => String(c.city_id) === String(selectedCity)) || {}).postal_code || ''; loadSubdistricts()" :disabled="!selectedProvince">
+                                <select class="wps-select" x-model="selectedCity" @change="selectedSubdistrict=''; postalCode=(cities.find(c => String(c.city_id) === String(selectedCity)) || {}).postal_code || ''; loadSubdistricts()" :disabled="!selectedProvince" id="checkout-city" name="city_id">
                                     <option value="">-- Pilih Kota/Kabupaten --</option>
                                     <template x-for="c in cities" :key="c.city_id">
                                         <option :value="c.city_id" x-text="c.city_name"></option>
@@ -629,7 +782,7 @@
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Kecamatan</label>
-                                <select class="wps-select" x-model="selectedSubdistrict" :disabled="!selectedCity" @change="calculateAllShipping()">
+                                <select class="wps-select" x-model="selectedSubdistrict" :disabled="!selectedCity" @change="calculateAllShipping()" id="checkout-subdistrict" name="subdistrict_id">
                                     <option value="">-- Pilih Kecamatan --</option>
                                     <template x-for="s in subdistricts" :key="s.subdistrict_id">
                                         <option :value="s.subdistrict_id" x-text="s.subdistrict_name"></option>
@@ -639,21 +792,26 @@
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Alamat Lengkap</label>
-                                <textarea class="wps-textarea" rows="3" x-model="address"></textarea>
+                                <textarea class="wps-textarea" rows="3" x-model="address" id="checkout-address" name="address"></textarea>
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Kode Pos</label>
-                                <input class="wps-input" type="text" x-model="postalCode" placeholder="">
+                                <input class="wps-input" type="text" x-model="postalCode" placeholder="" id="checkout-postal-code" name="postal_code">
                             </div>
+                        </div>
+                    </div>
+                    <div class="wps-card">
+                        <div class="wps-p-4">
                             <div class="wps-form-group">
                                 <label class="wps-label">Catatan</label>
-                                <textarea class="wps-textarea" rows="3" x-model="notes" placeholder="Catatan tambahan untuk pesanan"></textarea>
+                                <?php do_action('wp_store_checkout_notes'); ?>
+                                <textarea class="wps-textarea" rows="3" x-model="notes" placeholder="Catatan tambahan untuk pesanan" id="checkout-notes" name="notes"></textarea>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div>
-                    <div class="wps-card wps-mb-4">
+                    <div class="wps-card wps-mb-4" x-show="!shouldHideShipping()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Metode Pengiriman</div>
                             <div class="wps-mb-2">
@@ -690,7 +848,7 @@
                             </template>
                             <template x-for="item in cart" :key="item.id + ':' + (item.options ? JSON.stringify(item.options) : '')">
                                 <div class="wps-flex wps-items-center wps-gap-2 wps-divider">
-                                    <input type="checkbox" x-model="item.selected" class="wps-checkbox" @change="calculateAllShipping(); if (couponCode) applyCoupon();">
+                                    <input type="checkbox" x-model="item.selected" class="wps-checkbox" @change="calculateAllShipping(); if (couponCode) applyCoupon();" :id="'item-selected-' + item.id" :name="'item_selected_' + item.id">
                                     <img :src="item.image ? item.image : '<?php echo esc_url(WP_STORE_URL . 'assets/frontend/img/noimg.webp'); ?>'" alt="" class="wps-img-40">
                                     <div style="flex: 1;">
                                         <div x-text="item.title" class="wps-text-sm wps-text-gray-900"></div>
@@ -715,7 +873,7 @@
                                     <span class="wps-text-sm wps-text-gray-900" x-text="formatPrice(totalSelected())"></span>
                                 </div>
                                 <div class="wps-flex wps-items-center wps-gap-2 wps-mt-2">
-                                    <input class="wps-input wps-flex-1" type="text" x-model="couponCode" placeholder="Masukkan kode kupon">
+                                    <input class="wps-input wps-flex-1" type="text" x-model="couponCode" placeholder="Masukkan kode kupon" id="checkout-coupon-code" name="coupon_code">
                                     <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm" @click="applyCoupon()">
                                         <?php echo wps_icon(['name' => 'coupon', 'size' => 16, 'class' => 'wps-mr-2']); ?>
                                         Terapkan
@@ -748,16 +906,22 @@
                             <div class="wps-mt-4">
                                 <div class="wps-text-lg wps-font-medium wps-mb-2 wps-text-bold">Metode Pembayaran</div>
                                 <div class="wps-flex wps-items-center wps-gap-2 wps-mb-2 wps-flex-wrap">
-                                    <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm"
-                                        :style="paymentMethod === 'transfer_bank' ? 'border-left:4px solid #3b82f6;background:#f0f9ff;' : ''"
-                                        @click="paymentMethod = 'transfer_bank'">
-                                        <span class="wps-text-sm wps-text-gray-900">Transfer Bank</span>
-                                    </button>
-                                    <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm"
-                                        :style="paymentMethod === 'qris' ? 'border-left:4px solid #3b82f6;background:#f0f9ff;' : ''"
-                                        @click="paymentMethod = 'qris'">
-                                        <span class="wps-text-sm wps-text-gray-900">QRIS</span>
-                                    </button>
+                                    <template x-for="method in paymentMethods" :key="method.id">
+                                        <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm"
+                                            :style="paymentMethod === method.id ? 'border-left:4px solid #3b82f6;background:#f0f9ff;' : ''"
+                                            @click="paymentMethod = method.id">
+                                            <span x-show="'bank_transfer' === method.id">
+                                                <?php echo wps_icon(['name' => 'bank-transfer', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                            </span>
+                                            <span x-show="'qris' === method.id">
+                                                <?php echo wps_icon(['name' => 'qr', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                            </span>
+                                            <span x-show="!['bank_transfer', 'qris'].includes(method.id)">
+                                                <?php echo wps_icon(['name' => 'credit-card', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                            </span>
+                                            <span class="wps-text-sm wps-text-gray-900" x-text="method.name"></span>
+                                        </button>
+                                    </template>
                                 </div>
 
                                 <div class="wps-mt-2" x-show="!loggedIn" id="checkout-captcha" @input="recomputeAllow()" @change="recomputeAllow()">
@@ -765,7 +929,7 @@
                                 </div>
 
                                 <div class="wps-mt-4 wps-flex wps-justify-end">
-                                    <button type="button" class="wps-btn wps-btn-primary" :disabled="submitting || !allowSubmit" @click="trySubmit()">
+                                    <button type="button" class="wps-btn wps-btn-primary" :disabled="submitting || _submitGuard || !allowSubmit" @click.prevent.stop="trySubmit()">
                                         <?php echo wps_icon(['name' => 'cart', 'size' => 16, 'class' => 'wps-mr-2']); ?>
                                         <span x-show="submitting">Memproses...</span>
                                         <span x-show="!submitting">Buat Pesanan</span>
@@ -773,7 +937,7 @@
                                 </div>
                                 <div class="wps-text-sm wps-text-red-700 wps-mt-2 p-2 wps-bg-red-100 rounded-md wps-mt-2" style="border-left:4px solid #ef4444;" x-show="warnShow" x-text="warnMessage">
                                 </div>
-                                <div class="wps-text-sm wps-text-gray-900 wps-mt-2" x-text="message"></div>
+                                <!-- <div class="wps-text-sm wps-text-gray-900 wps-mt-2" x-text="message"></div> -->
                             </div>
                         </div>
                     </div>

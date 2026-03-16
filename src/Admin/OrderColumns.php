@@ -21,7 +21,8 @@ class OrderColumns
             // Insert Status right after Title
             $new[$key] = $label;
             if ($key === 'title') {
-                $new['order_payment'] = 'Metode Pembayaran';
+                $new['order_customer'] = 'Pembeli';
+                $new['order_payment'] = 'Pembayaran';
                 $new['order_total'] = 'Harga';
                 $new['order_proofs'] = 'Bukti Transfer';
                 $new['order_shipping'] = 'Kurir';
@@ -34,6 +35,17 @@ class OrderColumns
 
     public function render_columns($column, $post_id)
     {
+        if ($column === 'order_customer') {
+            $author_id = (int) get_post_field('post_author', $post_id);
+            if ($author_id > 0) {
+                $u = get_userdata($author_id);
+                $name = $u ? ($u->display_name ?: $u->user_login) : '';
+                echo esc_html($name ? ('Login (' . $name . ')') : 'Login');
+            } else {
+                echo 'Guest';
+            }
+            return;
+        }
         if ($column === 'order_status') {
             $status = get_post_meta($post_id, '_store_order_status', true);
             $labels = [
@@ -107,9 +119,9 @@ class OrderColumns
             return;
         }
         if ($column === 'order_shipping') {
-            $shipping = get_post_meta($post_id, '_store_order_shipping_method', true);
-            $label = ($shipping === 'jne') ? 'JNE' : 'POS Indonesia';
-            echo esc_html($label);
+            $shipping = get_post_meta($post_id, '_store_order_shipping_courier', true) ?? '-';
+            $shipping = strtoupper($shipping);
+            echo esc_html($shipping);
             $tracking = get_post_meta($post_id, '_store_order_tracking_number', true);
             if ($tracking) {
                 echo '<br><small style="font-size:11px; color:#6b7280;">Resi: ' . esc_html($tracking) . '</small>';

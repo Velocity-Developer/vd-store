@@ -21,6 +21,22 @@ $order_number = $order_exists ? get_post_meta($order_id, '_store_order_number', 
 if (!$order_number) {
     $order_number = $order_id;
 }
+$disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
+$all_digital = true;
+if (!empty($items)) {
+    foreach ($items as $it) {
+        $pid = isset($it['product_id']) ? (int) $it['product_id'] : 0;
+        if ($pid > 0 && get_post_type($pid) === 'store_product') {
+            $ptype = get_post_meta($pid, '_store_product_type', true);
+            $is_digital = ($ptype === 'digital') || (bool) get_post_meta($pid, '_store_is_digital', true);
+            if (!$is_digital) {
+                $all_digital = false;
+                break;
+            }
+        }
+    }
+}
+$hide_recipient = ($disable_shipping_for_digital && $all_digital);
 ?>
 <div class="wps-container">
     <div class="wps-card wps-p-6">
@@ -146,11 +162,13 @@ if (!$order_number) {
                             </div>
                         <?php endif; ?>
                     </div>
-                    <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-4">Alamat Pengiriman</div>
-                    <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
-                        <div><?php echo esc_html($address); ?></div>
-                        <div><?php echo esc_html($subdistrict_name); ?>, <?php echo esc_html($city_name); ?>, <?php echo esc_html($province_name); ?> <?php echo esc_html($postal_code); ?></div>
-                    </div>
+                    <?php if (!$hide_recipient) : ?>
+                        <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-4">Alamat Pengiriman</div>
+                        <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
+                            <div><?php echo esc_html($address); ?></div>
+                            <div><?php echo esc_html($subdistrict_name); ?>, <?php echo esc_html($city_name); ?>, <?php echo esc_html($province_name); ?> <?php echo esc_html($postal_code); ?></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div>
                     <div class="wps-text-lg wps-font-medium wps-text-gray-900">Informasi Pembayaran</div>

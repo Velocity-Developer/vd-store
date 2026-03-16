@@ -202,41 +202,57 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                     <h3 class="wp-store-subtitle">Transfer Bank</h3>
                     <p class="wp-store-helper">Kelola daftar rekening bank untuk pembayaran manual.</p>
 
-                    <template x-for="(account, index) in bankAccounts" :key="index">
-                        <div class="wp-store-box-gray wp-store-mt-4" style="position: relative; padding-top: 30px;">
-                            <!-- Remove Button -->
-                            <button type="button" @click="removeBankAccount(index)" class="button-link-delete" style="position: absolute; top: 10px; right: 10px; text-decoration: none;" title="Hapus Rekening" x-show="bankAccounts.length > 0">
-                                <span class="dashicons dashicons-trash"></span> Hapus
-                            </button>
+                    <!-- Pilih metode pembayaran (multi-select) -->
+                    <div class="wp-store-grid-2">
+                        <div class="wp-store-flex wp-store-gap-2">
+                            <label class="wp-store-btn" :class="{'wp-store-btn-primary': paymentMethods.includes('bank_transfer')}">
+                                <input type="checkbox" name="payment_methods[]" value="bank_transfer" x-model="paymentMethods" style="position:absolute;opacity:0;width:0;height:0;">
+                                Transfer Bank
+                            </label>
+                            <label class="wp-store-btn" :class="{'wp-store-btn-primary': paymentMethods.includes('qris')}">
+                                <input type="checkbox" name="payment_methods[]" value="qris" x-model="paymentMethods" style="position:absolute;opacity:0;width:0;height:0;">
+                                QRIS
+                            </label>
+                            <!-- duitku -->
+                            <?php do_action('wp_store_settings_payment_methods_end'); ?>
+                        </div>
+                    </div>
+                    <div x-show="paymentMethods.includes('bank_transfer')">
+                        <template x-for="(account, index) in bankAccounts" :key="index">
+                            <div class="wp-store-box-gray wp-store-mt-4" style="position: relative; padding-top: 30px;">
+                                <!-- Remove Button -->
+                                <button type="button" @click="removeBankAccount(index)" class="button-link-delete" style="position: absolute; top: 10px; right: 10px; text-decoration: none;" title="Hapus Rekening" x-show="bankAccounts.length > 0">
+                                    <span class="dashicons dashicons-trash"></span> Hapus
+                                </button>
 
-                            <div class="wp-store-grid-3">
-                                <div>
-                                    <label class="wp-store-label">Nama Bank</label>
-                                    <select x-model="account.bank_name" class="wp-store-input">
-                                        <template x-for="bank in indonesianBanks" :key="bank">
-                                            <option :value="bank" x-text="bank" :selected="account.bank_name === bank"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="wp-store-label">Nomor Rekening</label>
-                                    <input type="text" x-model="account.bank_account" class="wp-store-input" placeholder="Contoh: 1234567890">
-                                </div>
-                                <div>
-                                    <label class="wp-store-label">Atas Nama</label>
-                                    <input type="text" x-model="account.bank_holder" class="wp-store-input" placeholder="Contoh: Nama Pemilik">
+                                <div class="wp-store-grid-3">
+                                    <div>
+                                        <label class="wp-store-label">Nama Bank</label>
+                                        <select x-model="account.bank_name" class="wp-store-input">
+                                            <template x-for="bank in indonesianBanks" :key="bank">
+                                                <option :value="bank" x-text="bank" :selected="account.bank_name === bank"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="wp-store-label">Nomor Rekening</label>
+                                        <input type="text" x-model="account.bank_account" class="wp-store-input" placeholder="Contoh: 1234567890">
+                                    </div>
+                                    <div>
+                                        <label class="wp-store-label">Atas Nama</label>
+                                        <input type="text" x-model="account.bank_holder" class="wp-store-input" placeholder="Contoh: Nama Pemilik">
+                                    </div>
                                 </div>
                             </div>
+                        </template>
+                        <div class="wp-store-mt-4">
+                            <button type="button" @click="addBankAccount" class="wp-store-btn wp-store-btn-secondary">
+                                <span class="dashicons dashicons-plus-alt2"></span> Tambah Rekening
+                            </button>
                         </div>
-                    </template>
-
-                    <div class="wp-store-mt-4">
-                        <button type="button" @click="addBankAccount" class="wp-store-btn wp-store-btn-secondary">
-                            <span class="dashicons dashicons-plus-alt2"></span> Tambah Rekening
-                        </button>
                     </div>
 
-                    <div class="wp-store-box-gray wp-store-mt-4">
+                    <div x-show="paymentMethods.includes('qris')" class="wp-store-box-gray wp-store-mt-4">
                         <h3 class="wp-store-subtitle">QRIS</h3>
                         <p class="wp-store-helper">Unggah gambar QRIS untuk pembayaran cepat.</p>
                         <div class="wp-store-grid-2">
@@ -263,6 +279,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             </div>
                         </div>
                     </div>
+                    <?php do_action('wp_store_settings_payment_tab_end'); ?>
                 </div>
             </div>
 
@@ -270,27 +287,28 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             <div x-show="activeTab === 'shipping'" class="wp-store-tab-content" x-cloak>
                 <div class="wp-store-form-grid">
                     <h3 class="wp-store-subtitle">Pengaturan Pengiriman</h3>
-                    <p class="wp-store-helper">Konfigurasi API Raja Ongkir dan metode pengiriman.</p>
+                    <p class="wp-store-helper">Konfigurasi API VD Ongkir dan metode pengiriman.</p>
 
                     <div class="wp-store-box-gray wp-store-mt-4">
-                        <h4 class="wp-store-subtitle-small">API Raja Ongkir</h4>
-                        <div class="wp-store-mt-2">
-                            <label class="wp-store-label" for="rajaongkir_api_key">API Key</label>
-                            <input name="rajaongkir_api_key" type="text" id="rajaongkir_api_key" value="<?php echo esc_attr($settings['rajaongkir_api_key'] ?? ''); ?>" class="wp-store-input" placeholder="Masukkan API Key Starter/Basic/Pro Anda">
-                            <p class="wp-store-helper">Dapatkan API Key di <a href="https://rajaongkir.com/" target="_blank">RajaOngkir.com</a>.</p>
-                        </div>
-
-                        <div class="wp-store-mt-4">
-                            <label class="wp-store-label" for="rajaongkir_account_type">Tipe Akun</label>
-                            <select name="rajaongkir_account_type" id="rajaongkir_account_type" class="wp-store-input" style="width: 200px;">
-                                <option value="starter" <?php selected($settings['rajaongkir_account_type'] ?? 'starter', 'starter'); ?>>Starter (Free)</option>
-                                <option value="basic" <?php selected($settings['rajaongkir_account_type'] ?? 'starter', 'basic'); ?>>Basic</option>
-                                <option value="pro" <?php selected($settings['rajaongkir_account_type'] ?? 'starter', 'pro'); ?>>Pro</option>
-                            </select>
-                        </div>
+                        <h4 class="wp-store-subtitle-small">Opsi Pengiriman</h4>
+                        <label class="wp-store-checkbox-label">
+                            <input type="hidden" name="disable_shipping_for_digital" value="0">
+                            <input type="checkbox" name="disable_shipping_for_digital" value="1" <?php echo !empty($settings['disable_shipping_for_digital']) ? 'checked' : ''; ?>>
+                            Matikan ongkir untuk produk digital (sembunyikan alamat & ongkir jika semua item digital)
+                        </label>
                     </div>
 
                     <div class="wp-store-box-gray wp-store-mt-4">
+                        <h4 class="wp-store-subtitle-small">API VD Ongkir</h4>
+                        <div class="wp-store-mt-2 wp-store-flex wp-store-items-center">
+                            <input name="rajaongkir_api_key" type="text" id="rajaongkir_api_key" x-ref="apiKeyInput" value="<?php echo esc_attr($settings['rajaongkir_api_key'] ?? ''); ?>" class="wp-store-input" placeholder="Masukkan API Key Starter/Basic/Pro Anda">
+                            <div class="wp-store-mt-2" style="margin-left:8px; width:120px;">
+                                <button type="button" class="wp-store-btn wp-store-btn-primary" @click="saveApiKey" :disabled="isSavingApi">Simpan API</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wp-store-box-gray wp-store-mt-4" x-show="isApiValid">
                         <h4 class="wp-store-subtitle-small">Asal Pengiriman</h4>
                         <p class="wp-store-helper">Lokasi toko Anda untuk perhitungan ongkos kirim.</p>
 
@@ -335,7 +353,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         </div>
                     </div>
 
-                    <div class="wp-store-box-gray wp-store-mt-4">
+                    <div class="wp-store-box-gray wp-store-mt-4" x-show="isApiValid">
                         <h4 class="wp-store-subtitle-small">Kurir Aktif</h4>
                         <p class="wp-store-helper">Pilih kurir yang ingin Anda gunakan.</p>
 
@@ -365,6 +383,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             <?php endforeach; ?>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -487,6 +506,32 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             <option value="USD" <?php selected($settings['currency_symbol'] ?? 'Rp', 'USD'); ?>>USD (Dollar)</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="wp-store-label" for="product_editor_mode">Mode Editor Produk</label>
+                        <select name="product_editor_mode" id="product_editor_mode" class="wp-store-input" style="width: 260px;">
+                            <option value="classic" <?php selected($settings['product_editor_mode'] ?? 'classic', 'classic'); ?>>Classic Editor</option>
+                            <option value="gutenberg" <?php selected($settings['product_editor_mode'] ?? 'classic', 'gutenberg'); ?>>Gutenberg</option>
+                            <!-- <option value="fse"  -->
+                            <?php
+                            //selected($settings['product_editor_mode'] ?? 'classic', 'fse'); 
+                            // 
+                            ?>
+                            <!-- >
+                            Full Site Editor</option> -->
+                        </select>
+                        <p class="wp-store-helper">Mengatur apakah halaman edit produk memakai Classic Editor atau Gutenberg/FSE.</p>
+                    </div>
+                    <div>
+                        <label class="wp-store-label">Diskon Hanya untuk Member</label>
+                        <div>
+                            <label class="wp-store-checkbox-label">
+                                <input type="hidden" name="members_only_discount" value="0">
+                                <input type="checkbox" name="members_only_discount" value="1" <?php echo !empty($settings['members_only_discount']) ? 'checked' : ''; ?>>
+                                Hanya tampilkan harga promo untuk pengguna yang login
+                            </label>
+                        </div>
+                        <p class="wp-store-helper">Jika aktif, pengunjung yang belum login tidak akan melihat harga promo maupun badge diskon.</p>
+                    </div>
                     <div class="wp-store-grid-2">
                         <div>
                             <label class="wp-store-label" for="recaptcha_site_key">reCAPTCHA Site Key</label>
@@ -495,6 +540,104 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         <div>
                             <label class="wp-store-label" for="recaptcha_secret_key">reCAPTCHA Secret Key</label>
                             <input name="recaptcha_secret_key" type="text" id="recaptcha_secret_key" value="<?php echo esc_attr($settings['recaptcha_secret_key'] ?? ''); ?>" class="wp-store-input" placeholder="Secret Key">
+                        </div>
+                    </div>
+                    <div class="wp-store-box-gray wp-store-mt-4 wp-store-email-template">
+                        <div class="wp-store-grid-2 wp-store-mb-4">
+                            <div>
+                                <label class="wp-store-label" for="store_email_from">Email Pengirim (From)</label>
+                                <?php $default_from = (function () {
+                                    $u = wp_get_current_user();
+                                    $site_url = get_bloginfo('url');
+                                    $domain = parse_url($site_url, PHP_URL_HOST);
+                                    $username = ($u && isset($u->user_login) && $u->user_login) ? $u->user_login : 'noreply';
+                                    return $username . '@' . $domain;
+                                })(); ?>
+                                <input name="store_email_from" type="email" id="store_email_from" value="<?php echo esc_attr($settings['store_email_from'] ?? $default_from); ?>" class="wp-store-input" placeholder="username@namadomain.com">
+                                <p class="wp-store-helper">Email ini digunakan sebagai pengirim pada notifikasi. Default: admin email.</p>
+                            </div>
+                            <div>
+                                <label class="wp-store-label" for="store_email_admin">Email Admin (Tujuan Notifikasi)</label>
+                                <input name="store_email_admin" type="email" id="store_email_admin" value="<?php echo esc_attr($settings['store_email_admin'] ?? get_bloginfo('admin_email')); ?>" class="wp-store-input" placeholder="admin@namadomain.com">
+                                <p class="wp-store-helper">Email admin penerima notifikasi. Default: admin email.</p>
+                            </div>
+                        </div>
+                        <h3 class="wp-store-subtitle">Template Email</h3>
+                        <p class="wp-store-helper wp-store-mb-4">Gunakan placeholder: {{store_name}}, {{order_number}}, {{status_label}}, {{tracking_url}}, {{total}}.</p>
+                        <div class="wp-store-grid-2">
+                            <div class="wp-store-mb-4">
+                                <label class="wp-store-label" for="email_template_user_new_order">User: Pesanan Baru</label>
+                                <?php
+                                $content_user_new = $settings['email_template_user_new_order'] ?? '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#111;">'
+                                    . '<p>Halo,</p>'
+                                    . '<p>Terima kasih. Pesanan #{{order_number}} telah kami terima.</p>'
+                                    . '<p>Anda dapat memantau status pesanan melalui tautan berikut:</p>'
+                                    . '<p><a href="{{tracking_url}}" target="_blank" rel="noopener">Lihat Status Pesanan</a></p>'
+                                    . '<p>Salam,<br>{{store_name}}</p>'
+                                    . '</div>';
+                                wp_editor($content_user_new, 'email_template_user_new_order', [
+                                    'textarea_name' => 'email_template_user_new_order',
+                                    'textarea_rows' => 8,
+                                    'media_buttons' => false,
+                                    'quicktags' => false,
+                                    'tinymce' => ['menubar' => false, 'toolbar1' => '', 'toolbar2' => '']
+                                ]);
+                                ?>
+                            </div>
+                            <div class="wp-store-mb-4">
+                                <label class="wp-store-label" for="email_template_admin_new_order">Admin: Pesanan Baru</label>
+                                <?php
+                                $content_admin_new = $settings['email_template_admin_new_order'] ?? '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#111;">'
+                                    . '<p>Order baru #{{order_number}}.</p>'
+                                    . '<p>Total: {{total}}</p>'
+                                    . '<p>Tracking: <a href="{{tracking_url}}" target="_blank" rel="noopener">{{tracking_url}}</a></p>'
+                                    . '</div>';
+                                wp_editor($content_admin_new, 'email_template_admin_new_order', [
+                                    'textarea_name' => 'email_template_admin_new_order',
+                                    'textarea_rows' => 8,
+                                    'media_buttons' => false,
+                                    'quicktags' => false,
+                                    'tinymce' => ['menubar' => false, 'toolbar1' => '', 'toolbar2' => '']
+                                ]);
+                                ?>
+                            </div>
+                        </div>
+                        <div class="wp-store-grid-2">
+                            <div class="wp-store-mb-4">
+                                <label class="wp-store-label" for="email_template_user_status">User: Status Order</label>
+                                <?php
+                                $content_user_status = $settings['email_template_user_status'] ?? '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#111;">'
+                                    . '<p>Halo,</p>'
+                                    . '<p>Status pesanan #{{order_number}} Anda kini: <strong>{{status_label}}</strong>.</p>'
+                                    . '<p>Anda dapat melihat detail dan riwayat pengiriman melalui tautan berikut:</p>'
+                                    . '<p><a href="{{tracking_url}}" target="_blank" rel="noopener">Lihat Status Pesanan</a></p>'
+                                    . '<p>Salam,<br>{{store_name}}</p>'
+                                    . '</div>';
+                                wp_editor($content_user_status, 'email_template_user_status', [
+                                    'textarea_name' => 'email_template_user_status',
+                                    'textarea_rows' => 8,
+                                    'media_buttons' => false,
+                                    'quicktags' => false,
+                                    'tinymce' => ['menubar' => false, 'toolbar1' => '', 'toolbar2' => '']
+                                ]);
+                                ?>
+                            </div>
+                            <div class="wp-store-mb-4">
+                                <label class="wp-store-label" for="email_template_admin_status">Admin: Status Order</label>
+                                <?php
+                                $content_admin_status = $settings['email_template_admin_status'] ?? '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#111;">'
+                                    . '<p>Status order #{{order_number}}: <strong>{{status_label}}</strong>.</p>'
+                                    . '<p>Tracking: <a href="{{tracking_url}}" target="_blank" rel="noopener">{{tracking_url}}</a></p>'
+                                    . '</div>';
+                                wp_editor($content_admin_status, 'email_template_admin_status', [
+                                    'textarea_name' => 'email_template_admin_status',
+                                    'textarea_rows' => 8,
+                                    'media_buttons' => false,
+                                    'quicktags' => false,
+                                    'tinymce' => ['menubar' => false, 'toolbar1' => '', 'toolbar2' => '']
+                                ]);
+                                ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -673,6 +816,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
         Alpine.data('storeSettingsManager', () => ({
             activeTab: '<?php echo esc_js($active_tab); ?>',
             isSaving: false,
+            isSavingApi: false,
             isGenerating: false,
             isSeeding: false,
             isClearing: false,
@@ -689,6 +833,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                 entries: 0,
                 approx_mb: 0
             },
+            paymentMethods: ['bank_transfer', 'qris'],
             bankAccounts: [],
             customShippingRates: [],
             isRateModalOpen: false,
@@ -725,23 +870,34 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             isLoadingProvinces: false,
             isLoadingCities: false,
             isLoadingSubdistricts: false,
+            isApiValid: false,
             settings: {
                 shipping_origin_province: '<?php echo esc_js($settings['shipping_origin_province'] ?? ''); ?>',
                 shipping_origin_city: '<?php echo esc_js($settings['shipping_origin_city'] ?? ''); ?>',
                 shipping_origin_subdistrict: '<?php echo esc_js($settings['shipping_origin_subdistrict'] ?? ''); ?>',
-                rajaongkir_account_type: '<?php echo esc_js($settings['rajaongkir_account_type'] ?? 'starter'); ?>',
                 qris_image_id: '<?php echo esc_js($settings['qris_image_id'] ?? ''); ?>'
             },
-
+            updatePaymentMethods(method) {
+                if (this.paymentMethods.includes(method)) {
+                    this.paymentMethods = this.paymentMethods.filter(m => m !== method);
+                } else {
+                    this.paymentMethods.push(method);
+                }
+                console.log('Updated payment methods:', this.paymentMethods);
+            },
             init() {
                 // Initialize history state if needed
                 this.updateUrl(this.activeTab);
 
-                this.loadProvinces().then(() => {
-                    if (this.settings.shipping_origin_province) {
-                        this.loadCities(this.settings.shipping_origin_province).then(() => {
-                            if (this.settings.shipping_origin_city) {
-                                this.loadSubdistricts(this.settings.shipping_origin_city);
+                this.loadSettings().then(() => {
+                    if (this.isApiValid) {
+                        this.loadProvinces().then(() => {
+                            if (this.settings.shipping_origin_province) {
+                                this.loadCities(this.settings.shipping_origin_province).then(() => {
+                                    if (this.settings.shipping_origin_city) {
+                                        this.loadSubdistricts(this.settings.shipping_origin_city);
+                                    }
+                                });
                             }
                         });
                     }
@@ -749,28 +905,46 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
 
                 this.loadCacheStats();
 
-                const savedRates = <?php echo json_encode($settings['custom_shipping_rates'] ?? []); ?>;
-                if (Array.isArray(savedRates)) {
-                    this.customShippingRates = savedRates;
-                }
-
-                const savedAccounts = <?php echo json_encode($settings['store_bank_accounts'] ?? []); ?>;
-                if (Array.isArray(savedAccounts) && savedAccounts.length > 0) {
-                    this.bankAccounts = savedAccounts;
-                } else {
-                    const legacyName = '<?php echo esc_js($settings['bank_name'] ?? ''); ?>';
-                    const legacyAccount = '<?php echo esc_js($settings['bank_account'] ?? ''); ?>';
-                    const legacyHolder = '<?php echo esc_js($settings['bank_holder'] ?? ''); ?>';
-
-                    if (legacyName || legacyAccount || legacyHolder) {
-                        this.bankAccounts.push({
-                            bank_name: legacyName,
-                            bank_account: legacyAccount,
-                            bank_holder: legacyHolder
-                        });
-                    } else {
-                        this.addBankAccount();
+            },
+            async loadSettings() {
+                try {
+                    const response = await fetch(`${wpStoreConfig.apiUrl}/settings`, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-WP-Nonce': wpStoreConfig.nonce
+                        }
+                    });
+                    const result = await response.json();
+                    if (response.ok && result && result.success) {
+                        const s = result.settings || {};
+                        // Payment methods
+                        if (Array.isArray(s.payment_methods) && s.payment_methods.length) {
+                            this.paymentMethods = s.payment_methods;
+                        }
+                        // Shipping origin & QRIS
+                        this.settings.shipping_origin_province = s.shipping_origin_province || '';
+                        this.settings.shipping_origin_city = s.shipping_origin_city || '';
+                        this.settings.shipping_origin_subdistrict = s.shipping_origin_subdistrict || '';
+                        this.settings.qris_image_id = s.qris_image_id || '';
+                        // Custom shipping rates
+                        this.customShippingRates = Array.isArray(s.custom_shipping_rates) ? s.custom_shipping_rates : [];
+                        // Bank accounts (with legacy fallback if present)
+                        if (Array.isArray(s.store_bank_accounts) && s.store_bank_accounts.length > 0) {
+                            this.bankAccounts = s.store_bank_accounts;
+                        } else if (s.bank_name || s.bank_account || s.bank_holder) {
+                            this.bankAccounts = [{
+                                bank_name: s.bank_name || '',
+                                bank_account: s.bank_account || '',
+                                bank_holder: s.bank_holder || ''
+                            }];
+                        } else if (this.bankAccounts.length === 0) {
+                            this.addBankAccount();
+                        }
+                        this.isApiValid = !!(s.rajaongkir_api_key);
                     }
+                } catch (e) {
+                    console.error('Gagal memuat settings:', e);
                 }
             },
 
@@ -1014,9 +1188,13 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                     const result = await response.json();
                     if (response.ok && result.success) {
                         this.provinces = result.data;
+                        this.isApiValid = true;
+                    } else {
+                        this.isApiValid = false;
                     }
                 } catch (error) {
                     console.error('Error loading provinces:', error);
+                    this.isApiValid = false;
                 } finally {
                     this.isLoadingProvinces = false;
                 }
@@ -1069,6 +1247,36 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                     console.error('Error loading subdistricts:', error);
                 } finally {
                     this.isLoadingSubdistricts = false;
+                }
+            },
+            async saveApiKey() {
+                const key = this.$refs.apiKeyInput ? this.$refs.apiKeyInput.value.trim() : '';
+                this.isSavingApi = true;
+                try {
+                    const response = await fetch(`${wpStoreConfig.apiUrl}/settings`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-WP-Nonce': wpStoreConfig.nonce
+                        },
+                        body: JSON.stringify({
+                            rajaongkir_api_key: key
+                        })
+                    });
+                    const result = await response.json();
+                    if (response.ok && result && result.success) {
+                        this.showNotification('API Key disimpan!', 'success');
+                        await this.loadProvinces();
+                    } else {
+                        this.showNotification(result.message || 'Gagal menyimpan API Key.', 'error');
+                        this.isApiValid = false;
+                    }
+                } catch (e) {
+                    this.showNotification('Terjadi kesalahan jaringan.', 'error');
+                    this.isApiValid = false;
+                } finally {
+                    this.isSavingApi = false;
                 }
             },
 
@@ -1142,6 +1350,8 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         data[key] = value;
                     }
                 });
+                // Handle payment methods from Alpine state
+                data.payment_methods = Array.isArray(this.paymentMethods) ? JSON.parse(JSON.stringify(this.paymentMethods)) : [];
 
                 // Add bank accounts manually to data
                 data.store_bank_accounts = JSON.parse(JSON.stringify(this.bankAccounts));

@@ -1,19 +1,19 @@
 <?php
 
 /**
- * Plugin Name: WP Store
- * Description: Plugin ecommerce sederhana berbasis REST API dan Alpine.js
- * Version:     0.1.0
- * Author:      Aditya Kristyanto
- * Author URI:  https://websweetstudio.com
- * Text Domain: wp-store
+ * Plugin Name: VD Store
+ * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js
+ * Version:     1.0.0
+ * Author:      Dev Team Velocitydeveloper.com
+ * Author URI:  https://velocitydeveloper.com
+ * Text Domain: vd-store
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '0.1.0');
+define('WP_STORE_VERSION', '1.0.0');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -165,6 +165,10 @@ function wps_label_badge_html($product_id)
 }
 function wps_discount_badge_html($product_id)
 {
+    $settings = get_option('wp_store_settings', []);
+    if (!empty($settings['members_only_discount']) && !is_user_logged_in()) {
+        return '';
+    }
     $price = get_post_meta((int) $product_id, '_store_price', true);
     $sale = get_post_meta((int) $product_id, '_store_sale_price', true);
     $price = $price !== '' ? (float) $price : null;

@@ -14,6 +14,8 @@ class Shortcode
         add_shortcode('wp_store_add_to_cart', [$this, 'render_add_to_cart']);
         add_shortcode('wp_store_detail', [$this, 'render_detail']);
         add_shortcode('wp_store_cart', [$this, 'render_cart_widget']);
+        add_shortcode('wp_store_cart_page', [$this, 'render_cart_page']);
+        add_shortcode('store_cart', [$this, 'render_cart_page']);
         add_shortcode('wp_store_checkout', [$this, 'render_checkout']);
         add_shortcode('store_checkout', [$this, 'render_checkout']);
         add_shortcode('wp_store_thanks', [$this, 'render_thanks']);
@@ -28,7 +30,10 @@ class Shortcode
         add_shortcode('wp_store_catalog', [$this, 'render_catalog']);
         add_shortcode('wp_store_filters', [$this, 'render_filters']);
         add_shortcode('wp_store_shop_with_filters', [$this, 'render_shop_with_filters']);
+        add_shortcode('wp_store_captcha', [$this, 'render_captcha']);
+        add_shortcode('wp-store-captcha', [$this, 'render_captcha']);
         add_filter('the_content', [$this, 'filter_single_content']);
+        add_filter('the_content', [$this, 'filter_cart_page_content']);
         add_filter('template_include', [$this, 'override_archive_template']);
         add_action('pre_get_posts', [$this, 'adjust_archive_query']);
         add_action('template_redirect', [$this, 'redirect_page_conflict']);
@@ -254,6 +259,28 @@ class Shortcode
             'pages' => (int) $query->max_num_pages,
             'total' => (int) $query->found_posts
         ]);
+    }
+
+    public function render_captcha($atts = [])
+    {
+        wp_enqueue_script('alpinejs');
+        wp_enqueue_script('wp-store-frontend');
+        $atts = shortcode_atts([
+            'target-button' => '',
+            'target_button' => ''
+        ], $atts);
+        $selector = '';
+        if (isset($atts['target-button']) && is_string($atts['target-button'])) {
+            $selector = $atts['target-button'];
+        }
+        if ($selector === '' && isset($atts['target_button']) && is_string($atts['target_button'])) {
+            $selector = $atts['target_button'];
+        }
+        $html = '<div class="wps-captcha-shortcode-wrap" data-target-button="' . esc_attr($selector) . '">';
+        $html .= Template::render('components/captcha');
+        $html .= '</div>';
+        $html .= '<script>(function(){try{var wrap=document.currentScript&&document.currentScript.previousElementSibling; if(!wrap||!wrap.classList||!wrap.classList.contains("wps-captcha-shortcode-wrap")){wrap=document.querySelector(".wps-captcha-shortcode-wrap");} var sel=(wrap&&wrap.getAttribute("data-target-button"))||""; if(!wrap||!sel){return;} function ready(){ var verified=wrap.querySelector(\'input[name="captcha_verified"]\'); var idf=wrap.querySelector(\'input[name="captcha_id"]\'); var val=wrap.querySelector(\'input[name="captcha_value"]\'); var ok=(verified&&verified.value==="1")&&(idf&&String(idf.value).trim()!=="")&&(val&&String(val.value).trim()!==""); document.querySelectorAll(sel).forEach(function(btn){ try{ if(ok){ btn.removeAttribute("disabled"); }else{ btn.setAttribute("disabled","disabled"); } }catch(e){} }); } wrap.addEventListener("change", ready, true); wrap.addEventListener("input", ready, true); if(document.readyState!=="loading"){ ready(); } else { document.addEventListener("DOMContentLoaded", ready); } }catch(e){console&&console.warn&&console.warn(e);} })();</script>';
+        return $html;
     }
 
     public function render_checkout($atts = [])
@@ -789,19 +816,24 @@ class Shortcode
         $untilTs = $untilRaw ? strtotime($untilRaw) : 0;
         $nowTs = current_time('timestamp');
         $saleActive = $sale !== null && $sale > 0 && (($price !== null && $sale < $price) || $price === null) && ($untilTs === 0 || $untilTs > $nowTs);
+        $settings = get_option('wp_store_settings', []);
+        $membersOnly = !empty($settings['members_only_discount']);
+        if ($membersOnly && !is_user_logged_in()) {
+            $saleActive = false;
+        }
         $html = '<div class="wps-price">';
         if ($saleActive) {
-            $html .= '<div class="wps-flex wps-items-baseline wps-gap-2">';
-            $html .= '<span class="wps-text-lg wps-text-gray-900 wps-font-medium">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($sale, 0, ',', '.')) . '</span>';
+            $html .= '<div class="wps-flex wps-items-baseline wps-gap-2 wps-price-group">';
+            $html .= '<span class="wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($sale, 0, ',', '.')) . '</span>';
             if ($price !== null && $price > 0) {
                 $html .= '<span class="wps-text-sm wps-text-gray-500" style="text-decoration: line-through;">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($price, 0, ',', '.')) . '</span>';
             }
             $html .= '</div>';
         } else {
             if ($price !== null) {
-                $html .= '<div class="wps-text-lg wps-text-gray-900 wps-font-medium">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($price, 0, ',', '.')) . '</div>';
+                $html .= '<div class="wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($price, 0, ',', '.')) . '</div>';
             } else {
-                $html .= '<div class="wps-text-sm wps-text-gray-500">Harga belum diatur.</div>';
+                $html .= '<div class="wps-text-sm wps-text-gray-500 ">Harga belum diatur.</div>';
             }
         }
         if ($wantCountdown && $untilTs > $nowTs) {
@@ -857,13 +889,10 @@ class Shortcode
             'id' => 0,
             'label' => '+',
             'text' => '',
-            'size' => '',
-            'class' => 'wps-btn wps-btn-primary'
+            'class' => 'wps-btn wps-btn-primary',
+            'qty' => 0
         ], $atts);
-        $size = sanitize_key($atts['size']);
-        $base_class = 'wps-btn wps-btn-primary';
-        $extra_class = is_string($atts['class']) ? trim($atts['class']) : '';
-        $btn_class = trim($base_class . ($size === 'sm' ? ' wps-btn-sm' : '') . ($extra_class ? ' ' . $extra_class : ''));
+        $btn_class = $atts['class'] ?? 'wps-btn wps-btn-primary';
         $id = $this->resolve_product_id((int) $atts['id']);
         if ($id > 0 && get_post_type($id) !== 'store_product') {
             return '';
@@ -877,6 +906,14 @@ class Shortcode
         $adv_values = get_post_meta($id, '_store_advanced_options', true);
         $nonce = wp_create_nonce('wp_rest');
         $label = (is_string($atts['text']) && $atts['text'] !== '') ? $atts['text'] : $atts['label'];
+        $wantQty = false;
+        if (is_bool($atts['qty'])) {
+            $wantQty = $atts['qty'];
+        } else {
+            $wantQty = in_array(strtolower((string) $atts['qty']), ['1', 'true', 'yes'], true);
+        }
+        $min_order_raw = get_post_meta($id, '_store_min_order', true);
+        $default_qty = is_numeric($min_order_raw) ? max(1, (int) $min_order_raw) : 1;
         return Template::render('components/add-to-cart', [
             'btn_class' => $btn_class,
             'id' => $id,
@@ -885,7 +922,9 @@ class Shortcode
             'basic_values' => (is_array($basic_values) ? array_values($basic_values) : []),
             'adv_name' => $adv_name ?: '',
             'adv_values' => (is_array($adv_values) ? array_values($adv_values) : []),
-            'nonce' => $nonce
+            'nonce' => $nonce,
+            'show_qty' => $wantQty,
+            'default_qty' => $default_qty
         ]);
     }
 
@@ -916,13 +955,49 @@ class Shortcode
         $settings = get_option('wp_store_settings', []);
         $checkout_page_id = isset($settings['page_checkout']) ? absint($settings['page_checkout']) : 0;
         $checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : '';
+        $cart_page_id = isset($settings['page_cart']) ? absint($settings['page_cart']) : 0;
+        $cart_url = $cart_page_id ? get_permalink($cart_page_id) : site_url('/keranjang/');
         $currency = ($settings['currency_symbol'] ?? 'Rp');
         $nonce = wp_create_nonce('wp_rest');
         return Template::render('components/cart-widget', [
             'checkout_url' => $checkout_url,
+            'cart_url' => $cart_url,
             'currency' => $currency,
             'nonce' => $nonce
         ]);
+    }
+
+    public function render_cart_page($atts = [])
+    {
+        wp_enqueue_script('alpinejs');
+        wp_enqueue_script('wp-store-frontend');
+        $settings = get_option('wp_store_settings', []);
+        $currency = ($settings['currency_symbol'] ?? 'Rp');
+        return Template::render('pages/cart', [
+            'currency' => $currency
+        ]);
+    }
+
+    public function filter_cart_page_content($content)
+    {
+        if (!is_singular('page') || !in_the_loop() || !is_main_query()) {
+            return $content;
+        }
+        $page_id = get_queried_object_id();
+        if (!$page_id) {
+            return $content;
+        }
+        $settings = get_option('wp_store_settings', []);
+        $cart_page_id = isset($settings['page_cart']) ? absint($settings['page_cart']) : 0;
+        if ($cart_page_id && $page_id === $cart_page_id) {
+            wp_enqueue_script('alpinejs');
+            wp_enqueue_script('wp-store-frontend');
+            $currency = ($settings['currency_symbol'] ?? 'Rp');
+            return Template::render('pages/cart', [
+                'currency' => $currency
+            ]);
+        }
+        return $content;
     }
 
     public function render_wishlist($atts = [])

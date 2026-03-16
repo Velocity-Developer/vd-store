@@ -35,8 +35,8 @@ class AdminMenu
     {
         // Add top-level menu
         add_menu_page(
-            'WP Store',
-            'WP Store',
+            'VD Store',
+            'VD Store',
             'manage_options',
             'wp-store',
             [$this, 'render_dashboard'],

@@ -241,10 +241,18 @@
   background: #f0f0f1;
   color: #7a7f86;
 }
+.wp-store-flex {
+  display: flex;
+  align-items: center;
+}
 .wp-store-flex-gap {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+}
+select.wp-store-input {
+  background-repeat: no-repeat !important;
+  background-position: calc(100% - 4px) 12px !important;
 }
 .wp-store-input[type="color"] {
   padding: 0;
@@ -277,6 +285,12 @@
 }
 .wp-store-mb-2 {
   margin-bottom: 16px;
+}
+.wp-store-mb-4 {
+  margin-bottom: 20px;
+}
+.wp-store-email-template .mce-edit-area {
+  padding: 12px 16px;
 }
 .wp-store-form-actions {
   padding: 20px 30px;

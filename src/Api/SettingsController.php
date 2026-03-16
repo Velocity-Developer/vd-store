@@ -11,6 +11,11 @@ class SettingsController
     {
         register_rest_route('wp-store/v1', '/settings', [
             [
+                'methods' => 'GET',
+                'callback' => [$this, 'get_settings'],
+                'permission_callback' => [$this, 'check_admin_auth'],
+            ],
+            [
                 'methods' => 'POST',
                 'callback' => [$this, 'save_settings'],
                 'permission_callback' => [$this, 'check_admin_auth'],
@@ -31,11 +36,39 @@ class SettingsController
                 'permission_callback' => [$this, 'check_admin_auth'],
             ],
         ]);
+        register_rest_route('wp-store/v1', '/settings/payment-methods', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'get_payment_methods'],
+                'permission_callback' => [$this, '__return_true'],
+            ],
+        ]);
+        register_rest_route('wp-store/v1', '/settings/page-urls', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'get_page_urls'],
+                'permission_callback' => [$this, '__return_true'],
+            ],
+        ]);
+    }
+
+    public function get_settings(WP_REST_Request $request)
+    {
+        $settings = get_option('wp_store_settings', []);
+        return new WP_REST_Response([
+            'success' => true,
+            'settings' => $settings
+        ], 200);
     }
 
     public function check_admin_auth()
     {
         return current_user_can('manage_options');
+    }
+
+    public function __return_true()
+    {
+        return true;
     }
 
     public function save_settings(WP_REST_Request $request)
@@ -50,7 +83,28 @@ class SettingsController
         if (isset($params['store_name'])) $settings['store_name'] = sanitize_text_field($params['store_name']);
         if (isset($params['store_address'])) $settings['store_address'] = sanitize_textarea_field($params['store_address']);
         if (isset($params['store_email'])) $settings['store_email'] = sanitize_email($params['store_email']);
+        if (isset($params['store_email_from'])) $settings['store_email_from'] = sanitize_email($params['store_email_from']);
+        if (isset($params['store_email_admin'])) $settings['store_email_admin'] = sanitize_email($params['store_email_admin']);
         if (isset($params['store_phone'])) $settings['store_phone'] = sanitize_text_field($params['store_phone']);
+
+        // Handle payment methods
+        if (isset($params['payment_methods']) && is_array($params['payment_methods'])) {
+            $settings['payment_methods'] = array_map('sanitize_text_field', $params['payment_methods']);
+        }
+
+        // Email templates
+        if (isset($params['email_template_user_new_order'])) {
+            $settings['email_template_user_new_order'] = wp_kses_post($params['email_template_user_new_order']);
+        }
+        if (isset($params['email_template_user_status'])) {
+            $settings['email_template_user_status'] = wp_kses_post($params['email_template_user_status']);
+        }
+        if (isset($params['email_template_admin_new_order'])) {
+            $settings['email_template_admin_new_order'] = wp_kses_post($params['email_template_admin_new_order']);
+        }
+        if (isset($params['email_template_admin_status'])) {
+            $settings['email_template_admin_status'] = wp_kses_post($params['email_template_admin_status']);
+        }
 
         // Handle multiple bank accounts
         if (isset($params['store_bank_accounts']) && is_array($params['store_bank_accounts'])) {
@@ -73,7 +127,6 @@ class SettingsController
         if (isset($params['bank_holder'])) $settings['bank_holder'] = sanitize_text_field($params['bank_holder']);
 
         if (isset($params['rajaongkir_api_key'])) $settings['rajaongkir_api_key'] = sanitize_text_field($params['rajaongkir_api_key']);
-        if (isset($params['rajaongkir_account_type'])) $settings['rajaongkir_account_type'] = sanitize_text_field($params['rajaongkir_account_type']);
 
         if (isset($params['shipping_origin_province'])) $settings['shipping_origin_province'] = sanitize_text_field($params['shipping_origin_province']);
         if (isset($params['shipping_origin_city'])) $settings['shipping_origin_city'] = sanitize_text_field($params['shipping_origin_city']);
@@ -81,6 +134,10 @@ class SettingsController
 
         if (isset($params['shipping_couriers']) && is_array($params['shipping_couriers'])) {
             $settings['shipping_couriers'] = array_map('sanitize_text_field', $params['shipping_couriers']);
+        }
+
+        if (isset($params['disable_shipping_for_digital'])) {
+            $settings['disable_shipping_for_digital'] = ((string) $params['disable_shipping_for_digital'] === '1') ? 1 : 0;
         }
 
         if (isset($params['custom_shipping_rates']) && is_array($params['custom_shipping_rates'])) {
@@ -109,10 +166,24 @@ class SettingsController
         if (isset($params['page_tracking'])) $settings['page_tracking'] = absint($params['page_tracking']);
 
         if (isset($params['currency_symbol'])) $settings['currency_symbol'] = sanitize_text_field($params['currency_symbol']);
+        if (isset($params['product_editor_mode'])) {
+            $mode = sanitize_text_field($params['product_editor_mode']);
+            $allowed = ['classic', 'gutenberg', 'fse'];
+            if (!in_array($mode, $allowed, true)) {
+                $mode = 'classic';
+            }
+            $settings['product_editor_mode'] = $mode;
+        }
         if (isset($params['qris_image_id'])) $settings['qris_image_id'] = absint($params['qris_image_id']);
         if (isset($params['qris_label'])) $settings['qris_label'] = sanitize_text_field($params['qris_label']);
         if (isset($params['recaptcha_site_key'])) $settings['recaptcha_site_key'] = sanitize_text_field($params['recaptcha_site_key']);
         if (isset($params['recaptcha_secret_key'])) $settings['recaptcha_secret_key'] = sanitize_text_field($params['recaptcha_secret_key']);
+
+        // Discounts visibility
+        if (isset($params['members_only_discount'])) {
+            $val = (string) $params['members_only_discount'];
+            $settings['members_only_discount'] = ($val === '1') ? 1 : 0;
+        }
 
         // Theme colors
         if (isset($params['theme_primary'])) {
@@ -176,6 +247,8 @@ class SettingsController
             }
         }
 
+        $settings = apply_filters('wp_store_save_settings', $settings, $params);
+
         update_option('wp_store_settings', $settings);
 
         return new WP_REST_Response([
@@ -230,19 +303,19 @@ class SettingsController
             ],
             'page_cart' => [
                 'title' => 'Keranjang',
-                'content' => '[wp_store_cart]'
+                'content' => '[store_cart]'
             ],
             'page_checkout' => [
                 'title' => 'Checkout',
-                'content' => '[wp_store_checkout]'
+                'content' => '[store_checkout]'
             ],
             'page_thanks' => [
                 'title' => 'Terima Kasih',
-                'content' => '[wp_store_thanks]'
+                'content' => '[store_thanks]'
             ],
             'page_tracking' => [
                 'title' => 'Tracking Order',
-                'content' => '[wp_store_tracking]'
+                'content' => '[store_tracking]'
             ],
         ];
 
@@ -443,7 +516,7 @@ class SettingsController
         if (empty($api_key)) {
             return new WP_REST_Response([
                 'success' => false,
-                'message' => 'API Key Raja Ongkir belum diatur.'
+                'message' => 'API Key VD Ongkir belum diatur.'
             ], 400);
         }
 
@@ -515,7 +588,7 @@ class SettingsController
         if (empty($api_key)) {
             return new WP_REST_Response([
                 'success' => false,
-                'message' => 'API Key Raja Ongkir belum diatur.'
+                'message' => 'API Key VD Ongkir belum diatur.'
             ], 400);
         }
 
@@ -600,7 +673,7 @@ class SettingsController
         if (empty($api_key)) {
             return new WP_REST_Response([
                 'success' => false,
-                'message' => 'API Key Raja Ongkir belum diatur.'
+                'message' => 'API Key VD Ongkir belum diatur.'
             ], 400);
         }
 
@@ -671,5 +744,31 @@ class SettingsController
             'message' => 'Gagal mengambil data kecamatan.',
             'raw' => $data
         ], 500);
+    }
+    public function get_payment_methods(WP_REST_Request $request)
+    {
+        $settings = get_option('wp_store_settings', []);
+        $payment_methods = $settings['payment_methods'] ?? [];
+
+        $payment_methods = array_map(function ($method) {
+            $nama = str_replace('_', ' ', $method);
+            $nama = ucwords($nama);
+            return ['id' => $method, 'name' => $nama];
+        }, $payment_methods);
+        return new WP_REST_Response([
+            'success' => true,
+            'data' => $payment_methods
+        ], 200);
+    }
+    public function get_page_urls(WP_REST_Request $request)
+    {
+        $settings = get_option('wp_store_settings', []);
+        $page = [];
+        $page['page_cart'] = $settings['page_cart'] ? get_permalink($settings['page_cart']) : '';
+        $page['page_checkout'] = $settings['page_checkout'] ? get_permalink($settings['page_checkout']) : '';
+        return new WP_REST_Response([
+            'success' => true,
+            'data' => $page
+        ], 200);
     }
 }

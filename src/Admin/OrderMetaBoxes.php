@@ -260,7 +260,7 @@ class OrderMetaBoxes
         echo '</tbody></table>';
         echo '<h2 style="margin:20px 0 10px; font-size:16px;">Pembayaran</h2>';
         echo '<table class="widefat striped" style="margin-bottom:12px;"><tbody>';
-        echo '<tr><td style="width:200px;">Metode</td><td>' . esc_html($payment_method ?: 'transfer_bank') . '</td></tr>';
+        echo '<tr><td style="width:200px;">Metode</td><td>' . esc_html($payment_method ?: 'bank_transfer') . '</td></tr>';
         if ($payment_url) {
             echo '<tr><td>Link Pembayaran</td><td><a href="' . esc_url($payment_url) . '" target="_blank" rel="noopener">Buka</a></td></tr>';
         }

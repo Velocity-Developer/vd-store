@@ -17,6 +17,23 @@ $order_number = $order_exists ? get_post_meta($order_id, '_store_order_number', 
 if (!$order_number) {
     $order_number = $order_id;
 }
+$settings = get_option('wp_store_settings', []);
+$disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
+$all_digital = true;
+if (!empty($items)) {
+    foreach ($items as $it) {
+        $pid = isset($it['product_id']) ? (int) $it['product_id'] : 0;
+        if ($pid > 0 && get_post_type($pid) === 'store_product') {
+            $ptype = get_post_meta($pid, '_store_product_type', true);
+            $is_digital = ($ptype === 'digital') || (bool) get_post_meta($pid, '_store_is_digital', true);
+            if (!$is_digital) {
+                $all_digital = false;
+                break;
+            }
+        }
+    }
+}
+$hide_recipient = ($disable_shipping_for_digital && $all_digital);
 ?>
 <div class="wps-container">
     <div class="wps-card wps-p-6">
@@ -25,7 +42,7 @@ if (!$order_number) {
             <?php if ($order_exists) : ?>
                 <div class="wps-mt-1 wps-text-sm wps-text-gray-700">Nomor Pesanan: <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span></div>
             <?php else : ?>
-                <div class="wps-text-sm wps-text-gray-600 wps-mt-1 wps-mb-2">Masukkan parameter <span class="wps-font-medium">order</span> di URL untuk melihat status.</div>
+                <div class="wps-text-sm wps-text-gray-600 wps-mt-1 wps-mb-2">Masukkan nomor <span class="wps-font-medium">order</span> di form berikut untuk melihat status.</div>
                 <?php
                 $settings = get_option('wp_store_settings', []);
                 $tracking_id = isset($settings['page_tracking']) ? absint($settings['page_tracking']) : 0;
@@ -163,11 +180,13 @@ if (!$order_number) {
                     </div>
                 </div>
                 <div>
-                    <div class="wps-text-lg wps-font-medium wps-text-gray-900">Alamat Pengiriman</div>
-                    <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
-                        <div><?php echo esc_html($address); ?></div>
-                        <div><?php echo esc_html($subdistrict_name); ?>, <?php echo esc_html($city_name); ?>, <?php echo esc_html($province_name); ?> <?php echo esc_html($postal_code); ?></div>
-                    </div>
+                    <?php if (!$hide_recipient) : ?>
+                        <div class="wps-text-lg wps-font-medium wps-text-gray-900">Alamat Pengiriman</div>
+                        <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
+                            <div><?php echo esc_html($address); ?></div>
+                            <div><?php echo esc_html($subdistrict_name); ?>, <?php echo esc_html($city_name); ?>, <?php echo esc_html($province_name); ?> <?php echo esc_html($postal_code); ?></div>
+                        </div>
+                    <?php endif; ?>
                     <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-6">Status</div>
                     <?php
                     $status = get_post_meta($order_id, '_store_order_status', true);
@@ -204,84 +223,86 @@ if (!$order_number) {
                     <div class="wps-mt-2 wps-text-sm wps-text-gray-700 wps-bg-primary-100 wps-text-primary-800 wps-p-2 wps-rounded-md wps-font-medium"><?php echo esc_html($status_label); ?></div>
                     <?php if (!empty($tracking_number)) : ?>
                         <div class="wps-mt-2 wps-text-sm wps-text-gray-700">No. Resi: <span class="wps-font-medium"><?php echo esc_html($tracking_number); ?></span></div>
-                        <?php
-                        $api_key = isset($settings['rajaongkir_api_key']) ? (string) $settings['rajaongkir_api_key'] : '';
-                        $courier_code = is_string($shipping_courier) ? strtolower($shipping_courier) : '';
-                        if ($api_key !== '' && $courier_code !== '') {
-                            $ckey = 'wp_store_track_' . md5($tracking_number . '|' . $courier_code);
-                            $cached = get_transient($ckey);
-                            if (!is_string($cached)) $cached = '';
-                            $raw = $cached;
-                            if ($raw === '') {
-                                $base = \WpStore\Api\RajaOngkirController::get_rajaongkir_base_url() . '/track/waybill';
-                                $url = add_query_arg(['awb' => $tracking_number, 'courier' => $courier_code], $base);
-                                $res = wp_remote_get($url, [
-                                    'headers' => ['key' => $api_key],
-                                    'timeout' => 12,
-                                ]);
-                                echo '<pre>' . print_r($res, true) . '</pre>';
-                                if (!is_wp_error($res)) {
-                                    $code = wp_remote_retrieve_response_code($res);
-                                    if ($code === 200) {
-                                        $raw = wp_remote_retrieve_body($res);
-                                    }
-                                }
-                                if ($raw !== '') {
-                                    set_transient($ckey, $raw, 3600);
-                                }
-                            }
-                            echo '<div class="wps-mt-4">';
-                            echo '<div class="wps-text-sm wps-text-gray-900 wps-font-medium">Tracking Pengiriman</div>';
-                            $json = $raw !== '' ? json_decode($raw, true) : null;
-                            $events = [];
-                            if (is_array($json)) {
-                                if (isset($json['result']['manifest']) && is_array($json['result']['manifest'])) {
-                                    $events = $json['result']['manifest'];
-                                } elseif (isset($json['manifest']) && is_array($json['manifest'])) {
-                                    $events = $json['manifest'];
-                                } elseif (isset($json['history']) && is_array($json['history'])) {
-                                    $events = $json['history'];
-                                } elseif (isset($json['events']) && is_array($json['events'])) {
-                                    $events = $json['events'];
-                                }
-                            }
-                            if (!empty($events)) {
-                                echo '<div class="wps-mt-2" style="display:grid;grid-template-columns:1fr;gap:8px;">';
-                                foreach ($events as $ev) {
-                                    $d = '';
-                                    $t = '';
-                                    $desc = '';
-                                    $city = '';
-                                    if (isset($ev['manifest_date'])) $d = (string) $ev['manifest_date'];
-                                    if (isset($ev['manifest_time'])) $t = (string) $ev['manifest_time'];
-                                    if (isset($ev['manifest_description'])) $desc = (string) $ev['manifest_description'];
-                                    if (isset($ev['city_name'])) $city = (string) $ev['city_name'];
-                                    if ($d === '' && isset($ev['date'])) $d = (string) $ev['date'];
-                                    if ($t === '' && isset($ev['time'])) $t = (string) $ev['time'];
-                                    if ($desc === '' && isset($ev['description'])) $desc = (string) $ev['description'];
-                                    if ($city === '' && isset($ev['city'])) $city = (string) $ev['city'];
-                                    $dt = trim($d . ' ' . $t);
-                                    echo '<div class="wps-card wps-p-3">';
-                                    echo '<div class="wps-text-xs wps-text-gray-500">' . esc_html($dt !== '' ? $dt : '') . '</div>';
-                                    echo '<div class="wps-text-sm wps-text-gray-900">' . esc_html($desc !== '' ? $desc : '') . '</div>';
-                                    if ($city !== '') {
-                                        echo '<div class="wps-text-xs wps-text-gray-700">' . esc_html($city) . '</div>';
-                                    }
-                                    echo '</div>';
-                                }
-                                echo '</div>';
-                            } else {
-                                echo '<div class="wps-text-sm wps-text-gray-600 wps-mt-2">Tracking AWB tidak tersedia.</div>';
-                            }
-                            echo '</div>';
-                        } else {
-                            echo '<div class="wps-mt-4">';
-                            echo '<div class="wps-text-sm wps-text-gray-900 wps-font-medium">Tracking Pengiriman</div>';
-                            echo '<div class="wps-text-sm wps-text-gray-600 wps-mt-2">Tracking AWB tidak tersedia.</div>';
-                            echo '</div>';
-                        }
-                        ?>
+                        <div class="wps-mt-4" x-data="trackingWaybill()" x-init="fetchWaybill()">
+                            <div class="wps-text-sm wps-text-gray-900 wps-font-medium">Tracking Pengiriman</div>
+                            <template x-if="loading">
+                                <div class="wps-mt-2" style="display:grid;grid-template-columns:1fr;gap:8px;">
+                                    <div class="wps-card wps-p-3">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width:50%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:80%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:40%;"></div>
+                                    </div>
+                                    <div class="wps-card wps-p-3">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width:50%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:80%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:40%;"></div>
+                                    </div>
+                                    <div class="wps-card wps-p-3">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width:50%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:80%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width:40%;"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="!loading && events.length > 0">
+                                <div class="wps-mt-2" style="display:grid;grid-template-columns:1fr;gap:8px;">
+                                    <template x-for="ev in events">
+                                        <div class="wps-card wps-p-3">
+                                            <div class="wps-text-xs wps-text-gray-500" x-text="(ev.manifest_date || ev.date || '') + ' ' + (ev.manifest_time || ev.time || '')"></div>
+                                            <div class="wps-text-sm wps-text-gray-900" x-text="ev.manifest_description || ev.description || ''"></div>
+                                            <template x-if="(ev.city_name || ev.city)">
+                                                <div class="wps-text-xs wps-text-gray-700" x-text="ev.city_name || ev.city"></div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="!loading && events.length === 0">
+                                <div class="wps-text-sm wps-text-gray-600 wps-mt-2" x-text="error || 'Tracking AWB tidak tersedia.'"></div>
+                            </template>
+                        </div>
                     <?php endif; ?>
+                    <script>
+                        document.addEventListener('alpine:init', () => {
+                            Alpine.data('trackingWaybill', () => ({
+                                loading: true,
+                                events: [],
+                                error: '',
+                                endpoint: '<?php echo esc_url(rest_url('wp-store/v1/rajaongkir/waybill')); ?>',
+                                awb: '<?php echo esc_js($tracking_number); ?>',
+                                courier: '<?php echo esc_js(strtolower($shipping_courier)); ?>',
+                                async fetchWaybill() {
+                                    try {
+                                        const qs = new URLSearchParams({
+                                            awb: this.awb,
+                                            courier: this.courier
+                                        });
+                                        const url = this.endpoint + '?' + qs.toString();
+                                        const res = await fetch(url, {
+                                            method: 'GET'
+                                        });
+                                        const data = await res.json();
+                                        if (res.ok && data && data.success && data.data) {
+                                            const json = data.data;
+                                            let ev = [];
+                                            if (json.rajaongkir && json.rajaongkir.result && Array.isArray(json.rajaongkir.result.manifest)) ev = json.rajaongkir.result.manifest;
+                                            else if (json.result && Array.isArray(json.result.manifest)) ev = json.result.manifest;
+                                            else if (Array.isArray(json.manifest)) ev = json.manifest;
+                                            else if (Array.isArray(json.history)) ev = json.history;
+                                            else if (Array.isArray(json.events)) ev = json.events;
+                                            this.events = ev;
+                                        } else {
+                                            this.error = (data && data.message) ? data.message : 'Tracking AWB tidak tersedia.';
+                                        }
+                                    } catch (e) {
+                                        this.error = 'Terjadi kesalahan jaringan.';
+                                    } finally {
+                                        this.loading = false;
+                                    }
+                                }
+                            }));
+                        });
+                    </script>
                     <?php if (!empty($proofs)) : ?>
                         <div class="wps-mt-3">
                             <div class="wps-text-sm wps-text-gray-900 wps-font-medium">Bukti Transfer</div>

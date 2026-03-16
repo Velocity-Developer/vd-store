@@ -8,6 +8,8 @@ class Settings
     {
         add_action('admin_menu', [$this, 'add_menu_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        add_filter('use_block_editor_for_post_type', [$this, 'toggle_block_editor_for_products'], 10, 2);
+        add_filter('wp_default_editor', [$this, 'set_default_product_editor']);
     }
 
     public function add_menu_page()
@@ -54,5 +56,29 @@ class Settings
     public function render_page()
     {
         require WP_STORE_PATH . 'templates/admin/settings.php';
+    }
+
+    public function toggle_block_editor_for_products($use_block_editor, $post_type)
+    {
+        if ($post_type === 'store_product') {
+            $settings = get_option('wp_store_settings', []);
+            $mode = isset($settings['product_editor_mode']) ? $settings['product_editor_mode'] : 'classic';
+            return $mode === 'classic' ? false : true;
+        }
+        return $use_block_editor;
+    }
+
+    public function set_default_product_editor($default)
+    {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if ($screen && $screen->post_type === 'store_product') {
+            $settings = get_option('wp_store_settings', []);
+            $mode = isset($settings['product_editor_mode']) ? $settings['product_editor_mode'] : 'classic';
+            if ($mode === 'classic') {
+                return 'tinymce';
+            }
+            return $default;
+        }
+        return $default;
     }
 }

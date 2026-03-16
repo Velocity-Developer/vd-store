@@ -32,6 +32,8 @@ class CheckoutController
     {
         $data = $request->get_json_params();
         $data = apply_filters('wp_store_before_create_order', $data, $request);
+        $settings = get_option('wp_store_settings', []);
+        $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
 
         $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
         $email = isset($data['email']) ? sanitize_email($data['email']) : '';
@@ -40,6 +42,94 @@ class CheckoutController
 
         if ($name === '' || empty($items)) {
             return new WP_REST_Response(['message' => 'Data tidak lengkap'], 400);
+        }
+        if (!is_email($email)) {
+            return new WP_REST_RESPONSE(['message' => 'Email tidak valid'], 400);
+        }
+        $address_required = isset($data['address']) ? sanitize_textarea_field($data['address']) : '';
+        if ($phone === '') {
+            return new WP_REST_RESPONSE(['message' => 'Telepon wajib diisi'], 400);
+        }
+        $shipping_courier_req = isset($data['shipping_courier']) ? sanitize_text_field($data['shipping_courier']) : '';
+        $shipping_service_req = isset($data['shipping_service']) ? sanitize_text_field($data['shipping_service']) : '';
+        $shipping_cost_req = isset($data['shipping_cost']) ? floatval($data['shipping_cost']) : 0;
+        $all_digital = true;
+        foreach ($items as $it) {
+            $pid = isset($it['id']) ? (int) $it['id'] : 0;
+            if ($pid > 0 && get_post_type($pid) === 'store_product') {
+                $ptype = get_post_meta($pid, '_store_product_type', true);
+                $is_digital = ($ptype === 'digital') || (bool) get_post_meta($pid, '_store_is_digital', true);
+                if (!$is_digital) {
+                    $all_digital = false;
+                    break;
+                }
+            }
+        }
+        if (!$disable_shipping_for_digital || !$all_digital) {
+            if ($address_required === '') {
+                return new WP_REST_RESPONSE(['message' => 'Alamat wajib diisi'], 400);
+            }
+            if ($shipping_courier_req === '' || $shipping_service_req === '' || $shipping_cost_req <= 0) {
+                return new WP_REST_RESPONSE(['message' => 'Ongkir belum dipilih atau tidak valid'], 400);
+            }
+        } else {
+            $shipping_courier_req = '';
+            $shipping_service_req = '';
+            $shipping_cost_req = 0;
+        }
+
+        $actor_key = is_user_logged_in() ? ('user:' . get_current_user_id()) : ('guest:' . (isset($_COOKIE['wp_store_cart_key']) ? sanitize_key($_COOKIE['wp_store_cart_key']) : ''));
+        $fingerprint = md5(wp_json_encode($items) . '|' . ($data['coupon_code'] ?? '') . '|' . $shipping_courier_req . '|' . $shipping_service_req . '|' . (string) $shipping_cost_req);
+        if ($actor_key !== '') {
+            $lock_key = 'wp_store_checkout_lock_' . md5($actor_key);
+            $existing_lock = get_transient($lock_key);
+            if (is_string($existing_lock) && $existing_lock === $fingerprint) {
+                return new WP_REST_Response(['message' => 'Order sedang diproses, coba lagi beberapa detik.'], 429);
+            }
+            set_transient($lock_key, $fingerprint, 10);
+        }
+
+        $request_id = isset($data['request_id']) ? sanitize_text_field($data['request_id']) : '';
+        if ($request_id !== '') {
+            $rid_lock_key = 'wp_store_rid_lock_' . md5($request_id);
+            if (get_transient($rid_lock_key)) {
+                return new WP_REST_Response(['message' => 'Duplikasi submit terdeteksi'], 409);
+            }
+            set_transient($rid_lock_key, 1, 20);
+            $existing = get_posts([
+                'post_type' => 'store_order',
+                'post_status' => 'any',
+                'meta_key' => '_store_order_request_id',
+                'meta_value' => $request_id,
+                'posts_per_page' => 1,
+                'fields' => 'ids',
+            ]);
+            if (!empty($existing)) {
+                $order_id = (int) $existing[0];
+                $order_number = get_post_meta($order_id, '_store_order_number', true) ?: (string) $order_id;
+                $order_total = floatval(get_post_meta($order_id, '_store_order_total', true));
+                $resp = [
+                    'id' => $order_id,
+                    'order_number' => $order_number,
+                    'total' => $order_total,
+                    'message' => 'Pesanan berhasil dibuat',
+                ];
+                $resp = apply_filters('wp_store_payment_response', $resp, $order_id, null, $data);
+                delete_transient($rid_lock_key);
+                return new WP_REST_Response($resp, 200);
+            }
+        }
+
+        $actor_key = is_user_logged_in() ? ('user:' . get_current_user_id()) : ('guest:' . (isset($_COOKIE['wp_store_cart_key']) ? sanitize_key($_COOKIE['wp_store_cart_key']) : ''));
+        if ($actor_key !== '') {
+            // Jika request_id tersedia, gunakan mekanisme one-time request_id lock saja
+            if ($request_id === '') {
+                $actor_lock_key = 'wp_store_checkout_actor_lock_' . md5($actor_key);
+                if (get_transient($actor_lock_key)) {
+                    return new WP_REST_Response(['message' => 'Order sedang diproses'], 429);
+                }
+                set_transient($actor_lock_key, 1, 10);
+            }
         }
 
         $lines = [];
@@ -74,6 +164,7 @@ class CheckoutController
         }
 
         $lines = apply_filters('wp_store_checkout_lines', $lines, $data);
+        $lines = $this->dedupe_lines($lines);
         if (empty($lines)) {
             return new WP_REST_Response(['message' => 'Keranjang kosong'], 400);
         }
@@ -120,10 +211,13 @@ class CheckoutController
         update_post_meta($order_id, '_store_order_number', $order_number);
 
         update_post_meta($order_id, '_store_order_email', $email);
+        if (is_user_logged_in()) {
+            update_post_meta($order_id, '_store_order_user_id', get_current_user_id());
+        }
         update_post_meta($order_id, '_store_order_phone', $phone);
-        $shipping_courier = isset($data['shipping_courier']) ? sanitize_text_field($data['shipping_courier']) : '';
-        $shipping_service = isset($data['shipping_service']) ? sanitize_text_field($data['shipping_service']) : '';
-        $shipping_cost = isset($data['shipping_cost']) ? floatval($data['shipping_cost']) : 0;
+        $shipping_courier = $shipping_courier_req;
+        $shipping_service = $shipping_service_req;
+        $shipping_cost = $shipping_cost_req;
         $order_total = max(0, $total - $discount_amount) + max(0, $shipping_cost);
         update_post_meta($order_id, '_store_order_total', $order_total);
         update_post_meta($order_id, '_store_order_items', $lines);
@@ -133,9 +227,18 @@ class CheckoutController
             update_post_meta($order_id, '_store_order_discount_value', $discount_value);
             update_post_meta($order_id, '_store_order_discount_amount', $discount_amount);
         }
-        $payment_method = isset($data['payment_method']) ? sanitize_key($data['payment_method']) : 'transfer_bank';
-        if (!in_array($payment_method, ['transfer_bank', 'qris'], true)) {
-            $payment_method = 'transfer_bank';
+        if ($request_id !== '') {
+            update_post_meta($order_id, '_store_order_request_id', $request_id);
+            delete_transient('wp_store_rid_lock_' . md5($request_id));
+        }
+        if (isset($actor_lock_key)) {
+            delete_transient($actor_lock_key);
+        }
+        $payment_method = isset($data['payment_method']) ? sanitize_key($data['payment_method']) : 'bank_transfer';
+        
+        $allowed_methods = apply_filters('wp_store_allowed_payment_methods', ['bank_transfer', 'qris']);
+        if (!in_array($payment_method, $allowed_methods, true)) {
+            $payment_method = 'bank_transfer';
         }
         $payment_method = apply_filters('wp_store_payment_method', $payment_method, $data, $order_id);
         update_post_meta($order_id, '_store_order_payment_method', $payment_method);
@@ -259,6 +362,38 @@ class CheckoutController
         }
         $resp = apply_filters('wp_store_payment_response', $resp, $order_id, isset($payment_info) ? $payment_info : null, $data);
         return new WP_REST_Response($resp, 201);
+    }
+
+    private function dedupe_lines($lines)
+    {
+        $out = [];
+        $map = [];
+        foreach (is_array($lines) ? $lines : [] as $l) {
+            $pid = isset($l['product_id']) ? (int) $l['product_id'] : 0;
+            $qty = isset($l['qty']) ? (int) $l['qty'] : 0;
+            $price = isset($l['price']) ? (float) $l['price'] : 0;
+            $opts = isset($l['options']) && is_array($l['options']) ? $this->normalize_options($l['options']) : [];
+            if ($pid <= 0 || $qty <= 0) {
+                continue;
+            }
+            $key = (string) $pid . '|' . wp_json_encode($opts);
+            if (!isset($map[$key])) {
+                $map[$key] = count($out);
+                $out[] = [
+                    'product_id' => $pid,
+                    'title' => isset($l['title']) ? (string) $l['title'] : get_the_title($pid),
+                    'qty' => $qty,
+                    'price' => $price,
+                    'subtotal' => $price * $qty,
+                    'options' => $opts,
+                ];
+            } else {
+                $idx = (int) $map[$key];
+                $out[$idx]['qty'] += $qty;
+                $out[$idx]['subtotal'] = $out[$idx]['price'] * $out[$idx]['qty'];
+            }
+        }
+        return $out;
     }
 
     private function normalize_options($options)

@@ -39,8 +39,12 @@
   max-width: 190px;
 }
 .post-type-store_order .wp-list-table .column-order_payment {
-  width: 160px;
-  max-width: 160px;
+  width: 90px;
+  max-width: 90px;
+}
+.post-type-store_order .wp-list-table .column-order_customer {
+  width: 90px;
+  max-width: 90px;
 }
 .post-type-store_order .wp-list-table .column-order_total {
   width: 140px;

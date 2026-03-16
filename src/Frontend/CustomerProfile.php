@@ -49,9 +49,6 @@ class CustomerProfile
         $settings = get_option('wp_store_settings', []);
         $currency = ($settings['currency_symbol'] ?? 'Rp');
         $nonce = wp_create_nonce('wp_rest');
-        // Preload wishlist items for logged-in user to avoid empty UI in case of fetch issues
-        global $wpdb;
-        $wishlist_table = $wpdb->prefix . 'store_wishlists';
         $initial_items = [];
         $orders = [];
         $tracking_id = isset($settings['page_tracking']) ? absint($settings['page_tracking']) : 0;
@@ -60,59 +57,51 @@ class CustomerProfile
             $uid = get_current_user_id();
             $user = get_userdata($uid);
             $email = $user ? $user->user_email : '';
-            $row = $wpdb->get_row($wpdb->prepare("SELECT wishlist FROM {$wishlist_table} WHERE user_id = %d LIMIT 1", $uid));
-            if ($row && isset($row->wishlist)) {
-                $decoded = json_decode($row->wishlist, true);
-                if (is_array($decoded)) {
-                    foreach ($decoded as $entry) {
-                        $pid = isset($entry['id']) ? (int) $entry['id'] : 0;
-                        if ($pid > 0 && get_post_type($pid) === 'store_product') {
-                            $price = (float) get_post_meta($pid, '_store_price', true);
-                            $initial_items[] = [
-                                'id' => $pid,
-                                'title' => get_the_title($pid),
-                                'price' => $price,
-                                'image' => get_the_post_thumbnail_url($pid, 'thumbnail') ?: null,
-                                'link' => get_permalink($pid),
-                                'options' => (isset($entry['opts']) && is_array($entry['opts'])) ? $entry['opts'] : []
-                            ];
-                        }
-                    }
-                }
-            }
-            if ($email) {
-                $q = new \WP_Query([
-                    'post_type' => 'store_order',
-                    'post_status' => 'publish',
-                    'posts_per_page' => 20,
-                    'orderby' => 'date',
-                    'order' => 'DESC',
-                    'meta_query' => [
-                        [
-                            'key' => '_store_order_email',
-                            'value' => $email,
-                            'compare' => '='
-                        ]
+            $meta_query = [
+                'relation' => 'OR',
+                [
+                    'key' => '_store_order_user_id',
+                    'value' => $uid,
+                    'compare' => '='
+                ],
+                [
+                    'relation' => 'AND',
+                    [
+                        'key' => '_store_order_user_id',
+                        'compare' => 'NOT EXISTS'
+                    ],
+                    [
+                        'key' => '_store_order_email',
+                        'value' => $email,
+                        'compare' => '='
                     ]
-                ]);
-                foreach ($q->posts as $p) {
-                    $oid = $p->ID;
-                    $order_number = get_post_meta($oid, '_store_order_number', true);
-                    if (!$order_number) {
-                        $order_number = $oid;
-                    }
-                    $orders[] = [
-                        'id' => $oid,
-                        'order_number' => $order_number,
-                        'date' => get_the_date('d M Y', $oid),
-                        'total' => (float) get_post_meta($oid, '_store_order_total', true),
-                        'status' => (string) (get_post_meta($oid, '_store_order_status', true) ?: 'pending'),
-                        'tracking_url' => add_query_arg(['order' => $order_number], $tracking_base),
-                        'items' => (array) (get_post_meta($oid, '_store_order_items', true) ?: [])
-                    ];
+                ]
+            ];
+            $q = new \WP_Query([
+                'post_type' => 'store_order',
+                'post_status' => 'publish',
+                'posts_per_page' => 20,
+                'orderby' => 'date',
+                'order' => 'DESC',
+                'meta_query' => $meta_query
+            ]);
+            foreach ($q->posts as $p) {
+                $oid = $p->ID;
+                $order_number = get_post_meta($oid, '_store_order_number', true);
+                if (!$order_number) {
+                    $order_number = $oid;
                 }
-                wp_reset_postdata();
+                $orders[] = [
+                    'id' => $oid,
+                    'order_number' => $order_number,
+                    'date' => get_the_date('d M Y', $oid),
+                    'total' => (float) get_post_meta($oid, '_store_order_total', true),
+                    'status' => (string) (get_post_meta($oid, '_store_order_status', true) ?: 'pending'),
+                    'tracking_url' => add_query_arg(['order' => $order_number], $tracking_base),
+                    'items' => (array) (get_post_meta($oid, '_store_order_items', true) ?: [])
+                ];
             }
+            wp_reset_postdata();
         }
         ob_start();
         ?>
@@ -130,20 +119,20 @@ class CustomerProfile
         <div class="wps-profile-wrapper" x-data="storeCustomerProfile()" x-init="init()">
             <div class="wps-card wps-p-4" style="margin-bottom: 1rem;">
                 <div id="wps-profile-tabs" class="wps-tabs">
-                    <button @click="tab = 'profile'" :class="{ 'active': tab === 'profile' }" class="wps-tab">
+                    <button @click="tab = 'profile'" :class="{ 'active': tab === 'profile' }" class="wps-tab wps-flex wps-align-items-center">
                         <?php echo wps_icon(['name' => 'user', 'size' => 16, 'class' => 'wps-mr-2']); ?>Profil Saya
                     </button>
-                    <button @click="tab = 'addresses'" :class="{ 'active': tab === 'addresses' }" class="wps-tab">
+                    <button @click="tab = 'addresses'" :class="{ 'active': tab === 'addresses' }" class="wps-tab wps-flex wps-align-items-center">
                         <?php echo wps_icon(['name' => 'settings', 'size' => 16, 'class' => 'wps-mr-2']); ?>Buku Alamat
                     </button>
-                    <button @click="tab = 'wishlist'" :class="{ 'active': tab === 'wishlist' }" class="wps-tab">
+                    <button @click="tab = 'wishlist'" :class="{ 'active': tab === 'wishlist' }" class="wps-tab wps-flex wps-align-items-center">
                         <?php echo wps_icon(['name' => 'heart', 'size' => 16, 'class' => 'wps-mr-2']); ?>Wishlist <span class="wps-badge" x-text="wishlistCount" x-show="wishlistCount > 0" style="margin-left:6px;"></span>
                     </button>
-                    <button @click="tab = 'orders'" :class="{ 'active': tab === 'orders' }" class="wps-tab">
+                    <button @click="tab = 'orders'" :class="{ 'active': tab === 'orders' }" class="wps-tab wps-flex wps-align-items-center">
                         <?php echo wps_icon(['name' => 'cart', 'size' => 16, 'class' => 'wps-mr-2']); ?>Pesanan
                     </button>
                     <?php do_action('wp_store_profile_additional_tabs'); ?>
-                    <a href="<?php echo esc_url(wp_logout_url(site_url('/'))); ?>" class="wps-tab wps-ml-auto"><?php echo wps_icon(['name' => 'close', 'size' => 16, 'class' => 'wps-mr-2']); ?>Keluar</a>
+                    <a href="<?php echo esc_url(wp_logout_url(site_url('/'))); ?>" class="wps-tab wps-ml-auto wps-flex wps-align-items-center"><?php echo wps_icon(['name' => 'logout', 'size' => 16, 'class' => 'wps-mr-2']); ?>Logout</a>
                 </div>
                 <script>
                     (function() {
@@ -255,8 +244,49 @@ class CustomerProfile
                                 Tambah Alamat
                             </button>
                         </div>
-                        <div class="wps-grid wps-gap-4" style="display: grid; gap: 1rem;">
-                            <template x-if="addresses.length === 0">
+                        <div x-show="addressesLoading" class="wps-grid wps-gap-4" style="display: none; grid-template-columns: none; gap: 1rem;">
+                            <div class="wps-card wps-p-4">
+                                <div class="wps-flex wps-justify-between wps-items-start">
+                                    <div style="flex: 1;">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width: 80px; height: 16px;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 100%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 70%;"></div>
+                                    </div>
+                                    <div class="wps-flex wps-space-x-2">
+                                        <div class="wps-skeleton" style="width: 64px; height: 28px; border-radius: 4px;"></div>
+                                        <div class="wps-skeleton" style="width: 64px; height: 28px; border-radius: 4px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="wps-card wps-p-4">
+                                <div class="wps-flex wps-justify-between wps-items-start">
+                                    <div style="flex: 1;">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width: 60px; height: 16px;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 90%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 65%;"></div>
+                                    </div>
+                                    <div class="wps-flex wps-space-x-2">
+                                        <div class="wps-skeleton" style="width: 64px; height: 28px; border-radius: 4px;"></div>
+                                        <div class="wps-skeleton" style="width: 64px; height: 28px; border-radius: 4px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="wps-card wps-p-4">
+                                <div class="wps-flex wps-justify-between wps-items-start">
+                                    <div style="flex: 1;">
+                                        <div class="wps-skeleton wps-skeleton-text" style="width: 50px; height: 16px;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 85%;"></div>
+                                        <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 60%;"></div>
+                                    </div>
+                                    <div class="wps-flex wps-space-x-2">
+                                        <div class="wps-skeleton" style="width: 64px; height: 28px; border-radius: 4px;"></div>
+                                        <div class="wps-skeleton" style="width: 64px; height: 28px; border-radius: 4px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wps-grid wps-gap-4" x-show="!addressesLoading" style="display: none; grid-template-columns: none; gap: 1rem;">
+                            <template x-if="!addressesLoading && addresses.length === 0">
                                 <div class="wps-card wps-p-6 wps-text-center wps-text-gray-500">
                                     Belum ada alamat tersimpan.
                                 </div>
@@ -396,10 +426,48 @@ class CustomerProfile
                     <div class="wps-flex wps-justify-between wps-items-center wps-mb-4">
                         <h2 class="wps-text-lg wps-font-medium wps-text-gray-900">Riwayat Pesanan</h2>
                     </div>
-                    <template x-if="orders.length === 0">
+                    <div x-show="ordersLoading" class="wps-grid wps-gap-4" style="display: none; grid-template-columns: none; gap: 1rem;">
+                        <div class="wps-card wps-p-4">
+                            <div class="wps-flex wps-justify-between wps-items-center">
+                                <div>
+                                    <div class="wps-skeleton wps-skeleton-text" style="width: 120px; height: 16px;"></div>
+                                    <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 80px; height: 12px;"></div>
+                                </div>
+                                <div class="wps-skeleton wps-skeleton-text" style="width: 80px; height: 16px;"></div>
+                            </div>
+                            <div class="wps-flex wps-justify-between wps-items-center wps-mt-3">
+                                <div class="wps-skeleton" style="width: 90px; height: 20px; border-radius: 9999px;"></div>
+                                <div class="wps-skeleton" style="width: 90px; height: 28px; border-radius: 4px;"></div>
+                            </div>
+                            <div class="wps-mt-3">
+                                <div class="wps-skeleton wps-skeleton-text" style="width: 60px; height: 10px;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 100%; height: 12px;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 90%; height: 12px;"></div>
+                            </div>
+                        </div>
+                        <div class="wps-card wps-p-4">
+                            <div class="wps-flex wps-justify-between wps-items-center">
+                                <div>
+                                    <div class="wps-skeleton wps-skeleton-text" style="width: 130px; height: 16px;"></div>
+                                    <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 70px; height: 12px;"></div>
+                                </div>
+                                <div class="wps-skeleton wps-skeleton-text" style="width: 90px; height: 16px;"></div>
+                            </div>
+                            <div class="wps-flex wps-justify-between wps-items-center wps-mt-3">
+                                <div class="wps-skeleton" style="width: 90px; height: 20px; border-radius: 9999px;"></div>
+                                <div class="wps-skeleton" style="width: 90px; height: 28px; border-radius: 4px;"></div>
+                            </div>
+                            <div class="wps-mt-3">
+                                <div class="wps-skeleton wps-skeleton-text" style="width: 70px; height: 10px;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 95%; height: 12px;"></div>
+                                <div class="wps-skeleton wps-skeleton-text wps-mt-2" style="width: 85%; height: 12px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <template x-if="!ordersLoading && orders.length === 0">
                         <div class="wps-text-center wps-text-gray-500">Belum ada pesanan.</div>
                     </template>
-                    <div class="wps-grid wps-gap-4" style="display: grid; gap: 1rem;">
+                    <div class="wps-grid wps-gap-4" x-show="!ordersLoading" style="display: none; grid-template-columns: none; gap: 1rem;">
                         <template x-for="order in orders" :key="order.id">
                             <div class="wps-card wps-p-4">
                                 <div class="wps-flex wps-justify-between wps-items-center">
@@ -412,17 +480,6 @@ class CustomerProfile
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-3">
                                     <span class="wps-badge wps-bg-blue-500 wps-text-white wps-text-xs wps-font-medium wps-px-2.5 wps-py-0.5 rounded-full" x-text="statusLabel(order.status)"></span>
                                     <a :href="order.tracking_url" class="wps-btn wps-btn-secondary">Tracking</a>
-                                </div>
-                                <div class="wps-mt-3">
-                                    <div class="wps-text-xs wps-text-gray-500">Item:</div>
-                                    <ul class="wps-mt-1">
-                                        <template x-for="it in (Array.isArray(order.items) ? order.items : [])" :key="String(it.product_id) + '-' + String(it.qty)">
-                                            <li class="wps-text-sm wps-text-gray-900">
-                                                <span x-text="(it.title || 'Produk') + ' x' + (it.qty || 1)"></span>
-                                                <span class="wps-text-gray-500"> — <?php echo esc_html(($currency ?: 'Rp')); ?> <span x-text="formatCurrency(it.subtotal || 0)"></span></span>
-                                            </li>
-                                        </template>
-                                    </ul>
                                 </div>
                             </div>
                         </template>
@@ -442,7 +499,8 @@ class CustomerProfile
                     toastType: 'success',
                     toastMessage: '',
                     wishlistCount: 0,
-                    orders: <?php echo wp_json_encode($orders); ?>,
+                    orders: [],
+                    ordersLoading: false,
                     profile: {
                         first_name: '',
                         last_name: '',
@@ -451,6 +509,7 @@ class CustomerProfile
                         avatar_url: ''
                     },
                     addresses: [],
+                    addressesLoading: false,
                     isEditingAddress: false,
 
                     // Address Form Data
@@ -467,7 +526,7 @@ class CustomerProfile
                         postal_code: ''
                     },
 
-                    // Raja Ongkir Data
+                    // VD Ongkir Data
                     provinces: [],
                     cities: [],
                     subdistricts: [],
@@ -486,6 +545,12 @@ class CustomerProfile
                             const url = new URL(window.location);
                             url.searchParams.set('tab', value);
                             window.history.pushState({}, '', url);
+                            if (value === 'orders' && this.orders.length === 0) {
+                                this.fetchOrders();
+                            }
+                            if (value === 'addresses' && this.addresses.length === 0) {
+                                this.fetchAddresses();
+                            }
                         });
 
                         this.$watch('addressForm.city_id', async (val) => {
@@ -509,6 +574,9 @@ class CustomerProfile
                         });
                         this.loadProvinces(); // Load provinces early
                         this.fetchWishlistCount();
+                        if (this.tab === 'orders') {
+                            this.fetchOrders();
+                        }
                         document.addEventListener('wp-store:wishlist-updated', (e) => {
                             const data = e.detail || {};
                             const items = Array.isArray(data.items) ? data.items : [];
@@ -533,6 +601,24 @@ class CustomerProfile
                             cancelled: 'Dibatalkan'
                         };
                         return m[s] || s;
+                    },
+
+                    async fetchOrders() {
+                        try {
+                            this.ordersLoading = true;
+                            const res = await fetch(wpStoreSettings.restUrl + 'customer/orders', {
+                                credentials: 'same-origin',
+                                headers: {
+                                    'X-WP-Nonce': wpStoreSettings.nonce
+                                }
+                            });
+                            const data = await res.json();
+                            this.orders = Array.isArray(data) ? data : [];
+                        } catch (err) {
+                            this.orders = [];
+                        } finally {
+                            this.ordersLoading = false;
+                        }
                     },
 
                     async fetchProfile() {
@@ -647,6 +733,7 @@ class CustomerProfile
 
                     async fetchAddresses() {
                         try {
+                            this.addressesLoading = true;
                             const res = await fetch(wpStoreSettings.restUrl + 'customer/addresses', {
                                 credentials: 'same-origin',
                                 headers: {
@@ -656,10 +743,12 @@ class CustomerProfile
                             this.addresses = await res.json();
                         } catch (err) {
                             console.error(err);
+                        } finally {
+                            this.addressesLoading = false;
                         }
                     },
 
-                    // --- Raja Ongkir Methods ---
+                    // --- VD Ongkir Methods ---
 
                     async loadProvinces() {
                         if (this.provinces.length > 0) return;

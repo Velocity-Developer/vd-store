@@ -231,11 +231,6 @@
 
   if (window.Alpine && typeof window.Alpine.data === "function") {
     window.Alpine.data("wpStore", wpStoreFactory);
-    if (typeof window.Alpine.initTree === "function") {
-      window.Alpine.initTree(document.body);
-    } else if (typeof window.Alpine.start === "function") {
-      window.Alpine.start();
-    }
   } else {
     document.addEventListener("alpine:init", () => {
       Alpine.data("wpStore", wpStoreFactory);
