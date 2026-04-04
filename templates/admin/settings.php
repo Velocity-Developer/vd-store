@@ -59,8 +59,23 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             <input name="store_email" type="email" id="store_email" value="<?php echo esc_attr($settings['store_email'] ?? get_bloginfo('admin_email')); ?>" class="wp-store-input">
                         </div>
                         <div>
-                            <label class="wp-store-label" for="store_phone">Telepon/WA</label>
+                            <label class="wp-store-label" for="store_phone">Telepon</label>
                             <input name="store_phone" type="text" id="store_phone" value="<?php echo esc_attr($settings['store_phone'] ?? ''); ?>" class="wp-store-input">
+                        </div>
+                    </div>
+
+                    <div class="wp-store-grid-3 wp-store-mt-4">
+                        <div>
+                            <label class="wp-store-label" for="store_wa">WhatsApp</label>
+                            <input name="store_wa" type="text" id="store_wa" value="<?php echo esc_attr($settings['store_wa'] ?? ''); ?>" class="wp-store-input" placeholder="Contoh: 08123456789">
+                        </div>
+                        <div>
+                            <label class="wp-store-label" for="store_sms">SMS</label>
+                            <input name="store_sms" type="text" id="store_sms" value="<?php echo esc_attr($settings['store_sms'] ?? ''); ?>" class="wp-store-input">
+                        </div>
+                        <div>
+                            <label class="wp-store-label" for="store_telegram">Telegram (Username)</label>
+                            <input name="store_telegram" type="text" id="store_telegram" value="<?php echo esc_attr($settings['store_telegram'] ?? ''); ?>" class="wp-store-input" placeholder="Contoh: username_anda">
                         </div>
                     </div>
 
