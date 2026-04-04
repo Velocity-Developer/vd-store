@@ -130,6 +130,12 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
 
             <!-- Tab: Style -->
             <div x-show="activeTab === 'style'" class="wp-store-tab-content" x-cloak>
+                <?php if (get_stylesheet() === 'vtoko30') : ?>
+                    <div class="wp-store-box-gray wp-store-mb-4">
+                        <h3 class="wp-store-subtitle">Setting Tema</h3>
+                        <?php do_action('vtoko30_style_settings'); ?>
+                    </div>
+                <?php endif; ?>
                 <div class="wp-store-form-grid">
                     <p class="wp-store-helper">Atur warna tema frontend. Warna yang dipilih akan mengganti warna default pada tombol, tab, dan komponen callout.</p>
                     <div class="wp-store-grid-3">

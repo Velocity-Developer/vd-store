@@ -472,14 +472,14 @@ class Shortcode
                 $logo_url = WP_STORE_URL . 'assets/frontend/img/bank/' . $logo_file;
             }
 
-            echo '<div class="wps-bank-item wps-mb-6">';
+            echo '<div class="wps-bank-item wps-mb-2">';
             if ($logo_url) {
-                echo '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($bank_name) . '" class="wps-mx-auto wps-mb-2" style="max-height: 40px; width: auto;">';
+                echo '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($bank_name) . '" class="wps-mx-auto wps-mb-0" style="max-height: 40px; width: auto;">';
             } else {
-                echo '<div class="wps-font-semibold wps-text-lg wps-mb-2">' . esc_html($bank_name) . '</div>';
+                echo '<div class="wps-font-normal wps-text-lg wps-mb-0">' . esc_html($bank_name) . '</div>';
             }
-            echo '<div class="wps-text-lg wps-font-medium wps-mb-1">' . esc_html($acc['bank_account']) . '</div>';
-            echo '<div class="wps-text-gray-700">a/n ' . esc_html($acc['bank_holder']) . '</div>';
+            echo '<div class="wps-text-sm wps-font-normal wps-mb-1">' . esc_html($acc['bank_account']) . '</div>';
+            echo '<div class="wps-text-xs wps-text-gray-700">a/n ' . esc_html($acc['bank_holder']) . '</div>';
             echo '</div>';
         }
         echo '</div>';
