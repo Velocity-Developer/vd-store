@@ -1,5 +1,5 @@
-<div class="wps-p-4">
-    <div class="wps-flex wps-gap-4 wps-items-start wps-mb-4">
+<div class="wps-p-4 single-product">
+    <div class="wps-flex wps-gap-4 wps-items-start wps-mb-4 product-detail">
         <div class="wps-w-full" style="flex: 1;">
             <?php $image_src = (!empty($image) ? $image : (WP_STORE_URL . 'assets/frontend/img/noimg.webp')); ?>
             <?php
@@ -192,7 +192,7 @@
             </div>
         </div>
     </div>
-    <div class="wps-mb-4">
+    <div class="wps-mb-4 product-description">
         <h2 class="wps-text-lg wps-font-bold wps-text-gray-900">Deskripsi Produk</h2>
         <div class="wps-text-sm wps-text-gray-500">
             <?php echo $content; ?>

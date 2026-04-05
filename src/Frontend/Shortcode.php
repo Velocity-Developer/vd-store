@@ -419,7 +419,7 @@ class Shortcode
                     $caption    = isset($atts[$captionkey]) ? $atts[$captionkey] : $sosmed[$key]['caption'];
 
                     echo '<a href="' . esc_url($value) . '" target="_blank" class="wps-sosmed-item wps-text-white wps-display-block wps-mb-2 wps-px-3 wps-py-2 ' . esc_attr($key) . '" style="background-color: ' . esc_attr($sosmed[$key]['color']) . ' !important; text-decoration: none; border-radius: 8px;">';
-                    echo '<div class="wps-flex wps-items-center">';
+                    echo '<div class="wps-flex wps-items-center wps-p-2">';
                     echo '<div class="wps-text-center" style="width: 50px; flex-shrink: 0;">';
                     echo $sosmed[$key]['icon'];
                     echo '</div>';
