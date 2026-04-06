@@ -88,6 +88,9 @@ class SettingsController
         if (isset($params['store_email_from'])) $settings['store_email_from'] = sanitize_email($params['store_email_from']);
         if (isset($params['store_email_admin'])) $settings['store_email_admin'] = sanitize_email($params['store_email_admin']);
         if (isset($params['store_phone'])) $settings['store_phone'] = sanitize_text_field($params['store_phone']);
+        if (isset($params['store_wa'])) $settings['store_wa'] = sanitize_text_field($params['store_wa']);
+        if (isset($params['store_sms'])) $settings['store_sms'] = sanitize_text_field($params['store_sms']);
+        if (isset($params['store_telegram'])) $settings['store_telegram'] = sanitize_text_field($params['store_telegram']);
 
         // Handle payment methods
         if (isset($params['payment_methods']) && is_array($params['payment_methods'])) {
