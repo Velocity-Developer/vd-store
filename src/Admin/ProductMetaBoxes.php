@@ -2,100 +2,23 @@
 
 namespace WpStore\Admin;
 
+use WpStore\Domain\Product\ProductFields;
+
 class ProductMetaBoxes
 {
+    private $drafting_for_validation = false;
+
     public function register()
     {
-        add_action('cmb2_admin_init', [$this, 'register_metaboxes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
-    }
-
-    public static function get_schema()
-    {
-        $schema = [
-            [
-                'id' => 'general',
-                'title' => 'General',
-                'fields' => [
-                    [
-                        'id' => '_store_product_type',
-                        'label' => 'Tipe Produk',
-                        'type' => 'select',
-                        'options' => [
-                            'physical' => 'Produk Fisik (Basic)',
-                            'digital' => 'Produk Digital',
-                        ],
-                        'default' => 'physical',
-                    ],
-                    [
-                        'id' => '_store_price',
-                        'label' => 'Harga Regular (Rp)',
-                        'type' => 'number',
-                        'attributes' => ['min' => 0, 'step' => 0.01],
-                    ],
-                    [
-                        'id' => '_store_sale_price',
-                        'label' => 'Harga Promo (Rp)',
-                        'type' => 'number',
-                        'attributes' => ['min' => 0, 'step' => 0.01],
-                    ],
-                    [
-                        'id' => '_store_flashsale_until',
-                        'label' => 'Diskon Sampai',
-                        'type' => 'datetime-local',
-                    ],
-                    [
-                        'id' => '_store_digital_file',
-                        'label' => 'File Produk (Digital)',
-                        'type' => 'file',
-                    ],
-                ],
-            ],
-            [
-                'id' => 'inventory',
-                'title' => 'Inventory',
-                'fields' => [
-                    ['id' => '_store_sku', 'label' => 'Kode Produk (SKU)', 'type' => 'text'],
-                    ['id' => '_store_stock', 'label' => 'Stok', 'type' => 'number', 'attributes' => ['min' => 0, 'step' => 1]],
-                    ['id' => '_store_min_order', 'label' => 'Minimal Order', 'type' => 'number', 'attributes' => ['min' => 1, 'step' => 1]],
-                    ['id' => '_store_weight_kg', 'label' => 'Berat Produk (Kg)', 'type' => 'number', 'attributes' => ['min' => 0, 'step' => 0.01]],
-                ],
-            ],
-            [
-                'id' => 'attributes',
-                'title' => 'Attributes',
-                'fields' => [
-                    [
-                        'id' => '_store_label',
-                        'label' => 'Label Produk',
-                        'type' => 'select',
-                        'options' => [
-                            '' => '-',
-                            'label-best' => 'Best Seller',
-                            'label-limited' => 'Limited',
-                            'label-new' => 'New',
-                        ],
-                    ],
-                    ['id' => '_store_option_name', 'label' => 'Nama Opsi (Basic)', 'type' => 'text'],
-                    ['id' => '_store_options', 'label' => 'Opsi Basic', 'type' => 'repeatable_text'],
-                    ['id' => '_store_option2_name', 'label' => 'Nama Opsi (Advance)', 'type' => 'text'],
-                    ['id' => '_store_advanced_options', 'label' => 'Opsi Advance', 'type' => 'group_advanced_options'],
-                ],
-            ],
-            [
-                'id' => 'gallery',
-                'title' => 'Gallery',
-                'fields' => [
-                    ['id' => '_store_gallery_ids', 'label' => 'Gambar Produk', 'type' => 'file_list'],
-                ],
-            ],
-        ];
-        return $schema;
+        add_action('add_meta_boxes', [$this, 'add_native_meta_box']);
+        add_action('save_post_store_product', [$this, 'save_native_meta_box']);
+        add_action('admin_notices', [$this, 'render_validation_notice']);
     }
 
     public function enqueue_styles()
     {
-        $screen = get_current_screen();
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
         if ($screen && $screen->post_type === 'store_product') {
             wp_enqueue_style(
                 'wp-store-admin-cmb2',
@@ -111,88 +34,124 @@ class ProductMetaBoxes
                 WP_STORE_VERSION,
                 true
             );
+
+            wp_localize_script('wp-store-admin-js', 'vmpSettings', [
+                'currentUserId' => get_current_user_id(),
+                'canManageOptions' => current_user_can('manage_options'),
+            ]);
+
+            wp_enqueue_media();
         }
     }
 
-    public function register_metaboxes()
+    public function add_native_meta_box()
     {
-        $schema = self::get_schema();
-        foreach ($schema as $tab) {
-            $box = new_cmb2_box([
-                'id'            => 'wp_store_product_' . $tab['id'],
-                'title'         => $tab['title'],
-                'object_types'  => ['store_product'],
-                'context'       => 'normal',
-                'priority'      => 'high',
-                'show_names'    => true,
-                'vertical_tabs' => true,
-            ]);
-            foreach ($tab['fields'] as $field) {
-                $args = [
-                    'name' => $field['label'],
-                    'id'   => $field['id'],
-                ];
-                if ($field['type'] === 'select') {
-                    $args['type'] = 'select';
-                    $args['options'] = $field['options'];
-                    if (!empty($field['default'])) {
-                        $args['default'] = $field['default'];
-                    }
-                } elseif ($field['type'] === 'number') {
-                    $args['type'] = 'text';
-                    $args['attributes'] = [
-                        'type' => 'number',
-                        'min'  => (string) ($field['attributes']['min'] ?? ''),
-                        'step' => (string) ($field['attributes']['step'] ?? ''),
-                    ];
-                } elseif ($field['type'] === 'datetime-local') {
-                    $args['type'] = 'text';
-                    $args['attributes'] = ['type' => 'datetime-local'];
-                } elseif ($field['type'] === 'file') {
-                    $args['type'] = 'file';
-                    $args['text'] = ['add_upload_files_text' => 'Upload File'];
-                } elseif ($field['type'] === 'repeatable_text') {
-                    $args['type'] = 'text';
-                    $args['repeatable'] = true;
-                    $args['text'] = ['add_row_text' => 'Tambah Opsi'];
-                } elseif ($field['type'] === 'group_advanced_options') {
-                    $group_field_id = $box->add_field([
-                        'name'    => $field['label'],
-                        'id'      => $field['id'],
-                        'type'    => 'group',
-                        'options' => [
-                            'group_title'   => 'Opsi {#}',
-                            'add_button'    => 'Tambah Opsi',
-                            'remove_button' => 'Hapus Opsi',
-                            'sortable'      => true,
-                        ],
-                    ]);
-                    $box->add_group_field($group_field_id, [
-                        'name' => 'Label',
-                        'id'   => 'label',
-                        'type' => 'text',
-                    ]);
-                    $box->add_group_field($group_field_id, [
-                        'name'       => 'Harga',
-                        'id'         => 'price',
-                        'type'       => 'text',
-                        'attributes' => ['type' => 'number'],
-                    ]);
-                    continue;
-                } elseif ($field['type'] === 'file_list') {
-                    $args['type'] = 'file_list';
-                    $args['text'] = [
-                        'add_upload_files_text' => 'Tambah Gambar',
-                        'remove_image_text'     => 'Hapus',
-                        'file_text'             => 'Gambar',
-                        'file_download_text'    => 'Download',
-                        'remove_text'           => 'Hapus',
-                    ];
-                } else {
-                    $args['type'] = 'text';
-                }
-                $box->add_field($args);
-            }
-        }
+        add_meta_box(
+            'wp_store_product_native_meta',
+            'Data Produk',
+            [$this, 'render_native_meta_box'],
+            'store_product',
+            'normal',
+            'high'
+        );
     }
+
+    public function render_native_meta_box($post)
+    {
+        wp_nonce_field('wp_store_product_native_meta_save', 'wp_store_product_native_meta_nonce');
+        ?>
+        <style>
+            .vmp-meta-section{margin-bottom:16px}
+            .vmp-meta-section__title{margin:0 0 10px;font-size:13px}
+            .vmp-meta-section .row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+            .vmp-meta-section .col-12{grid-column:1 / -1}
+            .vmp-meta-section input:not([type="checkbox"]):not([type="hidden"]),
+            .vmp-meta-section select,
+            .vmp-meta-section textarea{width:100%}
+            .vmp-meta-section .form-check{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:8px}
+            .vmp-meta-section .form-check-input{width:auto !important;min-width:16px;min-height:16px;margin:0}
+            .vmp-meta-section .form-check-label{margin:0;font-weight:600}
+            .vmp-meta-section .form-check .form-text{flex:0 0 100%;margin:0 0 0 24px}
+            .vmp-meta-section .form-text{margin-top:4px;color:#646970}
+            .vmp-meta-section .d-flex{display:flex}
+            .vmp-meta-section .flex-wrap{flex-wrap:wrap}
+            .vmp-meta-section .gap-2{gap:8px}
+            .vmp-meta-section .mb-2{margin-bottom:8px}
+            .vmp-media-field{display:block}
+            .vmp-media-field__preview{margin-top:10px}
+            .vmp-media-field__empty{padding:14px;border:1px dashed #c3c4c7;border-radius:8px;background:#f6f7f7;color:#646970}
+            .vmp-media-field__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;max-width:100%}
+            .vmp-media-field__grid--single{grid-template-columns:minmax(0,220px)}
+            .vmp-media-field__item{position:relative;overflow:hidden;border:1px solid #dcdcde;border-radius:10px;background:#fff;aspect-ratio:1/1;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+            .vmp-media-field__grid--single .vmp-media-field__item{aspect-ratio:auto;min-height:180px}
+            .vmp-media-field__image{display:block;width:100%;height:100%;object-fit:cover}
+            .vmp-media-field__grid--single .vmp-media-field__image{height:220px}
+            .vmp-media-field__remove{position:absolute;top:8px;right:8px;display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:999px;background:rgba(29,35,39,.82);color:#fff;cursor:pointer;line-height:1}
+            .vmp-media-field__remove::before{content:"×";font-size:18px;font-weight:700}
+            .vmp-media-field__remove:hover{background:#b32d2e}
+            .vmp-media-field__remove:focus{outline:none;box-shadow:0 0 0 2px #72aee6}
+        </style>
+        <?php
+        echo ProductFields::render_sections((int) $post->ID, 'admin'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
+    public function save_native_meta_box($post_id)
+    {
+        if (!isset($_POST['wp_store_product_native_meta_nonce']) || !wp_verify_nonce($_POST['wp_store_product_native_meta_nonce'], 'wp_store_product_native_meta_save')) {
+            return;
+        }
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        $validation = ProductFields::validate_submission('admin');
+        if (is_wp_error($validation)) {
+            $this->queue_validation_notice($validation->get_error_message());
+
+            if (!$this->drafting_for_validation && in_array(get_post_status($post_id), ['publish', 'pending'], true)) {
+                $this->drafting_for_validation = true;
+                remove_action('save_post_store_product', [$this, 'save_native_meta_box']);
+                wp_update_post([
+                    'ID' => (int) $post_id,
+                    'post_status' => 'draft',
+                ]);
+                add_action('save_post_store_product', [$this, 'save_native_meta_box']);
+                $this->drafting_for_validation = false;
+            }
+
+            return;
+        }
+
+        ProductFields::save((int) $post_id, 'admin');
+    }
+
+    public function render_validation_notice()
+    {
+        if (!is_admin()) {
+            return;
+        }
+
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || $screen->post_type !== 'store_product') {
+            return;
+        }
+
+        $message = isset($_GET['wp_store_product_error']) ? sanitize_text_field((string) wp_unslash($_GET['wp_store_product_error'])) : '';
+        if ($message === '') {
+            return;
+        }
+
+        echo '<div class="notice notice-error is-dismissible"><p>' . esc_html($message) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
+    private function queue_validation_notice($message)
+    {
+        add_filter('redirect_post_location', static function ($location) use ($message) {
+            return add_query_arg('wp_store_product_error', rawurlencode((string) $message), $location);
+        });
+    }
+
 }

@@ -1,6 +1,12 @@
 <?php
 $order_id = isset($order_id) ? (int) $order_id : 0;
 $currency = isset($currency) ? (string) $currency : 'Rp';
+$tracking_query_param = isset($tracking_query_param) ? (string) $tracking_query_param : 'order';
+$tracking_query_value = isset($tracking_query_value) ? (string) $tracking_query_value : '';
+$tracking_input_label = isset($tracking_input_label) ? (string) $tracking_input_label : 'Nomor Order';
+$tracking_input_placeholder = isset($tracking_input_placeholder) ? (string) $tracking_input_placeholder : 'Masukkan Nomor Order';
+$tracking_submit_label = isset($tracking_submit_label) ? (string) $tracking_submit_label : 'Lacak';
+$tracking_empty_help = isset($tracking_empty_help) ? (string) $tracking_empty_help : 'Masukkan nomor order di form berikut untuk melihat status.';
 $order_exists = ($order_id > 0 && get_post_type($order_id) === 'store_order');
 $total = $order_exists ? (float) get_post_meta($order_id, '_store_order_total', true) : 0;
 $items = $order_exists ? get_post_meta($order_id, '_store_order_items', true) : [];
@@ -42,7 +48,7 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
             <?php if ($order_exists) : ?>
                 <div class="wps-mt-1 wps-text-sm wps-text-gray-700">Nomor Pesanan: <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span></div>
             <?php else : ?>
-                <div class="wps-text-sm wps-text-gray-600 wps-mt-1 wps-mb-2">Masukkan nomor <span class="wps-font-medium">order</span> di form berikut untuk melihat status.</div>
+                <div class="wps-text-sm wps-text-gray-600 wps-mt-1 wps-mb-2"><?php echo esc_html($tracking_empty_help); ?></div>
                 <?php
                 $settings = get_option('wp_store_settings', []);
                 $tracking_id = isset($settings['page_tracking']) ? absint($settings['page_tracking']) : 0;
@@ -50,8 +56,8 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                 ?>
                 <div class="wps-mt-4" style="max-width:420px; margin:0 auto;">
                     <form id="wps-find-order" class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
-                        <input type="text" id="wps-order-id" class="wps-input" placeholder="Masukkan Nomor Order">
-                        <button type="submit" class="wps-btn wps-btn-primary">Lacak</button>
+                        <input type="text" id="wps-order-id" class="wps-input" placeholder="<?php echo esc_attr($tracking_input_placeholder); ?>" value="<?php echo esc_attr($tracking_query_value); ?>" aria-label="<?php echo esc_attr($tracking_input_label); ?>">
+                        <button type="submit" class="wps-btn wps-btn-primary"><?php echo esc_html($tracking_submit_label); ?></button>
                     </form>
                 </div>
                 <script>
@@ -67,11 +73,12 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                             if (val === '') {
                                 if (msg) {
                                     msg.className = 'wps-text-xs wps-text-red-700 wps-mt-1';
-                                    msg.textContent = 'Nomor order tidak valid.';
+                                    msg.textContent = <?php echo wp_json_encode($tracking_input_label); ?> + ' tidak valid.';
                                 }
                                 return;
                             }
-                            var url = base + (base.indexOf('?') === -1 ? '?order=' + encodeURIComponent(val) : '&order=' + encodeURIComponent(val));
+                            var queryParam = <?php echo wp_json_encode($tracking_query_param); ?>;
+                            var url = base + (base.indexOf('?') === -1 ? '?' + encodeURIComponent(queryParam) + '=' + encodeURIComponent(val) : '&' + encodeURIComponent(queryParam) + '=' + encodeURIComponent(val));
                             window.location.href = url;
                         });
                     })();
@@ -521,6 +528,10 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                     <?php endif; ?>
                 </div>
             </div>
+            <?php do_action('wp_store_tracking_after_order_content', $order_id, [
+                'currency' => $currency,
+                'order_number' => $order_number,
+            ]); ?>
         <?php endif; ?>
     </div>
 </div>

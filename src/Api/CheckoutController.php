@@ -2,11 +2,20 @@
 
 namespace WpStore\Api;
 
+use WpStore\Domain\Payment\PaymentMethodRegistry;
+use WpStore\Domain\Order\OrderService;
+use WpStore\Domain\Product\ProductData;
+
 use WP_REST_Request;
 use WP_REST_Response;
 
 class CheckoutController
 {
+    private function service()
+    {
+        return new OrderService();
+    }
+
     public function register_routes()
     {
         register_rest_route('wp-store/v1', '/checkout', [
@@ -57,8 +66,7 @@ class CheckoutController
         foreach ($items as $it) {
             $pid = isset($it['id']) ? (int) $it['id'] : 0;
             if ($pid > 0 && get_post_type($pid) === 'store_product') {
-                $ptype = get_post_meta($pid, '_store_product_type', true);
-                $is_digital = ($ptype === 'digital') || (bool) get_post_meta($pid, '_store_is_digital', true);
+                $is_digital = ProductData::is_digital($pid);
                 if (!$is_digital) {
                     $all_digital = false;
                     break;
@@ -132,39 +140,19 @@ class CheckoutController
             }
         }
 
-        $lines = [];
+        $service = $this->service();
         $total = 0;
         $coupon_code = isset($data['coupon_code']) ? sanitize_text_field($data['coupon_code']) : '';
         $discount_amount = 0;
         $discount_type = '';
         $discount_value = 0;
-
-        foreach ($items as $item) {
-            $product_id = isset($item['id']) ? (int) $item['id'] : 0;
-            $qty = isset($item['qty']) ? (int) $item['qty'] : 1;
-            $opts = isset($item['options']) && is_array($item['options']) ? $item['options'] : [];
-
-            if ($product_id <= 0 || $qty <= 0 || get_post_type($product_id) !== 'store_product') {
-                continue;
-            }
-
-            $opts = $this->normalize_options($opts);
-            $price = $this->resolve_price_with_options($product_id, $opts);
-            $subtotal = $price * $qty;
-            $total += $subtotal;
-
-            $lines[] = [
-                'product_id' => $product_id,
-                'title' => get_the_title($product_id),
-                'qty' => $qty,
-                'price' => $price,
-                'subtotal' => $subtotal,
-                'options' => $opts,
-            ];
+        $lines = $service->build_lines($items);
+        foreach ($lines as $line) {
+            $total += isset($line['subtotal']) ? (float) $line['subtotal'] : 0;
         }
 
         $lines = apply_filters('wp_store_checkout_lines', $lines, $data);
-        $lines = $this->dedupe_lines($lines);
+        $lines = $service->dedupe_lines($lines);
         if (empty($lines)) {
             return new WP_REST_Response(['message' => 'Keranjang kosong'], 400);
         }
@@ -194,97 +182,63 @@ class CheckoutController
             }
         }
 
-        $order_post = apply_filters('wp_store_order_post_args', [
-            'post_type' => 'store_order',
-            'post_status' => 'publish',
-            'post_title' => $name . ' - ' . current_time('mysql'),
-        ], $data);
+        $payment_method = isset($data['payment_method']) ? sanitize_key($data['payment_method']) : 'bank_transfer';
+        $allowed_methods = apply_filters('wp_store_allowed_payment_methods', (new PaymentMethodRegistry())->available_methods(), $data);
+        if (!in_array($payment_method, $allowed_methods, true)) {
+            $payment_method = 'bank_transfer';
+        }
 
-        $order_id = wp_insert_post($order_post);
+        $order_result = $service->create_order([
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'user_id' => is_user_logged_in() ? get_current_user_id() : 0,
+            'address' => isset($data['address']) ? sanitize_textarea_field($data['address']) : '',
+            'province_id' => isset($data['province_id']) ? sanitize_text_field($data['province_id']) : '',
+            'province_name' => isset($data['province_name']) ? sanitize_text_field($data['province_name']) : '',
+            'city_id' => isset($data['city_id']) ? sanitize_text_field($data['city_id']) : '',
+            'city_name' => isset($data['city_name']) ? sanitize_text_field($data['city_name']) : '',
+            'subdistrict_id' => isset($data['subdistrict_id']) ? sanitize_text_field($data['subdistrict_id']) : '',
+            'subdistrict_name' => isset($data['subdistrict_name']) ? sanitize_text_field($data['subdistrict_name']) : '',
+            'postal_code' => isset($data['postal_code']) ? sanitize_text_field($data['postal_code']) : '',
+            'notes' => isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '',
+            'items' => $lines,
+            'payment_method' => $payment_method,
+            'status' => '',
+            'shipping_courier' => $shipping_courier_req,
+            'shipping_service' => $shipping_service_req,
+            'shipping_cost' => $shipping_cost_req,
+            'coupon_code' => $coupon_code,
+            'discount_type' => $discount_type,
+            'discount_value' => $discount_value,
+            'discount_amount' => $discount_amount,
+            'order_total' => max(0, $total - $discount_amount) + max(0, $shipping_cost_req),
+            'request_id' => $request_id,
+        ]);
 
-        if (is_wp_error($order_id)) {
+        if (is_wp_error($order_result)) {
+            if ($request_id !== '') {
+                delete_transient('wp_store_rid_lock_' . md5($request_id));
+            }
+            if (isset($actor_lock_key)) {
+                delete_transient($actor_lock_key);
+            }
             return new WP_REST_Response(['message' => 'Gagal membuat pesanan'], 500);
         }
 
-        $rand_suffix = str_pad((string) rand(0, 999), 3, '0', STR_PAD_LEFT);
-        $order_number = date('Ymd') . $order_id . $rand_suffix;
-        update_post_meta($order_id, '_store_order_number', $order_number);
-
-        update_post_meta($order_id, '_store_order_email', $email);
-        if (is_user_logged_in()) {
-            update_post_meta($order_id, '_store_order_user_id', get_current_user_id());
-        }
-        update_post_meta($order_id, '_store_order_phone', $phone);
+        $order_id = (int) $order_result['order_id'];
+        $order_number = (string) ($order_result['order_number'] ?? $order_id);
         $shipping_courier = $shipping_courier_req;
         $shipping_service = $shipping_service_req;
         $shipping_cost = $shipping_cost_req;
-        $order_total = max(0, $total - $discount_amount) + max(0, $shipping_cost);
-        update_post_meta($order_id, '_store_order_total', $order_total);
-        update_post_meta($order_id, '_store_order_items', $lines);
-        if ($discount_amount > 0 && $coupon_code !== '') {
-            update_post_meta($order_id, '_store_order_coupon_code', $coupon_code);
-            update_post_meta($order_id, '_store_order_discount_type', $discount_type);
-            update_post_meta($order_id, '_store_order_discount_value', $discount_value);
-            update_post_meta($order_id, '_store_order_discount_amount', $discount_amount);
-        }
+        $order_total = (float) ($order_result['order_total'] ?? (max(0, $total - $discount_amount) + max(0, $shipping_cost)));
+        $payment_info = isset($order_result['payment_info']) && is_array($order_result['payment_info']) ? $order_result['payment_info'] : [];
         if ($request_id !== '') {
-            update_post_meta($order_id, '_store_order_request_id', $request_id);
             delete_transient('wp_store_rid_lock_' . md5($request_id));
         }
         if (isset($actor_lock_key)) {
             delete_transient($actor_lock_key);
         }
-        $payment_method = isset($data['payment_method']) ? sanitize_key($data['payment_method']) : 'bank_transfer';
-        
-        $allowed_methods = apply_filters('wp_store_allowed_payment_methods', ['bank_transfer', 'qris']);
-        if (!in_array($payment_method, $allowed_methods, true)) {
-            $payment_method = 'bank_transfer';
-        }
-        $payment_method = apply_filters('wp_store_payment_method', $payment_method, $data, $order_id);
-        update_post_meta($order_id, '_store_order_payment_method', $payment_method);
-        if (!get_post_meta($order_id, '_store_order_status', true)) {
-            update_post_meta($order_id, '_store_order_status', apply_filters('wp_store_default_order_status', 'awaiting_payment', $order_id, $data));
-        }
-        $payment_info = apply_filters('wp_store_payment_init', [
-            'payment_url' => '',
-            'payment_token' => '',
-            'expires_at' => 0,
-            'extra' => new \stdClass(),
-        ], $order_id, $payment_method, $data, $order_total);
-        if (is_array($payment_info)) {
-            $purl = isset($payment_info['payment_url']) ? (string) $payment_info['payment_url'] : '';
-            $ptok = isset($payment_info['payment_token']) ? (string) $payment_info['payment_token'] : '';
-            $pexp = isset($payment_info['expires_at']) ? (int) $payment_info['expires_at'] : 0;
-            $pextra = isset($payment_info['extra']) && is_array($payment_info['extra']) ? $payment_info['extra'] : new \stdClass();
-            update_post_meta($order_id, '_store_order_payment_url', $purl);
-            update_post_meta($order_id, '_store_order_payment_token', $ptok);
-            update_post_meta($order_id, '_store_order_payment_expires_at', $pexp);
-            update_post_meta($order_id, '_store_order_payment_extra', $pextra);
-            do_action('wp_store_payment_initialized', $order_id, $payment_info);
-        }
-
-        $address = isset($data['address']) ? sanitize_textarea_field($data['address']) : '';
-        $province_id = isset($data['province_id']) ? sanitize_text_field($data['province_id']) : '';
-        $province_name = isset($data['province_name']) ? sanitize_text_field($data['province_name']) : '';
-        $city_id = isset($data['city_id']) ? sanitize_text_field($data['city_id']) : '';
-        $city_name = isset($data['city_name']) ? sanitize_text_field($data['city_name']) : '';
-        $subdistrict_id = isset($data['subdistrict_id']) ? sanitize_text_field($data['subdistrict_id']) : '';
-        $subdistrict_name = isset($data['subdistrict_name']) ? sanitize_text_field($data['subdistrict_name']) : '';
-        $postal_code = isset($data['postal_code']) ? sanitize_text_field($data['postal_code']) : '';
-        $notes = isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '';
-
-        update_post_meta($order_id, '_store_order_address', $address);
-        update_post_meta($order_id, '_store_order_province_id', $province_id);
-        update_post_meta($order_id, '_store_order_province_name', $province_name);
-        update_post_meta($order_id, '_store_order_city_id', $city_id);
-        update_post_meta($order_id, '_store_order_city_name', $city_name);
-        update_post_meta($order_id, '_store_order_subdistrict_id', $subdistrict_id);
-        update_post_meta($order_id, '_store_order_subdistrict_name', $subdistrict_name);
-        update_post_meta($order_id, '_store_order_postal_code', $postal_code);
-        update_post_meta($order_id, '_store_order_notes', $notes);
-        update_post_meta($order_id, '_store_order_shipping_courier', $shipping_courier);
-        update_post_meta($order_id, '_store_order_shipping_service', $shipping_service);
-        update_post_meta($order_id, '_store_order_shipping_cost', $shipping_cost);
 
         global $wpdb;
         $table = $wpdb->prefix . 'store_carts';
@@ -311,14 +265,14 @@ class CheckoutController
             ],
             'grand_total' => $order_total,
             'destination' => [
-                'province_id' => $province_id,
-                'province_name' => $province_name,
-                'city_id' => $city_id,
-                'city_name' => $city_name,
-                'subdistrict_id' => $subdistrict_id,
-                'subdistrict_name' => $subdistrict_name,
-                'postal_code' => $postal_code,
-                'address' => $address,
+                'province_id' => sanitize_text_field((string) ($data['province_id'] ?? '')),
+                'province_name' => sanitize_text_field((string) ($data['province_name'] ?? '')),
+                'city_id' => sanitize_text_field((string) ($data['city_id'] ?? '')),
+                'city_name' => sanitize_text_field((string) ($data['city_name'] ?? '')),
+                'subdistrict_id' => sanitize_text_field((string) ($data['subdistrict_id'] ?? '')),
+                'subdistrict_name' => sanitize_text_field((string) ($data['subdistrict_name'] ?? '')),
+                'postal_code' => sanitize_text_field((string) ($data['postal_code'] ?? '')),
+                'address' => sanitize_textarea_field((string) ($data['address'] ?? '')),
             ],
         ];
         $shipping_snapshot = apply_filters('wp_store_shipping_snapshot', $shipping_snapshot, $order_id, $data);
@@ -362,73 +316,6 @@ class CheckoutController
         }
         $resp = apply_filters('wp_store_payment_response', $resp, $order_id, isset($payment_info) ? $payment_info : null, $data);
         return new WP_REST_Response($resp, 201);
-    }
-
-    private function dedupe_lines($lines)
-    {
-        $out = [];
-        $map = [];
-        foreach (is_array($lines) ? $lines : [] as $l) {
-            $pid = isset($l['product_id']) ? (int) $l['product_id'] : 0;
-            $qty = isset($l['qty']) ? (int) $l['qty'] : 0;
-            $price = isset($l['price']) ? (float) $l['price'] : 0;
-            $opts = isset($l['options']) && is_array($l['options']) ? $this->normalize_options($l['options']) : [];
-            if ($pid <= 0 || $qty <= 0) {
-                continue;
-            }
-            $key = (string) $pid . '|' . wp_json_encode($opts);
-            if (!isset($map[$key])) {
-                $map[$key] = count($out);
-                $out[] = [
-                    'product_id' => $pid,
-                    'title' => isset($l['title']) ? (string) $l['title'] : get_the_title($pid),
-                    'qty' => $qty,
-                    'price' => $price,
-                    'subtotal' => $price * $qty,
-                    'options' => $opts,
-                ];
-            } else {
-                $idx = (int) $map[$key];
-                $out[$idx]['qty'] += $qty;
-                $out[$idx]['subtotal'] = $out[$idx]['price'] * $out[$idx]['qty'];
-            }
-        }
-        return $out;
-    }
-
-    private function normalize_options($options)
-    {
-        $normalized = [];
-        foreach ($options as $k => $v) {
-            $key = trim(sanitize_text_field($k));
-            if (is_array($v)) {
-                $normalized[$key] = array_map(function ($x) {
-                    return trim(sanitize_text_field($x));
-                }, $v);
-            } else {
-                $normalized[$key] = trim(sanitize_text_field((string) $v));
-            }
-        }
-        ksort($normalized);
-        return $normalized;
-    }
-
-    private function resolve_price_with_options($product_id, $opts)
-    {
-        $base = (float) get_post_meta($product_id, '_store_price', true);
-        $adv_name = get_post_meta($product_id, '_store_option2_name', true);
-        $adv = get_post_meta($product_id, '_store_advanced_options', true);
-        if (is_array($adv) && $adv_name && isset($opts[$adv_name])) {
-            $label = (string) $opts[$adv_name];
-            foreach ($adv as $row) {
-                $rlabel = isset($row['label']) ? (string) $row['label'] : '';
-                $rprice = isset($row['price']) ? (float) $row['price'] : 0;
-                if ($rlabel !== '' && $rlabel === $label && $rprice > 0) {
-                    return $rprice;
-                }
-            }
-        }
-        return $base;
     }
 
     private function find_coupon_by_code($code)

@@ -2,6 +2,8 @@
 
 namespace WpStore\Api;
 
+use WpStore\Domain\Product\ProductData;
+
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -91,12 +93,7 @@ class RajaOngkirController
             if ($product_id <= 0 || $qty <= 0 || get_post_type($product_id) !== 'store_product') {
                 continue;
             }
-            $wkg = get_post_meta($product_id, '_store_weight_kg', true);
-            $wkg = $wkg !== '' ? (float) $wkg : 0;
-            $grams = (int) round($wkg * 1000);
-            if ($grams < 1) {
-                $grams = 1;
-            }
+            $grams = ProductData::weight_grams($product_id, 1);
             $total += $grams * $qty;
         }
         if ($total < 1) {
@@ -130,8 +127,7 @@ class RajaOngkirController
                 foreach ($items as $it) {
                     $pid = isset($it['id']) ? (int) $it['id'] : 0;
                     if ($pid > 0 && get_post_type($pid) === 'store_product') {
-                        $ptype = get_post_meta($pid, '_store_product_type', true);
-                        $is_digital = ($ptype === 'digital') || (bool) get_post_meta($pid, '_store_is_digital', true);
+                        $is_digital = ProductData::is_digital($pid);
                         if (!$is_digital) {
                             $all_digital = false;
                             break;
@@ -383,12 +379,7 @@ class RajaOngkirController
             if ($product_id <= 0 || $qty <= 0 || get_post_type($product_id) !== 'store_product') {
                 continue;
             }
-            $wkg = get_post_meta($product_id, '_store_weight_kg', true);
-            $wkg = $wkg !== '' ? (float) $wkg : 0;
-            $grams = (int) round($wkg * 1000);
-            if ($grams < 1) {
-                $grams = 1;
-            }
+            $grams = ProductData::weight_grams($product_id, 1);
             $total += $grams * $qty;
         }
         if ($total < 1) {

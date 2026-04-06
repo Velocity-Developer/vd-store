@@ -2,6 +2,8 @@
 
 namespace WpStore\Admin;
 
+use WpStore\Domain\Product\ProductData;
+
 class ProductColumns
 {
     public function register()
@@ -45,9 +47,10 @@ class ProductColumns
                 break;
                 
             case 'price':
-                $price = get_post_meta($post_id, '_store_price', true);
-                if ($price !== '') {
-                    echo 'Rp ' . number_format((float)$price, 0, ',', '.');
+                $product = ProductData::map_post((int) $post_id);
+                $price = is_array($product) ? ($product['price'] ?? null) : null;
+                if ($price !== null) {
+                    echo 'Rp ' . number_format((float) $price, 0, ',', '.');
                 } else {
                     echo '-';
                 }

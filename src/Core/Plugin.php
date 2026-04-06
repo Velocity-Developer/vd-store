@@ -17,8 +17,14 @@ class Plugin
         $post_types = new PostTypes();
         $post_types->register();
 
+        $product_fields = new \WpStore\Domain\Product\ProductFields();
+        $product_fields->register();
+
         $order_emails = new \WpStore\Admin\OrderEmails();
         $order_emails->register();
+
+        $duitku_callback = new \WpStore\Domain\Payment\DuitkuCallbackListener();
+        $duitku_callback->register();
     }
 
     private function load_admin()

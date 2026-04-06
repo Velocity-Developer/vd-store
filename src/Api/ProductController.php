@@ -2,6 +2,8 @@
 
 namespace WpStore\Api;
 
+use WpStore\Domain\Product\ProductData;
+use WpStore\Domain\Product\ProductQuery;
 use WP_Query;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -44,39 +46,28 @@ class ProductController
 
     public function get_products(WP_REST_Request $request)
     {
-        $per_page = (int) $request->get_param('per_page');
+        $filters = ProductQuery::normalize_filters($request->get_params());
+        $per_page = isset($request['per_page']) ? (int) $request['per_page'] : 12;
+        $paged = isset($request['page']) ? (int) $request['page'] : 1;
         if ($per_page <= 0 || $per_page > 50) {
             $per_page = 12;
         }
-
-        $paged = (int) $request->get_param('page');
         if ($paged <= 0) {
             $paged = 1;
         }
+        if (($filters['cat'] ?? 0) <= 0 && !empty($request['category'])) {
+            $term = get_term_by('slug', sanitize_title((string) $request['category']), 'store_product_cat');
+            if ($term && !is_wp_error($term)) {
+                $filters['cat'] = (int) $term->term_id;
+            }
+        }
 
-        $args = [
+        $args = ProductQuery::build_query_args($filters, [
             'post_type' => 'store_product',
+            'post_status' => 'publish',
             'posts_per_page' => $per_page,
             'paged' => $paged,
-            'post_status' => 'publish',
-        ];
-
-        $search = $request->get_param('search');
-        if (is_string($search) && $search !== '') {
-            $args['s'] = $search;
-        }
-
-        $category = $request->get_param('category');
-        if (is_string($category) && $category !== '') {
-            $args['tax_query'] = [
-                [
-                    'taxonomy' => 'store_product_cat',
-                    'field' => 'slug',
-                    'terms' => $category,
-                ],
-            ];
-        }
-
+        ]);
         $query = new WP_Query($args);
 
         $items = [];
@@ -111,31 +102,29 @@ class ProductController
             while ($query->have_posts()) {
                 $query->the_post();
                 $id = get_the_ID();
-                $price = get_post_meta($id, '_store_price', true);
-                $sale = get_post_meta($id, '_store_sale_price', true);
-                $untilRaw = (string) get_post_meta($id, '_store_flashsale_until', true);
-                $untilTs = $untilRaw ? strtotime($untilRaw) : 0;
-                $nowTs = current_time('timestamp');
-                $priceNum = $price !== '' ? (float) $price : null;
-                $saleNum = $sale !== '' ? (float) $sale : null;
-                $saleActive = $saleNum !== null && $saleNum > 0 && (($priceNum !== null && $saleNum < $priceNum) || $priceNum === null) && ($untilTs === 0 || $untilTs > $nowTs);
+                $product = ProductData::map_post($id);
+                if ($product === null) {
+                    continue;
+                }
+
+                $priceNum = $product['price'];
+                $saleNum = ProductData::resolve_sale_price($id);
+                $saleActive = $saleNum !== null;
                 $settings = get_option('wp_store_settings', []);
                 if (!empty($settings['members_only_discount']) && !is_user_logged_in()) {
                     $saleActive = false;
                 }
                 $percent = ($saleActive && $priceNum !== null && $priceNum > 0) ? round((($priceNum - $saleNum) / $priceNum) * 100) : 0;
-                $label = get_post_meta($id, '_store_label', true);
-                $image = get_the_post_thumbnail_url($id, 'medium');
                 $items[] = [
-                    'id' => $id,
-                    'title' => get_the_title(),
-                    'link' => get_permalink(),
-                    'image' => $image ? $image : null,
+                    'id' => $product['id'],
+                    'title' => $product['title'],
+                    'link' => $product['link'],
+                    'image' => get_the_post_thumbnail_url($id, 'medium') ?: $product['image'],
                     'price' => $priceNum,
                     'sale_price' => $saleNum,
                     'sale_active' => $saleActive,
                     'discount_percent' => $percent,
-                    'label' => is_string($label) ? $label : '',
+                    'label' => (string) ($product['label'] ?? ''),
                 ];
             }
             wp_reset_postdata();
@@ -182,19 +171,30 @@ class ProductController
 
     private function format_product($id)
     {
-        $price = get_post_meta($id, '_store_price', true);
-        $stock = get_post_meta($id, '_store_stock', true);
-        $image = get_the_post_thumbnail_url($id, 'medium');
+        $data = ProductData::map_post($id);
+        if ($data === null) {
+            return [];
+        }
 
         return [
-            'id' => $id,
-            'title' => get_the_title($id),
-            'slug' => get_post_field('post_name', $id),
-            'excerpt' => wp_trim_words(get_post_field('post_content', $id), 20),
-            'price' => $price !== '' ? (float) $price : null,
-            'stock' => $stock !== '' ? (int) $stock : null,
-            'image' => $image ? $image : null,
-            'link' => get_permalink($id),
+            'id' => $data['id'],
+            'title' => $data['title'],
+            'slug' => $data['slug'],
+            'excerpt' => $data['excerpt'],
+            'price' => $data['price'],
+            'stock' => $data['stock'],
+            'image' => $data['image'],
+            'link' => $data['link'],
+            'sale_price' => $data['sale_price'],
+            'label' => $data['label'],
+            'sku' => $data['sku'],
+            'min_order' => $data['min_order'],
+            'weight_kg' => $data['weight_kg'],
+            'gallery_ids' => $data['gallery_ids'],
+            'variant_name' => $data['variant_name'],
+            'variant_options' => $data['variant_options'],
+            'price_adjustment_name' => $data['price_adjustment_name'],
+            'price_adjustment_options' => $data['price_adjustment_options'],
         ];
     }
 }

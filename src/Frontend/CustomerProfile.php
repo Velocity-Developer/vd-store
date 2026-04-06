@@ -10,6 +10,170 @@ class CustomerProfile
         add_shortcode('wp_store_profile', [$this, 'render_profile']);
     }
 
+    private function profile_tabs($user_id)
+    {
+        $tabs = [
+            'profile' => [
+                'key' => 'profile',
+                'label' => 'Profil Saya',
+                'icon' => 'user',
+                'priority' => 10,
+            ],
+            'addresses' => [
+                'key' => 'addresses',
+                'label' => 'Buku Alamat',
+                'icon' => 'settings',
+                'priority' => 20,
+            ],
+            'wishlist' => [
+                'key' => 'wishlist',
+                'label' => 'Wishlist',
+                'icon' => 'heart',
+                'priority' => 30,
+                'badge_binding' => 'wishlistCount',
+            ],
+            'orders' => [
+                'key' => 'orders',
+                'label' => 'Pesanan',
+                'icon' => 'cart',
+                'priority' => 40,
+            ],
+        ];
+
+        $tabs = apply_filters('wp_store_profile_tabs', $tabs, [
+            'user_id' => (int) $user_id,
+        ]);
+
+        if (!is_array($tabs)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($tabs as $key => $tab) {
+            if (!is_array($tab)) {
+                continue;
+            }
+
+            $tab_key = sanitize_key((string) ($tab['key'] ?? $key));
+            if ($tab_key === '') {
+                continue;
+            }
+
+            if (array_key_exists('visible', $tab) && !$tab['visible']) {
+                continue;
+            }
+
+            $tab['key'] = $tab_key;
+            $tab['label'] = isset($tab['label']) ? (string) $tab['label'] : ucfirst($tab_key);
+            $tab['priority'] = isset($tab['priority']) ? (int) $tab['priority'] : 100;
+            $normalized[$tab_key] = $tab;
+        }
+
+        uasort($normalized, static function ($left, $right) {
+            return ((int) ($left['priority'] ?? 100)) <=> ((int) ($right['priority'] ?? 100));
+        });
+
+        return $normalized;
+    }
+
+    private function profile_panels($user_id)
+    {
+        $panels = apply_filters('wp_store_profile_panels', [], [
+            'user_id' => (int) $user_id,
+        ]);
+
+        if (!is_array($panels)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($panels as $key => $panel) {
+            if (!is_array($panel)) {
+                continue;
+            }
+
+            $panel_key = sanitize_key((string) ($panel['key'] ?? $key));
+            if ($panel_key === '') {
+                continue;
+            }
+
+            if (array_key_exists('visible', $panel) && !$panel['visible']) {
+                continue;
+            }
+
+            if (!isset($panel['render_callback']) || !is_callable($panel['render_callback'])) {
+                continue;
+            }
+
+            $panel['key'] = $panel_key;
+            $panel['priority'] = isset($panel['priority']) ? (int) $panel['priority'] : 100;
+            $normalized[$panel_key] = $panel;
+        }
+
+        uasort($normalized, static function ($left, $right) {
+            return ((int) ($left['priority'] ?? 100)) <=> ((int) ($right['priority'] ?? 100));
+        });
+
+        return $normalized;
+    }
+
+    private function render_tab_button(array $tab)
+    {
+        $key = (string) ($tab['key'] ?? '');
+        if ($key === '') {
+            return '';
+        }
+
+        $label = (string) ($tab['label'] ?? ucfirst($key));
+        $icon_html = '';
+
+        if (!empty($tab['icon_html'])) {
+            $icon_html = (string) $tab['icon_html'];
+        } elseif (!empty($tab['icon']) && function_exists('wps_icon')) {
+            $icon_html = wps_icon([
+                'name' => (string) $tab['icon'],
+                'size' => 16,
+                'class' => 'wps-mr-2',
+            ]);
+        }
+
+        ob_start();
+        ?>
+        <button @click="tab = '<?php echo esc_js($key); ?>'" :class="{ 'active': tab === '<?php echo esc_js($key); ?>' }" class="wps-tab wps-flex wps-align-items-center">
+            <?php echo $icon_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+            <?php echo esc_html($label); ?>
+            <?php if (!empty($tab['badge_binding'])) : ?>
+                <span class="wps-badge" x-text="<?php echo esc_attr((string) $tab['badge_binding']); ?>" x-show="<?php echo esc_attr((string) $tab['badge_binding']); ?> > 0" style="margin-left:6px;"></span>
+            <?php elseif (!empty($tab['badge_text'])) : ?>
+                <span class="wps-badge" style="margin-left:6px;"><?php echo esc_html((string) $tab['badge_text']); ?></span>
+            <?php endif; ?>
+        </button>
+        <?php
+        return ob_get_clean();
+    }
+
+    private function render_profile_panel(array $panel, array $context = [])
+    {
+        $key = (string) ($panel['key'] ?? '');
+        $callback = $panel['render_callback'] ?? null;
+        if ($key === '' || !is_callable($callback)) {
+            return '';
+        }
+
+        ob_start();
+        $result = call_user_func($callback, $context, $panel);
+        $content = ob_get_clean();
+        if (is_string($result) && $result !== '') {
+            $content .= $result;
+        }
+
+        if ($content === '') {
+            return '';
+        }
+
+        return '<div x-show="tab === \'' . esc_attr($key) . '\'">' . $content . '</div>';
+    }
+
     public function render_profile($atts = [])
     {
         if (!is_user_logged_in()) {
@@ -103,6 +267,20 @@ class CustomerProfile
             }
             wp_reset_postdata();
         }
+        $profile_tabs = $this->profile_tabs(get_current_user_id());
+        $profile_panels = $this->profile_panels(get_current_user_id());
+        $allowed_tabs = array_values(array_keys($profile_tabs));
+        if (empty($allowed_tabs)) {
+            $allowed_tabs = ['profile', 'addresses', 'wishlist', 'orders'];
+        }
+        $profile_state = [];
+        foreach ($profile_tabs as $profile_tab) {
+            if (!empty($profile_tab['badge_binding'])) {
+                $profile_state[(string) $profile_tab['badge_binding']] = isset($profile_tab['badge_initial'])
+                    ? (int) $profile_tab['badge_initial']
+                    : 0;
+            }
+        }
         ob_start();
         ?>
 
@@ -119,18 +297,9 @@ class CustomerProfile
         <div class="wps-profile-wrapper" x-data="storeCustomerProfile()" x-init="init()">
             <div class="wps-card wps-p-4" style="margin-bottom: 1rem;">
                 <div id="wps-profile-tabs" class="wps-tabs">
-                    <button @click="tab = 'profile'" :class="{ 'active': tab === 'profile' }" class="wps-tab wps-flex wps-align-items-center">
-                        <?php echo wps_icon(['name' => 'user', 'size' => 16, 'class' => 'wps-mr-2']); ?>Profil Saya
-                    </button>
-                    <button @click="tab = 'addresses'" :class="{ 'active': tab === 'addresses' }" class="wps-tab wps-flex wps-align-items-center">
-                        <?php echo wps_icon(['name' => 'settings', 'size' => 16, 'class' => 'wps-mr-2']); ?>Buku Alamat
-                    </button>
-                    <button @click="tab = 'wishlist'" :class="{ 'active': tab === 'wishlist' }" class="wps-tab wps-flex wps-align-items-center">
-                        <?php echo wps_icon(['name' => 'heart', 'size' => 16, 'class' => 'wps-mr-2']); ?>Wishlist <span class="wps-badge" x-text="wishlistCount" x-show="wishlistCount > 0" style="margin-left:6px;"></span>
-                    </button>
-                    <button @click="tab = 'orders'" :class="{ 'active': tab === 'orders' }" class="wps-tab wps-flex wps-align-items-center">
-                        <?php echo wps_icon(['name' => 'cart', 'size' => 16, 'class' => 'wps-mr-2']); ?>Pesanan
-                    </button>
+                    <?php foreach ($profile_tabs as $profile_tab) : ?>
+                        <?php echo $this->render_tab_button($profile_tab); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    <?php endforeach; ?>
                     <?php do_action('wp_store_profile_additional_tabs'); ?>
                     <a href="<?php echo esc_url(wp_logout_url(site_url('/'))); ?>" class="wps-tab wps-ml-auto wps-flex wps-align-items-center"><?php echo wps_icon(['name' => 'logout', 'size' => 16, 'class' => 'wps-mr-2']); ?>Logout</a>
                 </div>
@@ -486,6 +655,9 @@ class CustomerProfile
                     </div>
                 </div>
             </div>
+            <?php foreach ($profile_panels as $profile_panel) : ?>
+                <?php echo $this->render_profile_panel($profile_panel, ['user_id' => get_current_user_id()]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+            <?php endforeach; ?>
             <?php do_action('wp_store_profile_additional_panels'); ?>
         </div>
 
@@ -499,6 +671,7 @@ class CustomerProfile
                     toastType: 'success',
                     toastMessage: '',
                     wishlistCount: 0,
+                    ...<?php echo wp_json_encode($profile_state); ?>,
                     orders: [],
                     ordersLoading: false,
                     profile: {
@@ -537,7 +710,8 @@ class CustomerProfile
                     init() {
                         const urlParams = new URLSearchParams(window.location.search);
                         const tabParam = urlParams.get('tab');
-                        if (tabParam && ['profile', 'addresses', 'wishlist', 'orders', 'vendor'].includes(tabParam)) {
+                        const allowedTabs = <?php echo wp_json_encode(array_values($allowed_tabs)); ?>;
+                        if (tabParam && Array.isArray(allowedTabs) && allowedTabs.includes(tabParam)) {
                             this.tab = tabParam;
                         }
 
@@ -581,6 +755,18 @@ class CustomerProfile
                             const data = e.detail || {};
                             const items = Array.isArray(data.items) ? data.items : [];
                             this.wishlistCount = items.length;
+                        });
+                        document.addEventListener('vmp:notifications-updated', (e) => {
+                            const detail = e.detail || {};
+                            if (Object.prototype.hasOwnProperty.call(detail, 'unreadCount')) {
+                                this.notificationUnreadCount = Number(detail.unreadCount || 0);
+                            }
+                        });
+                        document.addEventListener('vmp:messages-updated', (e) => {
+                            const detail = e.detail || {};
+                            if (Object.prototype.hasOwnProperty.call(detail, 'unreadCount')) {
+                                this.messageUnreadCount = Number(detail.unreadCount || 0);
+                            }
                         });
                     },
                     formatCurrency(n) {

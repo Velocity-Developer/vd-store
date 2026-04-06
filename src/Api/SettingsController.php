@@ -2,6 +2,8 @@
 
 namespace WpStore\Api;
 
+use WpStore\Domain\Product\ProductData;
+
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -390,12 +392,7 @@ class SettingsController
             if ($product_id <= 0 || $qty <= 0 || get_post_type($product_id) !== 'store_product') {
                 continue;
             }
-            $wkg = get_post_meta($product_id, '_store_weight_kg', true);
-            $wkg = $wkg !== '' ? (float) $wkg : 0;
-            $grams = (int) round($wkg * 1000);
-            if ($grams < 1) {
-                $grams = 1;
-            }
+            $grams = ProductData::weight_grams($product_id, 1);
             $total += $grams * $qty;
         }
         if ($total < 1) {

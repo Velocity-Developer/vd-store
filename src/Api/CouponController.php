@@ -2,6 +2,8 @@
 
 namespace WpStore\Api;
 
+use WpStore\Domain\Product\ProductData;
+
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -134,20 +136,7 @@ class CouponController
 
     private function resolve_price_with_options($product_id, $opts)
     {
-        $base = (float) get_post_meta($product_id, '_store_price', true);
-        $adv_name = get_post_meta($product_id, '_store_option2_name', true);
-        $adv = get_post_meta($product_id, '_store_advanced_options', true);
-        if (is_array($adv) && $adv_name && isset($opts[$adv_name])) {
-            $label = (string) $opts[$adv_name];
-            foreach ($adv as $row) {
-                $rlabel = isset($row['label']) ? (string) $row['label'] : '';
-                $rprice = isset($row['price']) ? (float) $row['price'] : 0;
-                if ($rlabel !== '' && $rlabel === $label && $rprice > 0) {
-                    return $rprice;
-                }
-            }
-        }
-        return $base;
+        return ProductData::resolve_price_with_options((int) $product_id, is_array($opts) ? $opts : []);
     }
 }
 

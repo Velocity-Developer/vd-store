@@ -28,6 +28,7 @@ class OrderActions
             wp_send_json_error(['message' => 'Status invalid'], 400);
         }
         update_post_meta($order_id, '_store_order_status', $status);
+        do_action('wp_store_order_status_updated', $order_id, $status, 'admin_ajax');
         wp_send_json_success(['message' => 'Status updated']);
     }
 }
