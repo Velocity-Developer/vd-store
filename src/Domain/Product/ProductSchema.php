@@ -21,7 +21,7 @@ class ProductSchema
                     [
                         'name' => 'Galeri Produk',
                         'id' => '_store_gallery_ids',
-                        'type' => 'file',
+                        'type' => 'image',
                         'desc' => 'Pilih beberapa gambar dari media library untuk galeri produk.',
                         'contexts' => ['frontend', 'admin'],
                         'full_width' => true,
@@ -53,19 +53,6 @@ class ProductSchema
                         'desc' => 'Kode unik produk.',
                     ],
                     [
-                        'name' => 'Label Produk',
-                        'id' => '_store_label',
-                        'type' => 'select',
-                        'placeholder' => '',
-                        'desc' => 'Label badge pada kartu produk.',
-                        'options' => [
-                            '' => '-',
-                            'label-new' => 'New',
-                            'label-limited' => 'Terbatas',
-                            'label-best' => 'Best Seller',
-                        ],
-                    ],
-                    [
                         'name' => 'Harga Regular',
                         'id' => '_store_price',
                         'type' => 'number',
@@ -93,11 +80,12 @@ class ProductSchema
                     [
                         'name' => 'File Produk Digital',
                         'id' => '_store_digital_file',
-                        'type' => 'file',
-                        'desc' => 'File yang diunduh pembeli untuk produk digital.',
+                        'type' => 'file_url',
+                        'desc' => 'Bisa pilih file dari media library atau isi URL file eksternal.',
                         'contexts' => ['frontend', 'admin'],
                         'full_width' => true,
                         'media_library' => true,
+                        'show_if_product_type' => 'digital',
                     ],
                     [
                         'name' => 'Stok',
@@ -117,6 +105,7 @@ class ProductSchema
                         'min' => 0.001,
                         'step' => 0.001,
                         'required' => true,
+                        'show_if_product_type' => 'physical',
                     ],
                     [
                         'name' => 'Minimal Order',
@@ -228,7 +217,7 @@ class ProductSchema
                     $sections[$section_index]['fields'][$field_index]['type'] = 'repeatable_text';
                 } elseif (($field['type'] ?? '') === 'textarea' && ($field['id'] ?? '') === '_store_advanced_options') {
                     $sections[$section_index]['fields'][$field_index]['type'] = 'group_advanced_options';
-                } elseif (($field['type'] ?? '') === 'file' && !empty($field['multiple'])) {
+                } elseif ((($field['type'] ?? '') === 'image' || ($field['type'] ?? '') === 'file') && !empty($field['multiple'])) {
                     $sections[$section_index]['fields'][$field_index]['type'] = 'file_list';
                 }
             }

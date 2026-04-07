@@ -1,8 +1,7 @@
 <?php
 $categories = isset($categories) && is_array($categories) ? $categories : [];
-$current = isset($current) && is_array($current) ? $current : ['sort' => '', 'min_price' => '', 'max_price' => '', 'cats' => [], 'labels' => []];
+$current = isset($current) && is_array($current) ? $current : ['sort' => '', 'min_price' => '', 'max_price' => '', 'cats' => []];
 $reset_url = isset($reset_url) ? (string) $reset_url : '';
-$show_labels = isset($show_labels) ? (bool) $show_labels : true;
 ?>
 <form x-data="typeof wpStoreFilters === 'function' ? wpStoreFilters() : {}" x-init="init && typeof init === 'function' ? init() : null" @submit.prevent="update && typeof update === 'function' ? update() : null" method="get" action="" class="wps-card wps-p-4" style="margin-bottom:12px;">
   <div class="wps-text-lg wps-font-medium wps-mb-3 wps-text-bold">Filter & Urutkan</div>
@@ -10,8 +9,10 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
     <label class="wps-label">Urutkan</label>
     <select class="wps-select" name="sort" x-model="sort" @change="update">
       <option value="">Default</option>
-      <option value="az" <?php echo $current['sort'] === 'az' ? 'selected' : ''; ?>>A → Z</option>
-      <option value="za" <?php echo $current['sort'] === 'za' ? 'selected' : ''; ?>>Z → A</option>
+      <option value="az" <?php echo $current['sort'] === 'az' ? 'selected' : ''; ?>>A-Z</option>
+      <option value="za" <?php echo $current['sort'] === 'za' ? 'selected' : ''; ?>>Z-A</option>
+      <option value="sold_desc" <?php echo $current['sort'] === 'sold_desc' ? 'selected' : ''; ?>>Terlaris</option>
+      <option value="rating_desc" <?php echo $current['sort'] === 'rating_desc' ? 'selected' : ''; ?>>Rating Tertinggi</option>
       <option value="cheap" <?php echo $current['sort'] === 'cheap' ? 'selected' : ''; ?>>Termurah</option>
       <option value="expensive" <?php echo $current['sort'] === 'expensive' ? 'selected' : ''; ?>>Termahal</option>
     </select>
@@ -64,25 +65,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
         <?php endforeach; ?>
       </div>
     </div>
-    <?php if ($show_labels): ?>
-      <div class="wps-mt-3">
-        <div class="wps-label">Label</div>
-        <div class="" style="gap:8px;">
-          <label class="wps-checkbox-label wps-display-block">
-            <input type="checkbox" class="wps-checkbox" name="labels[]" value="best" x-model="labels" @change="update" <?php echo in_array('best', $current['labels'], true) ? 'checked' : ''; ?>>
-            <span class="wps-text-sm wps-text-gray-900">Best Seller</span>
-          </label>
-          <label class="wps-checkbox-label wps-display-block">
-            <input type="checkbox" class="wps-checkbox" name="labels[]" value="limited" x-model="labels" @change="update" <?php echo in_array('limited', $current['labels'], true) ? 'checked' : ''; ?>>
-            <span class="wps-text-sm wps-text-gray-900">Limited</span>
-          </label>
-          <label class="wps-checkbox-label wps-display-block">
-            <input type="checkbox" class="wps-checkbox" name="labels[]" value="new" x-model="labels" @change="update" <?php echo in_array('new', $current['labels'], true) ? 'checked' : ''; ?>>
-            <span class="wps-text-sm wps-text-gray-900">New</span>
-          </label>
-        </div>
-      </div>
-    <?php endif; ?>
     <div class="wps-mt-4 wps-flex wps-justify-between wps-items-center">
       <a href="<?php echo esc_url($reset_url); ?>" class="wps-btn wps-btn-secondary"><?php echo wps_icon(['name' => 'trash', 'size' => 16, 'class' => 'wps-mr-2']); ?>Reset</a>
       <button type="submit" class="wps-btn wps-btn-primary"><?php echo wps_icon(['name' => 'sliders2', 'size' => 16, 'class' => 'wps-mr-2']); ?>Terapkan</button>
@@ -98,7 +80,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
       price_min_bound: <?php echo isset($price_min_global) ? (float) $price_min_global : 0; ?>,
       price_max_bound: <?php echo isset($price_max_global) ? (float) $price_max_global : 0; ?>,
       cats: <?php echo wp_json_encode(array_values($current['cats'] ?? [])); ?>,
-      labels: <?php echo wp_json_encode(array_values($current['labels'] ?? [])); ?>,
       locked_cats: <?php echo wp_json_encode(isset($locked_cats) ? array_values($locked_cats) : []); ?>,
       updating: false,
       _updateTimer: null,
@@ -122,7 +103,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
           this.enforceLockedCats();
           this.update();
         });
-        this.$watch('labels', () => this.update());
         this.initializing = false;
         window.addEventListener('popstate', () => {
           this.parseQueryIntoState();
@@ -146,8 +126,7 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
                 url.searchParams.has('min_price') ||
                 url.searchParams.has('max_price') ||
                 url.searchParams.has('shop_page') ||
-                (url.searchParams.getAll('cats[]').length > 0) ||
-                (url.searchParams.getAll('labels[]').length > 0);
+                (url.searchParams.getAll('cats[]').length > 0);
               const isPaginationPath = /\/page\/\d+\/?/.test(url.pathname);
               if (sameBase && (hasFilterParams || isPaginationPath)) {
                 e.preventDefault();
@@ -202,10 +181,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
           const n = parseInt(c, 10);
           if (Number.isFinite(n) && n > 0) p.append('cats[]', String(n));
         });
-        (Array.isArray(this.labels) ? this.labels : []).forEach((l) => {
-          const s = String(l).toLowerCase();
-          if (['best', 'limited', 'new'].includes(s)) p.append('labels[]', s);
-        });
         return p.toString();
       },
       parseQueryIntoState() {
@@ -220,8 +195,6 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
           if (mx !== null) this.max_price = parseFloat(mx);
           const cats = qs.getAll('cats[]').map((v) => parseInt(v, 10)).filter((n) => Number.isFinite(n) && n > 0);
           if (cats.length) this.cats = cats;
-          const labels = qs.getAll('labels[]').map((v) => String(v).toLowerCase()).filter((s) => ['best', 'limited', 'new'].includes(s));
-          if (labels.length) this.labels = labels;
           this.enforceLockedCats();
           this.clampPrices();
         } catch (e) {}
@@ -262,48 +235,16 @@ $show_labels = isset($show_labels) ? (bool) $show_labels : true;
           });
       },
       update() {
-        if (this.initializing || this.updating) return;
+        if (this.initializing) return;
         clearTimeout(this._updateTimer);
         this._updateTimer = setTimeout(() => {
-          this.updating = true;
-          const url = new URL(window.location.href);
-          url.search = this.buildQuery();
-          try {
-            url.pathname = url.pathname.replace(/\/page\/\d+\/?/, '/');
-          } catch (e) {}
-          history.replaceState({}, '', url.toString());
-          fetch(url.toString(), {
-              credentials: 'same-origin'
-            })
-            .then((r) => r.text())
-            .then((html) => {
-              const doc = new DOMParser().parseFromString(html, 'text/html');
-              const newBlock = doc.querySelector('#wps-shop');
-              const curBlock = document.querySelector('#wps-shop');
-              if (newBlock && curBlock) {
-                if (window.Alpine && typeof window.Alpine.destroyTree === 'function') {
-                  try {
-                    window.Alpine.destroyTree(curBlock);
-                  } catch (e) {}
-                }
-                curBlock.innerHTML = newBlock.innerHTML;
-                if (window.Alpine) {
-                  const hasAlpine = curBlock.querySelector('[x-data]');
-                  if (hasAlpine) {
-                    try {
-                      if (typeof window.Alpine.initTree === 'function') {
-                        requestAnimationFrame(() => window.Alpine.initTree(curBlock));
-                      }
-                    } catch (e) {}
-                  }
-                }
-              }
-            })
-            .finally(() => {
-              this.updating = false;
-            });
-        }, 150);
+          const qs = this.buildQuery();
+          const base = window.location.pathname.replace(/\/page\/\d+\/?$/, '/');
+          const next = qs ? `${base}?${qs}` : base;
+          history.pushState({}, '', next);
+          this.refreshShop();
+        }, 120);
       }
-    }));
+    }))
   });
 </script>

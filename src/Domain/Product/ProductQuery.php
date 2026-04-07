@@ -8,17 +8,15 @@ class ProductQuery
 {
     public static function label_options()
     {
-        return [
-            'new' => __('Baru', 'wp-store'),
-            'limited' => __('Terbatas', 'wp-store'),
-            'best' => __('Terlaris', 'wp-store'),
-        ];
+        return [];
     }
 
     public static function sort_options()
     {
         return [
             'latest' => __('Terbaru', 'wp-store'),
+            'sold_desc' => __('Terlaris', 'wp-store'),
+            'rating_desc' => __('Rating Tertinggi', 'wp-store'),
             'price_asc' => __('Harga Terendah', 'wp-store'),
             'price_desc' => __('Harga Tertinggi', 'wp-store'),
             'name_asc' => __('Nama A-Z', 'wp-store'),
@@ -106,20 +104,19 @@ class ProductQuery
             ];
         }
 
-        if ($filters['label'] !== '') {
-            $canonical_label = ProductMeta::canonical_label($filters['label']);
-            $meta_query[] = [
-                'key' => ProductMeta::canonical_key('label'),
-                'value' => $canonical_label !== '' ? $canonical_label : $filters['label'],
-                'compare' => '=',
-            ];
-        }
-
         if (!empty($meta_query)) {
             $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);
         }
 
-        if ($filters['sort'] === 'price_asc') {
+        if ($filters['sort'] === 'sold_desc') {
+            $args['meta_key'] = ProductMeta::canonical_key('sold_count');
+            $args['orderby'] = 'meta_value_num';
+            $args['order'] = 'DESC';
+        } elseif ($filters['sort'] === 'rating_desc') {
+            $args['meta_key'] = ProductMeta::canonical_key('rating_average');
+            $args['orderby'] = 'meta_value_num';
+            $args['order'] = 'DESC';
+        } elseif ($filters['sort'] === 'price_asc') {
             $args['meta_key'] = ProductMeta::canonical_key('price');
             $args['orderby'] = 'meta_value_num';
             $args['order'] = 'ASC';

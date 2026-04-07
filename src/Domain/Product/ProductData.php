@@ -26,10 +26,13 @@ class ProductData
             'stock' => $stock !== '' ? (int) $stock : null,
             'image' => $image ? $image : null,
             'link' => get_permalink($post_id),
-            'label' => ProductMeta::label($post_id),
+            'label' => '',
             'sku' => (string) ProductMeta::get($post_id, 'sku', ''),
             'min_order' => (int) ProductMeta::get_number($post_id, 'min_order', 1),
             'weight_kg' => (float) ProductMeta::get_number($post_id, 'weight', 0),
+            'sold_count' => max(0, (int) ProductMeta::get_number($post_id, 'sold_count', 0)),
+            'review_count' => max(0, (int) ProductMeta::get_number($post_id, 'review_count', 0)),
+            'rating_average' => max(0.0, (float) ProductMeta::get_number($post_id, 'rating_average', 0)),
             'gallery_ids' => ProductMeta::gallery_ids($post_id),
             'variant_name' => (string) ProductMeta::get($post_id, 'variant_name', ''),
             'variant_options' => ProductMeta::get_list($post_id, 'variant_options'),
@@ -118,5 +121,18 @@ class ProductData
         }
 
         return $base;
+    }
+
+    public static function increment_sold_count($product_id, $qty = 1)
+    {
+        $product_id = (int) $product_id;
+        $qty = (int) $qty;
+
+        if (!ProductMeta::is_product($product_id) || $qty <= 0) {
+            return;
+        }
+
+        $current = (int) ProductMeta::get_number($product_id, 'sold_count', 0);
+        update_post_meta($product_id, ProductMeta::meta_key('sold_count'), max(0, $current + $qty));
     }
 }

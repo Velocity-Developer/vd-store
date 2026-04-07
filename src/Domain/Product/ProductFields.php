@@ -28,11 +28,17 @@ class ProductFields
             $registered[$meta_key] = true;
             $show_in_rest = true;
 
-            if (($field['type'] ?? '') === 'file' && !empty($field['multiple'])) {
+            if ((($field['type'] ?? '') === 'image' || ($field['type'] ?? '') === 'file') && !empty($field['multiple'])) {
                 $show_in_rest = [
                     'schema' => [
                         'type' => 'array',
                         'items' => ['type' => 'integer'],
+                    ],
+                ];
+            } elseif (($field['type'] ?? '') === 'file_url') {
+                $show_in_rest = [
+                    'schema' => [
+                        'type' => 'string',
                     ],
                 ];
             } elseif (in_array($meta_key, ['_store_options', '_store_advanced_options'], true)) {
@@ -104,12 +110,21 @@ class ProductFields
             return !empty($value) ? '1' : '0';
         }
 
-        if ($type === 'file' && !empty($field['multiple'])) {
+        if (($type === 'image' || $type === 'file') && !empty($field['multiple'])) {
             return self::normalize_attachment_ids($value);
         }
 
-        if ($type === 'file') {
+        if ($type === 'image') {
             return is_numeric($value) ? (int) $value : 0;
+        }
+
+        if ($type === 'file_url') {
+            if (is_numeric($value)) {
+                $url = wp_get_attachment_url((int) $value);
+                return $url ? (string) $url : '';
+            }
+
+            return is_scalar($value) ? (string) $value : '';
         }
 
         return is_scalar($value) ? (string) $value : '';
@@ -151,10 +166,20 @@ class ProductFields
         $placeholder_attr = $placeholder !== '' ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
         $required_attr = $required ? ' required' : '';
         $col_class = !empty($field['full_width']) ? 'col-12' : 'col-md-6';
+        $show_if_product_type = isset($field['show_if_product_type']) ? sanitize_key((string) $field['show_if_product_type']) : '';
+        $current_product_type = self::current_product_type($post_id);
+        $is_conditionally_visible = self::field_visible_for_product_type($field, $current_product_type);
+        $wrapper_attrs = '';
+        if ($show_if_product_type !== '') {
+            $wrapper_attrs .= ' data-show-if-product-type="' . esc_attr($show_if_product_type) . '"';
+            if (!$is_conditionally_visible) {
+                $wrapper_attrs .= ' style="display:none;"';
+            }
+        }
 
         ob_start();
         ?>
-        <div class="<?php echo esc_attr($col_class); ?>">
+        <div class="<?php echo esc_attr($col_class); ?>"<?php echo $wrapper_attrs; ?>>
             <?php if ($type === 'checkbox') : ?>
                 <input type="hidden" name="<?php echo esc_attr($meta_key); ?>" value="0">
                 <div class="form-check">
@@ -190,7 +215,7 @@ class ProductFields
                         'media_buttons' => false,
                     ]);
                     ?>
-                <?php elseif ($type === 'file' && !empty($field['media_library'])) : ?>
+                <?php elseif (($type === 'image' || $type === 'file') && !empty($field['media_library'])) : ?>
                     <?php
                     $open_button_class = $context === 'admin' ? 'button button-secondary vmp-media-field__open' : 'btn btn-outline-dark btn-sm vmp-media-field__open';
                     $clear_button_class = $context === 'admin' ? 'button button-secondary vmp-media-field__clear' : 'btn btn-outline-secondary btn-sm vmp-media-field__clear';
@@ -210,8 +235,26 @@ class ProductFields
                             </button>
                             <button type="button" class="<?php echo esc_attr($clear_button_class); ?>" <?php disabled(empty($preview_items)); ?>>Hapus Pilihan</button>
                         </div>
-                        <div class="vmp-media-field__preview" data-placeholder="<?php echo esc_attr(!empty($field['multiple']) ? 'Belum ada gambar galeri.' : 'Belum ada file dipilih.'); ?>">
+                        <div class="vmp-media-field__preview" data-placeholder="<?php echo esc_attr(!empty($field['multiple']) ? 'Belum ada gambar galeri.' : 'Belum ada gambar dipilih.'); ?>">
                             <?php echo self::render_media_preview_html($preview_items, !empty($field['multiple'])); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                        </div>
+                    </div>
+                <?php elseif ($type === 'file_url' && !empty($field['media_library'])) : ?>
+                    <?php
+                    $open_button_class = $context === 'admin' ? 'button button-secondary vmp-file-link-field__open' : 'btn btn-outline-dark btn-sm vmp-file-link-field__open';
+                    $clear_button_class = $context === 'admin' ? 'button button-secondary vmp-file-link-field__clear' : 'btn btn-outline-secondary btn-sm vmp-file-link-field__clear';
+                    $file_url = is_string($value) ? $value : '';
+                    ?>
+                    <div class="vmp-file-link-field">
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <button type="button" class="<?php echo esc_attr($open_button_class); ?>" data-title="<?php echo esc_attr($label); ?>" data-button="<?php echo esc_attr('Gunakan file ini'); ?>">
+                                <?php echo esc_html('Pilih File'); ?>
+                            </button>
+                            <button type="button" class="<?php echo esc_attr($clear_button_class); ?>" <?php disabled($file_url === ''); ?>>Hapus Pilihan</button>
+                        </div>
+                        <input id="<?php echo esc_attr($meta_key); ?>" type="url" name="<?php echo esc_attr($meta_key); ?>" class="form-control vmp-file-link-field__input" value="<?php echo esc_attr($file_url); ?>" placeholder="<?php echo esc_attr('https://contoh.com/file.zip'); ?>">
+                        <div class="vmp-file-link-field__preview" data-placeholder="<?php echo esc_attr('Belum ada file dipilih.'); ?>">
+                            <?php echo self::render_file_link_preview_html($file_url); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                         </div>
                     </div>
                 <?php elseif ($type === 'file') : ?>
@@ -237,7 +280,7 @@ class ProductFields
                 continue;
             }
 
-            if (($field['type'] ?? 'text') === 'file') {
+            if (in_array(($field['type'] ?? 'text'), ['file', 'image', 'file_url'], true)) {
                 self::save_file_field($post_id, $field);
                 continue;
             }
@@ -250,9 +293,17 @@ class ProductFields
 
     public static function validate_submission($context = 'frontend')
     {
+        $submitted_product_type = isset($_POST['_store_product_type'])
+            ? sanitize_key((string) wp_unslash($_POST['_store_product_type']))
+            : 'physical';
+
         foreach (self::get_fields($context) as $field) {
             $meta_key = (string) ($field['id'] ?? '');
             if ($meta_key === '' || empty($field['required'])) {
+                continue;
+            }
+
+             if (!self::field_visible_for_product_type($field, $submitted_product_type)) {
                 continue;
             }
 
@@ -284,6 +335,41 @@ class ProductFields
         }
 
         return true;
+    }
+
+    private static function current_product_type($post_id = 0)
+    {
+        if (isset($_POST['_store_product_type'])) {
+            $posted = sanitize_key((string) wp_unslash($_POST['_store_product_type']));
+            if (in_array($posted, ['physical', 'digital'], true)) {
+                return $posted;
+            }
+        }
+
+        $post_id = (int) $post_id;
+        if ($post_id > 0) {
+            $stored = sanitize_key((string) get_post_meta($post_id, '_store_product_type', true));
+            if (in_array($stored, ['physical', 'digital'], true)) {
+                return $stored;
+            }
+        }
+
+        return 'physical';
+    }
+
+    private static function field_visible_for_product_type($field, $product_type)
+    {
+        $required_type = isset($field['show_if_product_type']) ? sanitize_key((string) $field['show_if_product_type']) : '';
+        if ($required_type === '') {
+            return true;
+        }
+
+        $product_type = sanitize_key((string) $product_type);
+        if (!in_array($product_type, ['physical', 'digital'], true)) {
+            $product_type = 'physical';
+        }
+
+        return $required_type === $product_type;
     }
 
     public static function sanitize_value($field, $raw)
@@ -351,13 +437,22 @@ class ProductFields
             return trim((string) wp_kses_post($raw));
         }
 
-        if ($type === 'file') {
+        if ($type === 'image' || $type === 'file') {
             if (!empty($field['multiple'])) {
                 return self::filter_attachment_ids_for_current_user(self::normalize_attachment_ids($raw));
             }
 
             $attachment_id = is_numeric($raw) ? (int) $raw : 0;
             return self::attachment_allowed_for_current_user($attachment_id) ? $attachment_id : 0;
+        }
+
+        if ($type === 'file_url') {
+            if (is_numeric($raw)) {
+                $url = wp_get_attachment_url((int) $raw);
+                return $url ? esc_url_raw($url) : '';
+            }
+
+            return esc_url_raw((string) $raw);
         }
 
         if ($type === 'date') {
@@ -379,6 +474,18 @@ class ProductFields
             $value = self::sanitize_value($field, $raw);
 
             if ((is_array($value) && empty($value)) || (!is_array($value) && empty($value))) {
+                delete_post_meta($post_id, $meta_key);
+                return;
+            }
+
+            update_post_meta($post_id, $meta_key, $value);
+            return;
+        }
+
+        if (($field['type'] ?? '') === 'file_url') {
+            $raw = array_key_exists($meta_key, $_POST) ? wp_unslash($_POST[$meta_key]) : '';
+            $value = self::sanitize_value($field, $raw);
+            if ($value === '') {
                 delete_post_meta($post_id, $meta_key);
                 return;
             }
@@ -413,11 +520,14 @@ class ProductFields
         if (in_array((string) ($field['id'] ?? ''), ['_store_options', '_store_advanced_options'], true)) {
             return 'array';
         }
-        if ($type === 'file' && !empty($field['multiple'])) {
+        if (($type === 'image' || $type === 'file') && !empty($field['multiple'])) {
             return 'array';
         }
-        if ($type === 'file') {
+        if ($type === 'image') {
             return 'integer';
+        }
+        if ($type === 'file_url') {
+            return 'string';
         }
 
         return 'string';
@@ -498,6 +608,30 @@ class ProductFields
                     <button type="button" class="btn-close vmp-media-field__remove" aria-label="Hapus gambar"></button>
                 </div>
             <?php endforeach; ?>
+        </div>
+        <?php
+
+        return (string) ob_get_clean();
+    }
+
+    private static function render_file_link_preview_html($url)
+    {
+        $url = is_string($url) ? trim($url) : '';
+        if ($url === '') {
+            return '<div class="vmp-file-link-field__empty text-muted small">Belum ada file dipilih.</div>';
+        }
+
+        $path = (string) wp_parse_url($url, PHP_URL_PATH);
+        $label = basename($path);
+        if ($label === '' || $label === '/' || $label === '\\') {
+            $label = $url;
+        }
+
+        ob_start();
+        ?>
+        <div class="vmp-file-link-field__summary">
+            <div class="vmp-file-link-field__name"><?php echo esc_html($label); ?></div>
+            <a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer" class="vmp-file-link-field__link"><?php echo esc_html($url); ?></a>
         </div>
         <?php
 

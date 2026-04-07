@@ -61,16 +61,46 @@ class CouponController
             $total_products += ($price * $qty);
         }
 
-        $type = get_post_meta($coupon->ID, '_store_coupon_type', true) ?: 'percent';
+        $type = $this->normalize_coupon_type((string) get_post_meta($coupon->ID, '_store_coupon_type', true));
         $value_raw = get_post_meta($coupon->ID, '_store_coupon_value', true);
         $value = is_numeric($value_raw) ? floatval($value_raw) : 0;
+        $scope = (string) get_post_meta($coupon->ID, '_store_coupon_scope', true) === 'shipping' ? 'shipping' : 'product';
+        $min_purchase = max(0, (float) get_post_meta($coupon->ID, '_store_coupon_min_purchase', true));
+        $usage_limit = max(0, (int) get_post_meta($coupon->ID, '_store_coupon_usage_limit', true));
+        $usage_count = max(0, (int) get_post_meta($coupon->ID, '_store_coupon_usage_count', true));
+        $starts_at_raw = (string) get_post_meta($coupon->ID, '_store_coupon_starts_at', true);
+        $starts_ts = $starts_at_raw ? strtotime($starts_at_raw) : 0;
         $expires_at_raw = (string) get_post_meta($coupon->ID, '_store_coupon_expires_at', true);
         $expires_ts = $expires_at_raw ? strtotime($expires_at_raw) : 0;
         $now_ts = current_time('timestamp');
+        if ($starts_ts > 0 && $starts_ts > $now_ts) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Kupon belum mulai berlaku.',
+            ], 400);
+        }
         if ($expires_ts > 0 && $expires_ts <= $now_ts) {
             return new WP_REST_Response([
                 'success' => false,
                 'message' => 'Kupon sudah kadaluarsa.',
+            ], 400);
+        }
+        if ($min_purchase > 0 && $total_products < $min_purchase) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Minimal belanja untuk kupon ini belum terpenuhi.',
+            ], 400);
+        }
+        if ($usage_limit > 0 && $usage_count >= $usage_limit) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Kupon sudah mencapai batas penggunaan.',
+            ], 400);
+        }
+        if ($scope === 'shipping') {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Kupon diskon ongkir hanya bisa dipakai setelah ongkir dipilih.',
             ], 400);
         }
 
@@ -86,8 +116,10 @@ class CouponController
         return new WP_REST_Response([
             'success' => true,
             'code' => get_post_meta($coupon->ID, '_store_coupon_code', true) ?: $code,
+            'scope' => $scope,
             'type' => $type,
             'value' => $value,
+            'min_purchase' => $min_purchase,
             'discount' => $discount,
             'message' => 'Kupon valid.',
         ], 200);
@@ -137,6 +169,11 @@ class CouponController
     private function resolve_price_with_options($product_id, $opts)
     {
         return ProductData::resolve_price_with_options((int) $product_id, is_array($opts) ? $opts : []);
+    }
+
+    private function normalize_coupon_type($type)
+    {
+        return trim((string) $type) === 'percent' ? 'percent' : 'nominal';
     }
 }
 

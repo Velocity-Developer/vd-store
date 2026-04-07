@@ -16,16 +16,19 @@ jQuery(document).ready(function ($) {
         }
 
         const type = String($typeSelect.val() || 'physical');
-        const $weightWrap = fieldWrap('#_store_weight_kg');
-        const $fileWrap = fieldWrap('#_store_digital_file');
+        $('[data-show-if-product-type]').each(function () {
+            const $fieldWrap = $(this);
+            const expectedType = String($fieldWrap.data('show-if-product-type') || '').trim();
+            if (!expectedType) {
+                return;
+            }
 
-        if (type === 'digital') {
-            $weightWrap.hide();
-            $fileWrap.show();
-        } else {
-            $weightWrap.show();
-            $fileWrap.hide();
-        }
+            if (expectedType === type) {
+                $fieldWrap.show();
+            } else {
+                $fieldWrap.hide();
+            }
+        });
     }
 
     function parseAttachmentIds(value) {
@@ -84,6 +87,33 @@ jQuery(document).ready(function ($) {
                     '<button type="button" class="btn-close vmp-media-field__remove" aria-label="Hapus gambar"></button>' +
                     '</div>';
             }).join('') +
+            '</div>';
+    }
+
+    function renderFileLinkPreview(preview, url, emptyText) {
+        if (!preview) {
+            return;
+        }
+
+        const value = String(url || '').trim();
+        if (!value) {
+            preview.innerHTML = '<div class="vmp-file-link-field__empty text-muted small">' + emptyText + '</div>';
+            return;
+        }
+
+        let label = value;
+        try {
+            const parsed = new URL(value, window.location.origin);
+            const path = String(parsed.pathname || '');
+            const parts = path.split('/').filter(Boolean);
+            if (parts.length) {
+                label = parts[parts.length - 1];
+            }
+        } catch (e) {}
+
+        preview.innerHTML = '<div class="vmp-file-link-field__summary">' +
+            '<div class="vmp-file-link-field__name">' + label + '</div>' +
+            '<a class="vmp-file-link-field__link" href="' + value + '" target="_blank" rel="noopener noreferrer">' + value + '</a>' +
             '</div>';
     }
 
@@ -230,7 +260,90 @@ jQuery(document).ready(function ($) {
         });
     }
 
+    function initFileLinkFields() {
+        if (!window.wp || !wp.media) {
+            return;
+        }
+
+        const cfg = window.vmpSettings || {};
+        const currentUserId = Number(cfg.currentUserId || 0);
+        const canManageOptions = !!cfg.canManageOptions;
+
+        document.querySelectorAll('.vmp-file-link-field').forEach(function (field) {
+            const input = field.querySelector('.vmp-file-link-field__input');
+            const preview = field.querySelector('.vmp-file-link-field__preview');
+            const openBtn = field.querySelector('.vmp-file-link-field__open');
+            const clearBtn = field.querySelector('.vmp-file-link-field__clear');
+            const emptyText = preview && preview.dataset.placeholder
+                ? preview.dataset.placeholder
+                : 'Belum ada file dipilih.';
+
+            if (!input || !preview || !openBtn || !clearBtn) {
+                return;
+            }
+
+            const syncButtons = function () {
+                clearBtn.disabled = String(input.value || '').trim() === '';
+            };
+
+            const syncPreview = function () {
+                renderFileLinkPreview(preview, input.value, emptyText);
+                syncButtons();
+            };
+
+            openBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                const frame = wp.media({
+                    title: openBtn.dataset.title || 'Pilih File',
+                    button: {
+                        text: openBtn.dataset.button || 'Gunakan file ini',
+                    },
+                    multiple: false,
+                    library: {
+                        ...(currentUserId > 0 && !canManageOptions ? { author: currentUserId } : {}),
+                    },
+                });
+
+                frame.on('open', function () {
+                    if (currentUserId > 0 && !canManageOptions) {
+                        const library = frame.state().get('library');
+                        if (library && library.props) {
+                            library.props.set({
+                                author: currentUserId,
+                            });
+                        }
+                    }
+                });
+
+                frame.on('select', function () {
+                    const attachment = frame.state().get('selection').first();
+                    if (!attachment) {
+                        return;
+                    }
+
+                    const data = attachment.toJSON();
+                    input.value = String(data.url || '');
+                    syncPreview();
+                });
+
+                frame.open();
+            });
+
+            clearBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                input.value = '';
+                syncPreview();
+            });
+
+            input.addEventListener('input', syncPreview);
+            input.addEventListener('change', syncPreview);
+            syncPreview();
+        });
+    }
+
     $doc.on('change', '#_store_product_type', toggleProductTypeFields);
     toggleProductTypeFields();
     initMediaFields();
+    initFileLinkFields();
 });

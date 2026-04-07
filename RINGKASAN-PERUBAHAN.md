@@ -52,6 +52,7 @@ Yang sudah dipusatkan ke `VD Store`:
 - baca/tulis meta produk canonical
 - mapping data produk
 - query/filter/sort produk dasar
+- galeri produk inti
 - related products dasar
 - recently viewed dasar
 
@@ -63,6 +64,8 @@ File penting:
 - `src/Domain/Product/ProductQuery.php`
 - `src/Domain/Product/RelatedProducts.php`
 - `src/Domain/Product/RecentlyViewed.php`
+- `templates/frontend/components/product-gallery.php`
+- `templates/frontend/pages/recently-viewed.php`
 
 ### Kenapa ini penting
 
@@ -72,6 +75,22 @@ Supaya:
 - admin form dan frontend seller memakai kontrak field yang sama
 - addon tidak perlu bikin ulang logic produk
 - lebih mudah menambah field baru ke depan
+
+### Tambahan penting
+
+Metrik produk umum sekarang juga sudah menjadi milik `VD Store`.
+
+Yang sekarang dianggap canonical di core:
+
+- `_store_sold_count`
+- `_store_review_count`
+- `_store_rating_average`
+
+Artinya:
+
+- toko online biasa bisa memakai data ini tanpa addon marketplace
+- `VD Marketplace` tinggal membaca metrik produk dari core
+- metrik produk tidak lagi dianggap data khusus marketplace
 
 ---
 
@@ -104,6 +123,16 @@ Target strukturnya sekarang:
 - cukup tambah definisi field di `ProductSchema`
 - kalau tipe field-nya sudah didukung, tidak perlu bikin ulang form dari nol
 - kalau tipe field baru belum ada, baru `ProductFields` ikut ditambah
+
+### Catatan tambahan
+
+Fitur **badge / label produk umum** sekarang sudah tidak dipakai lagi sebagai fitur aktif.
+
+Jadi:
+
+- field `Label Produk` sudah dicabut dari schema utama
+- kartu produk dan single product tidak lagi menampilkan badge label umum
+- yang masih relevan tetap dipakai, misalnya badge digital dan badge diskon
 
 ---
 
@@ -156,6 +185,39 @@ Addon sekarang hanya menambah layer marketplace di atas order core, seperti:
 - shipping group per seller
 - status per seller
 - fulfillment seller
+
+### Tambahan penting untuk kupon
+
+Kupon bersama sekarang juga diarahkan ke kontrak meta milik `VD Store`.
+
+Meta kupon canonical yang dipakai:
+
+- `_store_coupon_code`
+- `_store_coupon_scope`
+- `_store_coupon_type`
+- `_store_coupon_value`
+- `_store_coupon_min_purchase`
+- `_store_coupon_usage_limit`
+- `_store_coupon_usage_count`
+- `_store_coupon_starts_at`
+- `_store_coupon_expires_at`
+
+Meta order canonical saat kupon dipakai:
+
+- `_store_order_coupon_code`
+- `_store_order_discount_type`
+- `_store_order_discount_value`
+- `_store_order_discount_amount`
+- `_store_order_coupon_id`
+- `_store_order_coupon_scope`
+- `_store_order_coupon_product_discount`
+- `_store_order_coupon_shipping_discount`
+
+Artinya:
+
+- toko online biasa dan marketplace sekarang punya dasar meta kupon yang sama
+- data inti kupon tidak perlu dibuat ulang dengan nama berbeda
+- kalau nanti mau tambah field kupon baru, titik utamanya ada di core
 
 ---
 
@@ -285,7 +347,27 @@ Tanpa perlu mengambil alih seluruh halaman tracking.
 
 ---
 
-## 10. User Data Customer Sekarang Satu Sumber
+## 10. Single Product Core Sekarang Lebih Lengkap
+
+Halaman single product bawaan `VD Store` sekarang tidak lagi terlalu minimal.
+
+Yang sudah ditambahkan:
+
+- ringkasan metrik produk umum:
+  - rating rata-rata
+  - jumlah ulasan
+  - jumlah terjual
+- slot hook setelah ringkasan produk
+- section `Produk Terkait` di bawah deskripsi
+
+Manfaatnya:
+
+- halaman single tetap kuat walau tanpa addon
+- saat `VD Marketplace` aktif, addon cukup menambah info seller lewat hook, bukan mengambil alih template
+
+---
+
+## 11. User Data Customer Sekarang Satu Sumber
 
 Untuk data customer umum, `VD Store` sekarang diposisikan sebagai source of truth.
 
@@ -302,7 +384,7 @@ Ini penting supaya walaupun UI bisa berbeda saat addon aktif, data customer dasa
 
 ---
 
-## 11. Kenapa Folder `Domain` Dipakai
+## 12. Kenapa Folder `Domain` Dipakai
 
 Di `VD Store` sekarang ada banyak file di folder `src/Domain/...`.
 
@@ -331,7 +413,7 @@ Jadi:
 
 ---
 
-## 12. Arah Teknis Sekarang
+## 13. Arah Teknis Sekarang
 
 Secara praktis, arah sistem sekarang adalah:
 
@@ -359,7 +441,7 @@ Ini membuat arsitektur lebih aman untuk:
 
 ---
 
-## 13. Ringkasan Singkat
+## 14. Ringkasan Singkat
 
 Kalau ingin dijelaskan sangat singkat:
 
@@ -371,7 +453,7 @@ Kalau ingin dijelaskan sangat singkat:
 
 ---
 
-## 14. Catatan untuk Tim
+## 15. Catatan untuk Tim
 
 Saat menambah fitur baru, gunakan aturan ini:
 
@@ -379,4 +461,3 @@ Saat menambah fitur baru, gunakan aturan ini:
 - kalau fitur itu hanya dibutuhkan marketplace, masuk ke `VD Marketplace`
 - kalau addon hanya perlu menambah UI di halaman core, usahakan pakai hook/filter, jangan override total
 - kalau menambah field produk, mulai dari `ProductSchema`
-

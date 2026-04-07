@@ -157,16 +157,31 @@ class CheckoutController
             return new WP_REST_Response(['message' => 'Keranjang kosong'], 400);
         }
 
+        $coupon_id = 0;
         if ($coupon_code !== '') {
             $coupon = $this->find_coupon_by_code($coupon_code);
             if ($coupon) {
-                $type = get_post_meta($coupon->ID, '_store_coupon_type', true) ?: 'percent';
+                $coupon_id = (int) $coupon->ID;
+                $type = $this->normalize_coupon_type((string) get_post_meta($coupon->ID, '_store_coupon_type', true));
                 $value_raw = get_post_meta($coupon->ID, '_store_coupon_value', true);
                 $value = is_numeric($value_raw) ? floatval($value_raw) : 0;
+                $scope = (string) get_post_meta($coupon->ID, '_store_coupon_scope', true) === 'shipping' ? 'shipping' : 'product';
+                $min_purchase = max(0, (float) get_post_meta($coupon->ID, '_store_coupon_min_purchase', true));
+                $usage_limit = max(0, (int) get_post_meta($coupon->ID, '_store_coupon_usage_limit', true));
+                $usage_count = max(0, (int) get_post_meta($coupon->ID, '_store_coupon_usage_count', true));
+                $starts_at_raw = (string) get_post_meta($coupon->ID, '_store_coupon_starts_at', true);
+                $starts_ts = $starts_at_raw ? strtotime($starts_at_raw) : 0;
                 $expires_at_raw = (string) get_post_meta($coupon->ID, '_store_coupon_expires_at', true);
                 $expires_ts = $expires_at_raw ? strtotime($expires_at_raw) : 0;
                 $now_ts = current_time('timestamp');
-                if (!($expires_ts > 0 && $expires_ts <= $now_ts)) {
+                $is_started = !($starts_ts > 0 && $starts_ts > $now_ts);
+                $is_not_expired = !($expires_ts > 0 && $expires_ts <= $now_ts);
+                $is_min_purchase_met = !($min_purchase > 0 && $total < $min_purchase);
+                $is_usage_available = !($usage_limit > 0 && $usage_count >= $usage_limit);
+                if ($scope === 'shipping') {
+                    $coupon_id = 0;
+                    $coupon_code = '';
+                } elseif ($is_started && $is_not_expired && $is_min_purchase_met && $is_usage_available) {
                     if ($type === 'percent') {
                         $pct = max(0, min(100, $value));
                         $discount_amount = round(($total * $pct) / 100);
@@ -178,6 +193,9 @@ class CheckoutController
                         $discount_value = $discount_amount;
                     }
                     $discount_amount = min($discount_amount, $total);
+                } else {
+                    $coupon_id = 0;
+                    $coupon_code = '';
                 }
             }
         }
@@ -238,6 +256,10 @@ class CheckoutController
         }
         if (isset($actor_lock_key)) {
             delete_transient($actor_lock_key);
+        }
+        if ($coupon_id > 0) {
+            $usage_count = (int) get_post_meta($coupon_id, '_store_coupon_usage_count', true);
+            update_post_meta($coupon_id, '_store_coupon_usage_count', $usage_count + 1);
         }
 
         global $wpdb;
@@ -340,5 +362,10 @@ class CheckoutController
             return $post;
         }
         return null;
+    }
+
+    private function normalize_coupon_type($type)
+    {
+        return trim((string) $type) === 'percent' ? 'percent' : 'nominal';
     }
 }

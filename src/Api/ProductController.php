@@ -124,7 +124,6 @@ class ProductController
                     'sale_price' => $saleNum,
                     'sale_active' => $saleActive,
                     'discount_percent' => $percent,
-                    'label' => (string) ($product['label'] ?? ''),
                 ];
             }
             wp_reset_postdata();
@@ -186,10 +185,12 @@ class ProductController
             'image' => $data['image'],
             'link' => $data['link'],
             'sale_price' => $data['sale_price'],
-            'label' => $data['label'],
             'sku' => $data['sku'],
             'min_order' => $data['min_order'],
             'weight_kg' => $data['weight_kg'],
+            'sold_count' => $data['sold_count'],
+            'review_count' => $data['review_count'],
+            'rating_average' => $data['rating_average'],
             'gallery_ids' => $data['gallery_ids'],
             'variant_name' => $data['variant_name'],
             'variant_options' => $data['variant_options'],

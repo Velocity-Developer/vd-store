@@ -52,23 +52,17 @@ class ProductMeta
 
     public static function label($product_id)
     {
-        $label = (string) self::get($product_id, 'label', '');
-        return self::canonical_label($label);
+        return '';
     }
 
     public static function canonical_label($label)
     {
-        $label = sanitize_key((string) $label);
-        $map = [
-            'best' => 'label-best',
-            'limited' => 'label-limited',
-            'new' => 'label-new',
-            'label-best' => 'label-best',
-            'label-limited' => 'label-limited',
-            'label-new' => 'label-new',
-        ];
+        return '';
+    }
 
-        return $map[$label] ?? '';
+    public static function canonical_key($key)
+    {
+        return self::meta_key($key);
     }
 
     public static function meta_key($key)
@@ -83,7 +77,9 @@ class ProductMeta
             'stock' => '_store_stock',
             'min_order' => '_store_min_order',
             'weight' => '_store_weight_kg',
-            'label' => '_store_label',
+            'sold_count' => '_store_sold_count',
+            'review_count' => '_store_review_count',
+            'rating_average' => '_store_rating_average',
             'gallery_ids' => '_store_gallery_ids',
             'variant_name' => '_store_option_name',
             'variant_options' => '_store_options',

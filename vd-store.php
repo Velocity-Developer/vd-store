@@ -152,16 +152,6 @@ function wps_icon($args = [])
 }
 function wps_label_badge_html($product_id)
 {
-    $lbl = get_post_meta((int) $product_id, '_store_label', true);
-    if (is_string($lbl) && $lbl !== '') {
-        $txt = $lbl === 'label-best' ? 'Best Seller' : ($lbl === 'label-limited' ? 'Limited' : ($lbl === 'label-new' ? 'New' : ''));
-        if ($txt !== '') {
-            return '<span class="wps-label-badge ' . esc_attr($lbl) . '">'
-                . wps_icon(['name' => 'heart', 'size' => 10, 'stroke_color' => '#ffffff'])
-                . '<span class="txt wps-text-white wps-text-xs">' . esc_html($txt) . '</span>'
-                . '</span>';
-        }
-    }
     return '';
 }
 function wps_discount_badge_html($product_id)

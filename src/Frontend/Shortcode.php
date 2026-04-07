@@ -6,6 +6,7 @@ use WpStore\Domain\Product\ProductData;
 use WpStore\Domain\Product\ProductMeta;
 use WpStore\Domain\Product\ProductQuery;
 use WpStore\Domain\Product\RelatedProducts;
+use WpStore\Domain\Product\RecentlyViewed;
 
 class Shortcode
 {
@@ -14,6 +15,8 @@ class Shortcode
         add_shortcode('wp_store_shop', [$this, 'render_shop']);
         add_shortcode('wp_store_single', [$this, 'render_single']);
         add_shortcode('wp_store_related', [$this, 'render_related']);
+        add_shortcode('wp_store_gallery', [$this, 'render_gallery']);
+        add_shortcode('wp_store_recently_viewed', [$this, 'render_recently_viewed']);
         add_shortcode('wp_store_thumbnail', [$this, 'render_thumbnail']);
         add_shortcode('wp_store_price', [$this, 'render_price']);
         add_shortcode('wp_store_add_to_cart', [$this, 'render_add_to_cart']);
@@ -113,7 +116,7 @@ class Shortcode
         ];
     }
 
-    private function apply_product_filters(array $args, $sort, $min_price, $max_price, array $cats, array $labels)
+    private function apply_product_filters(array $args, $sort, $min_price, $max_price, array $cats)
     {
         $meta_query = [];
 
@@ -135,24 +138,6 @@ class Shortcode
             ];
         }
 
-        if (!empty($labels)) {
-            $or = ['relation' => 'OR'];
-            foreach ($labels as $label_key) {
-                $canonical = ProductMeta::canonical_label($label_key);
-                if ($canonical !== '') {
-                    $or[] = [
-                        'key' => '_store_label',
-                        'value' => $canonical,
-                        'compare' => '=',
-                    ];
-                }
-            }
-
-            if (count($or) > 1) {
-                $meta_query[] = $or;
-            }
-        }
-
         if (!empty($meta_query)) {
             $args['meta_query'] = ['relation' => 'AND'] + $meta_query;
         }
@@ -172,6 +157,14 @@ class Shortcode
             $args['order'] = 'ASC';
         } elseif ($sort === 'za') {
             $args['orderby'] = 'title';
+            $args['order'] = 'DESC';
+        } elseif ($sort === 'sold_desc') {
+            $args['meta_key'] = '_store_sold_count';
+            $args['orderby'] = 'meta_value_num';
+            $args['order'] = 'DESC';
+        } elseif ($sort === 'rating_desc') {
+            $args['meta_key'] = '_store_rating_average';
+            $args['orderby'] = 'meta_value_num';
             $args['order'] = 'DESC';
         } elseif ($sort === 'cheap') {
             $args['meta_key'] = '_store_price';
@@ -244,17 +237,6 @@ class Shortcode
                 if ($id > 0) $cats[] = $id;
             }
         }
-        $labels = [];
-        if (isset($_GET['labels'])) {
-            $raw = is_array($_GET['labels']) ? $_GET['labels'] : [$_GET['labels']];
-            foreach ($raw as $l) {
-                $key = sanitize_key($l);
-                if (in_array($key, ['best', 'limited', 'new'], true)) {
-                    $labels[] = $key;
-                }
-            }
-        }
-
         $args = [
             'post_type' => 'store_product',
             'posts_per_page' => $per_page,
@@ -269,7 +251,7 @@ class Shortcode
             }
         }
 
-        $args = $this->apply_product_filters($args, $sort, $min_price, $max_price, $cats, $labels);
+        $args = $this->apply_product_filters($args, $sort, $min_price, $max_price, $cats);
 
         $query = new \WP_Query($args);
         $max_pages = (int) $query->max_num_pages;
@@ -689,12 +671,96 @@ class Shortcode
         ]);
     }
 
-    public function render_filters($atts = [])
+    public function render_gallery($atts = [])
+    {
+        wp_enqueue_script('wp-store-frontend');
+        wp_enqueue_style('wp-store-flickity');
+
+        $atts = shortcode_atts([
+            'id' => 0,
+        ], $atts);
+        $id = $this->resolve_product_id((int) $atts['id']);
+        if ($id <= 0 || get_post_type($id) !== 'store_product') {
+            return '';
+        }
+
+        $product = $this->product_payload($id);
+        if ($product === null) {
+            return '';
+        }
+
+        $featured = get_the_post_thumbnail_url($id, 'large');
+        $fallback = WP_STORE_URL . 'assets/frontend/img/noimg.webp';
+        $image_src = $featured ?: ($product['image'] ?: $fallback);
+        $gallery_raw = get_post_meta((int) $id, '_store_gallery_ids', true);
+        $items = [];
+        $featured_thumb = get_the_post_thumbnail_url((int) $id, 'thumbnail');
+        $featured_thumb = $featured_thumb ? $featured_thumb : $image_src;
+        $items[] = [
+            'full' => $image_src,
+            'thumb' => $featured_thumb,
+        ];
+
+        if (is_array($gallery_raw) && !empty($gallery_raw)) {
+            foreach ($gallery_raw as $k => $v) {
+                $aid = is_numeric($k) ? (int) $k : 0;
+                $full = $aid ? (wp_get_attachment_image_url($aid, 'large') ?: (is_string($v) ? $v : '')) : (is_string($v) ? $v : '');
+                $thumb = $aid ? (wp_get_attachment_image_url($aid, 'thumbnail') ?: $full) : $full;
+                if ($full) {
+                    $items[] = [
+                        'full' => $full,
+                        'thumb' => $thumb,
+                    ];
+                }
+            }
+        }
+
+        return Template::render('components/product-gallery', [
+            'id' => (int) $id,
+            'title' => (string) $product['title'],
+            'image_src' => (string) $image_src,
+            'items' => $items,
+        ]);
+    }
+
+    public function render_recently_viewed($atts = [])
     {
         $atts = shortcode_atts([
-            'show_labels' => '1',
+            'limit' => 4,
+            'exclude_current' => 'true',
+            'title' => __('Produk yang Baru Dilihat', 'wp-store'),
         ], $atts);
-        $show_labels = in_array((string)$atts['show_labels'], ['1', 'true', 'yes'], true);
+
+        $exclude_id = filter_var($atts['exclude_current'], FILTER_VALIDATE_BOOLEAN) ? $this->resolve_product_id(0) : 0;
+        $items = [];
+        foreach (RecentlyViewed::items($exclude_id, (int) $atts['limit']) as $item) {
+            if (!is_array($item) || empty($item['id'])) {
+                continue;
+            }
+
+            $items[] = [
+                'id' => (int) $item['id'],
+                'title' => (string) ($item['title'] ?? ''),
+                'link' => (string) ($item['link'] ?? '#'),
+                'image' => (string) ($item['image'] ?? ''),
+                'price' => $item['price'] ?? null,
+                'stock' => $item['stock'] ?? null,
+            ];
+        }
+
+        if (empty($items)) {
+            return '';
+        }
+
+        return Template::render('pages/recently-viewed', [
+            'title' => (string) $atts['title'],
+            'items' => $items,
+            'currency' => $this->get_currency(),
+        ]);
+    }
+
+    public function render_filters($atts = [])
+    {
         $terms = get_terms([
             'taxonomy' => 'store_product_cat',
             'hide_empty' => false,
@@ -762,7 +828,6 @@ class Shortcode
             'min_price' => isset($_GET['min_price']) ? (float) $_GET['min_price'] : '',
             'max_price' => isset($_GET['max_price']) ? (float) $_GET['max_price'] : '',
             'cats' => [],
-            'labels' => [],
         ];
         if (isset($_GET['cats'])) {
             $raw = is_array($_GET['cats']) ? $_GET['cats'] : [$_GET['cats']];
@@ -777,15 +842,6 @@ class Shortcode
                 $tid = (int) $term->term_id;
                 if ($tid > 0) {
                     $current['cats'][] = $tid;
-                }
-            }
-        }
-        if (isset($_GET['labels'])) {
-            $raw = is_array($_GET['labels']) ? $_GET['labels'] : [$_GET['labels']];
-            foreach ($raw as $l) {
-                $key = sanitize_key($l);
-                if (in_array($key, ['best', 'limited', 'new'], true)) {
-                    $current['labels'][] = $key;
                 }
             }
         }
@@ -811,7 +867,6 @@ class Shortcode
         return Template::render('components/filters', [
             'categories' => $categories,
             'current' => $current,
-            'show_labels' => $show_labels,
             'reset_url' => $reset_url,
             'price_min_global' => $min_price_global,
             'price_max_global' => $max_price_global,
@@ -826,7 +881,7 @@ class Shortcode
             'per_page' => 12,
         ], $atts);
         wp_enqueue_script('alpinejs');
-        $filters = $this->render_filters(['show_labels' => '1']);
+        $filters = $this->render_filters();
         $shop = $this->render_shop(['per_page' => $atts['per_page']]);
         ob_start();
 ?>

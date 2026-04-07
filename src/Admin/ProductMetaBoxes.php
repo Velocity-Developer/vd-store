@@ -90,6 +90,11 @@ class ProductMetaBoxes
             .vmp-media-field__remove::before{content:"×";font-size:18px;font-weight:700}
             .vmp-media-field__remove:hover{background:#b32d2e}
             .vmp-media-field__remove:focus{outline:none;box-shadow:0 0 0 2px #72aee6}
+            .vmp-file-link-field__preview{margin-top:10px}
+            .vmp-file-link-field__empty{padding:14px;border:1px dashed #c3c4c7;border-radius:8px;background:#f6f7f7;color:#646970}
+            .vmp-file-link-field__summary{padding:12px 14px;border:1px solid #dcdcde;border-radius:8px;background:#fff}
+            .vmp-file-link-field__name{font-weight:600;margin-bottom:4px;word-break:break-word}
+            .vmp-file-link-field__link{word-break:break-all}
         </style>
         <?php
         echo ProductFields::render_sections((int) $post->ID, 'admin'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
