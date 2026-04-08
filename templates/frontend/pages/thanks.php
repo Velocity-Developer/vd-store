@@ -154,7 +154,9 @@ if (!$order_number) {
                 </div>
                 <div>
                     <div class="wps-text-lg wps-font-medium wps-text-gray-900">Informasi Pembayaran</div>
-                    <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>
+                    <?php if (!in_array($payment_method, ['duitku', 'qris'])) : ?>
+                        <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>
+                    <?php endif; ?>
                     <div class="wps-mt-3">
                         <div class="wps-flex wps-justify-between wps-items-center">
                             <div class="wps-text-sm wps-text-gray-500">Total yang harus dibayar</div>
@@ -174,6 +176,78 @@ if (!$order_number) {
                             </div>
                             <div class="wps-text-xs wps-text-gray-500 wps-mt-2">Scan untuk membayar via QRIS.</div>
                         </div>
+                    <?php elseif ($payment_method === 'duitku') : ?>
+                         <?php
+                         $reference = get_post_meta($order_id, '_store_order_payment_token', true);
+                         if (empty($reference)) {
+                             $reference = get_post_meta($order_id, 'payment_token', true);
+                         }
+                         if (empty($reference)) {
+                             $reference = get_post_meta($order_id, 'duitku_reference', true);
+                         }
+                         
+                         $mode = $settings['duitku_mode'] ?? 'sandbox';
+                             $js_url = ($mode === 'production') 
+                                 ? 'https://app-prod.duitku.com/lib/js/duitku.js'
+                                 : 'https://app-sandbox.duitku.com/lib/js/duitku.js';
+                             ?>
+                             <div class="wps-mt-3 wps-p-4" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; text-align:center;">
+                             <div class="wps-text-sm wps-text-gray-900 wps-font-medium" style="margin-bottom:12px;">Pembayaran via Duitku</div>
+                             <div class="wps-mt-2">
+                                 <button type="button" id="duitku-pay-btn" class="wps-btn wps-btn-primary wps-w-full">
+                                     <?php echo wps_icon(['name' => 'credit-card', 'size' => 18, 'class' => 'wps-mr-2']); ?>
+                                     Bayar Sekarang
+                                 </button>
+                             </div>
+                             <div class="wps-text-xs wps-text-gray-500 wps-mt-3">Klik tombol di atas untuk melanjutkan pembayaran aman dengan Duitku.</div>
+                         </div>
+                         <script src="<?php echo esc_url($js_url); ?>"></script>
+                         <script type="text/javascript">
+                             (function() {
+                                 function initDuitku() {
+                                     const btn = document.getElementById('duitku-pay-btn');
+                                     if (!btn) return;
+                                     
+                                     btn.addEventListener('click', function(e) {
+                                         e.preventDefault();
+                                         const ref = <?php echo json_encode($reference); ?>;
+                                         if (typeof checkout !== 'undefined' && ref) {
+                                             checkout.process(ref, {
+                                                 defaultLanguage: "id",
+                                                 successEvent: function(result) {
+                                                     console.log('success', result);
+                                                     window.location.reload();
+                                                 },
+                                                 pendingEvent: function(result) {
+                                                     console.log('pending', result);
+                                                     window.location.reload();
+                                                 },
+                                                 errorEvent: function(result) {
+                                                     console.log('error', result);
+                                                     alert('Terjadi kesalahan pembayaran. Silakan coba lagi.');
+                                                 },
+                                                 closeEvent: function(result) {
+                                                     console.log('customer closed the popup', result);
+                                                 }
+                                             });
+                                         } else {
+                                             if (typeof checkout === 'undefined') {
+                                                 alert('Duitku Library belum termuat (checkout undefined). Silakan refresh halaman.');
+                                             } else if (!ref) {
+                                                 alert('Token pembayaran tidak ditemukan (ref empty). Silakan hubungi admin.');
+                                             } else {
+                                                 alert('Sistem pembayaran belum siap. Silakan refresh halaman.');
+                                             }
+                                         }
+                                     });
+                                 }
+                                 if (document.readyState === 'loading') {
+                                     document.addEventListener('DOMContentLoaded', initDuitku);
+                                 } else {
+                                     initDuitku();
+                                 }
+                             })();
+                         </script>
                     <?php else : ?>
                         <?php if (!empty($bank_accounts)) : ?>
                             <div class="wps-mt-3">

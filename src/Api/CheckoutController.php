@@ -190,6 +190,7 @@ class CheckoutController
         $order_number = date('Ymd') . $order_id . $rand_suffix;
         update_post_meta($order_id, '_store_order_number', $order_number);
 
+        update_post_meta($order_id, '_store_order_name', $name);
         update_post_meta($order_id, '_store_order_email', $email);
         if (is_user_logged_in()) {
             update_post_meta($order_id, '_store_order_user_id', get_current_user_id());
@@ -225,23 +226,6 @@ class CheckoutController
         if (!get_post_meta($order_id, '_store_order_status', true)) {
             update_post_meta($order_id, '_store_order_status', apply_filters('wp_store_default_order_status', 'awaiting_payment', $order_id, $data));
         }
-        $payment_info = apply_filters('wp_store_payment_init', [
-            'payment_url' => '',
-            'payment_token' => '',
-            'expires_at' => 0,
-            'extra' => new \stdClass(),
-        ], $order_id, $payment_method, $data, $order_total);
-        if (is_array($payment_info)) {
-            $purl = isset($payment_info['payment_url']) ? (string) $payment_info['payment_url'] : '';
-            $ptok = isset($payment_info['payment_token']) ? (string) $payment_info['payment_token'] : '';
-            $pexp = isset($payment_info['expires_at']) ? (int) $payment_info['expires_at'] : 0;
-            $pextra = isset($payment_info['extra']) && is_array($payment_info['extra']) ? $payment_info['extra'] : new \stdClass();
-            update_post_meta($order_id, '_store_order_payment_url', $purl);
-            update_post_meta($order_id, '_store_order_payment_token', $ptok);
-            update_post_meta($order_id, '_store_order_payment_expires_at', $pexp);
-            update_post_meta($order_id, '_store_order_payment_extra', $pextra);
-            do_action('wp_store_payment_initialized', $order_id, $payment_info);
-        }
 
         $address = isset($data['address']) ? sanitize_textarea_field($data['address']) : '';
         $province_id = isset($data['province_id']) ? sanitize_text_field($data['province_id']) : '';
@@ -265,6 +249,24 @@ class CheckoutController
         update_post_meta($order_id, '_store_order_shipping_courier', $shipping_courier);
         update_post_meta($order_id, '_store_order_shipping_service', $shipping_service);
         update_post_meta($order_id, '_store_order_shipping_cost', $shipping_cost);
+
+        $payment_info = apply_filters('wp_store_payment_init', [
+            'payment_url' => '',
+            'payment_token' => '',
+            'expires_at' => 0,
+            'extra' => new \stdClass(),
+        ], $order_id, $payment_method, $data, $order_total);
+        if (is_array($payment_info)) {
+            $purl = isset($payment_info['payment_url']) ? (string) $payment_info['payment_url'] : '';
+            $ptok = isset($payment_info['payment_token']) ? (string) $payment_info['payment_token'] : '';
+            $pexp = isset($payment_info['expires_at']) ? (int) $payment_info['expires_at'] : 0;
+            $pextra = isset($payment_info['extra']) && is_array($payment_info['extra']) ? $payment_info['extra'] : new \stdClass();
+            update_post_meta($order_id, '_store_order_payment_url', $purl);
+            update_post_meta($order_id, '_store_order_payment_token', $ptok);
+            update_post_meta($order_id, '_store_order_payment_expires_at', $pexp);
+            update_post_meta($order_id, '_store_order_payment_extra', $pextra);
+            do_action('wp_store_payment_initialized', $order_id, $payment_info);
+        }
 
         global $wpdb;
         $table = $wpdb->prefix . 'store_carts';

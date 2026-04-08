@@ -327,6 +327,78 @@ if (!$order_number) {
                                 </div>
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-2">Scan untuk membayar via QRIS.</div>
                             </div>
+                        <?php elseif ($payment_method === 'duitku') : ?>
+                            <?php
+                            $reference = get_post_meta($order_id, '_store_order_payment_token', true);
+                            if (empty($reference)) {
+                                $reference = get_post_meta($order_id, 'payment_token', true);
+                            }
+                            if (empty($reference)) {
+                                $reference = get_post_meta($order_id, 'duitku_reference', true);
+                            }
+                            
+                            $mode = $settings['duitku_mode'] ?? 'sandbox';
+                            $js_url = ($mode === 'production') 
+                                ? 'https://app-prod.duitku.com/lib/js/duitku.js'
+                                : 'https://app-sandbox.duitku.com/lib/js/duitku.js';
+                            ?>
+                            <div class="wps-mt-3 wps-p-4" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; text-align:center;">
+                                <div class="wps-text-sm wps-text-gray-900 wps-font-medium" style="margin-bottom:12px;">Pembayaran via Duitku</div>
+                                <div class="wps-mt-2">
+                                    <button type="button" id="duitku-pay-btn" class="wps-btn wps-btn-primary wps-w-full">
+                                        <?php echo wps_icon(['name' => 'credit-card', 'size' => 18, 'class' => 'wps-mr-2']); ?>
+                                        Bayar Sekarang
+                                    </button>
+                                </div>
+                                <div class="wps-text-xs wps-text-gray-500 wps-mt-3">Klik tombol di atas untuk melanjutkan pembayaran aman dengan Duitku.</div>
+                            </div>
+                            <script src="<?php echo esc_url($js_url); ?>"></script>
+                            <script type="text/javascript">
+                                (function() {
+                                    function initDuitku() {
+                                        const btn = document.getElementById('duitku-pay-btn');
+                                        if (!btn) return;
+                                        
+                                        btn.addEventListener('click', function(e) {
+                                            e.preventDefault();
+                                            const ref = <?php echo json_encode($reference); ?>;
+                                            if (typeof checkout !== 'undefined' && ref) {
+                                                checkout.process(ref, {
+                                                    defaultLanguage: "id",
+                                                    successEvent: function(result) {
+                                                        console.log('success', result);
+                                                        window.location.reload();
+                                                    },
+                                                    pendingEvent: function(result) {
+                                                        console.log('pending', result);
+                                                        window.location.reload();
+                                                    },
+                                                    errorEvent: function(result) {
+                                                        console.log('error', result);
+                                                        alert('Terjadi kesalahan pembayaran. Silakan coba lagi.');
+                                                    },
+                                                    closeEvent: function(result) {
+                                                        console.log('customer closed the popup', result);
+                                                    }
+                                                });
+                                            } else {
+                                                if (typeof checkout === 'undefined') {
+                                                    alert('Duitku Library belum termuat (checkout undefined). Silakan refresh halaman.');
+                                                } else if (!ref) {
+                                                    alert('Token pembayaran tidak ditemukan (ref empty). Silakan hubungi admin.');
+                                                } else {
+                                                    alert('Sistem pembayaran belum siap. Silakan refresh halaman.');
+                                                }
+                                            }
+                                        });
+                                    }
+                                    if (document.readyState === 'loading') {
+                                        document.addEventListener('DOMContentLoaded', initDuitku);
+                                    } else {
+                                        initDuitku();
+                                    }
+                                })();
+                            </script>
                         <?php else : ?>
                             <?php if (!empty($bank_accounts)) : ?>
                                 <div class="wps-mt-3">
@@ -343,30 +415,32 @@ if (!$order_number) {
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-4">Setelah pembayaran, kirim bukti transfer melalui kontak yang tersedia atau tunggu konfirmasi dari kami.</div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <?php
-                        $ajax_url = admin_url('admin-ajax.php');
-                        $nonce_upload = wp_create_nonce('wp_store_upload_payment_proof');
-                        ?>
-                        <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-6">Upload Bukti Transfer</div>
-                        <form id="wps-upload-proof" action="<?php echo esc_url($ajax_url); ?>" method="post" enctype="multipart/form-data" class="wps-mt-2">
-                            <input type="hidden" name="action" value="wp_store_upload_payment_proof">
-                            <input type="hidden" name="order_id" value="<?php echo esc_attr($order_id); ?>">
-                            <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce_upload); ?>">
-                            <?php if (!is_user_logged_in()) : ?>
-                                <div class="wps-mb-2">
-                                    <?php echo \WpStore\Frontend\Template::render('components/captcha'); ?>
+                        <?php if ($payment_method !== 'duitku') : ?>
+                            <?php
+                            $ajax_url = admin_url('admin-ajax.php');
+                            $nonce_upload = wp_create_nonce('wp_store_upload_payment_proof');
+                            ?>
+                            <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-6">Upload Bukti Transfer</div>
+                            <form id="wps-upload-proof" action="<?php echo esc_url($ajax_url); ?>" method="post" enctype="multipart/form-data" class="wps-mt-2">
+                                <input type="hidden" name="action" value="wp_store_upload_payment_proof">
+                                <input type="hidden" name="order_id" value="<?php echo esc_attr($order_id); ?>">
+                                <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce_upload); ?>">
+                                <?php if (!is_user_logged_in()) : ?>
+                                    <div class="wps-mb-2">
+                                        <?php echo \WpStore\Frontend\Template::render('components/captcha'); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="wps-flex wps-items-center wps-gap-2">
+                                    <input type="file" name="proof" accept="image/*,.pdf" required class="wps-input">
+                                    <button type="submit" class="wps-btn wps-btn-primary">Upload</button>
                                 </div>
-                            <?php endif; ?>
-                            <div class="wps-flex wps-items-center wps-gap-2">
-                                <input type="file" name="proof" accept="image/*,.pdf" required class="wps-input">
-                                <button type="submit" class="wps-btn wps-btn-primary">Upload</button>
+                                <div class="wps-text-xs wps-text-gray-500 wps-mt-1">Format yang didukung: JPG, PNG, WEBP, PDF.</div>
+                            </form>
+                            <div id="wps-upload-preview" class="wps-mt-2" style="display:none;">
+                                <div class="wps-text-sm wps-text-gray-900 wps-font-medium">Preview</div>
+                                <div class="wps-card wps-p-2" id="wps-upload-preview-box"></div>
                             </div>
-                            <div class="wps-text-xs wps-text-gray-500 wps-mt-1">Format yang didukung: JPG, PNG, WEBP, PDF.</div>
-                        </form>
-                        <div id="wps-upload-preview" class="wps-mt-2" style="display:none;">
-                            <div class="wps-text-sm wps-text-gray-900 wps-font-medium">Preview</div>
-                            <div class="wps-card wps-p-2" id="wps-upload-preview-box"></div>
-                        </div>
+                        <?php endif; ?>
 
                         <script>
                             (function() {
