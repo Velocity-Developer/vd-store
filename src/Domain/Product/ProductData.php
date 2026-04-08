@@ -11,8 +11,9 @@ class ProductData
             return null;
         }
 
-        $price = ProductMeta::get($post_id, 'price', '');
-        $sale_price = ProductMeta::get($post_id, 'sale_price', '');
+        $regular_price = self::resolve_regular_price($post_id);
+        $sale_price = self::resolve_sale_price($post_id);
+        $effective_price = self::resolve_effective_price($post_id);
         $stock = ProductMeta::get($post_id, 'stock', '');
         $image = get_the_post_thumbnail_url($post_id, 'medium');
 
@@ -21,8 +22,9 @@ class ProductData
             'title' => get_the_title($post_id),
             'slug' => get_post_field('post_name', $post_id),
             'excerpt' => wp_trim_words((string) get_post_field('post_content', $post_id), 20),
-            'price' => $price !== '' ? (float) $price : null,
-            'sale_price' => $sale_price !== '' ? (float) $sale_price : null,
+            'price' => $effective_price,
+            'regular_price' => $regular_price,
+            'sale_price' => $sale_price,
             'stock' => $stock !== '' ? (int) $stock : null,
             'image' => $image ? $image : null,
             'link' => get_permalink($post_id),
@@ -39,6 +41,17 @@ class ProductData
             'price_adjustment_name' => (string) ProductMeta::get($post_id, 'price_adjustment_name', ''),
             'price_adjustment_options' => ProductMeta::get_list($post_id, 'price_adjustment_options'),
         ];
+    }
+
+    public static function resolve_regular_price($product_id)
+    {
+        $product_id = (int) $product_id;
+        if (!ProductMeta::is_product($product_id)) {
+            return null;
+        }
+
+        $price = ProductMeta::get($product_id, 'price', '');
+        return ($price !== '' && is_numeric($price)) ? (float) $price : null;
     }
 
     public static function resolve_sale_price($product_id)
@@ -75,6 +88,18 @@ class ProductData
         return (string) ProductMeta::get($product_id, 'product_type', 'physical') === 'digital';
     }
 
+    public static function resolve_effective_price($product_id)
+    {
+        $regular = self::resolve_regular_price((int) $product_id);
+        $sale = self::resolve_sale_price((int) $product_id);
+
+        if ($sale !== null && $sale > 0 && ($regular === null || $regular <= 0 || $sale < $regular)) {
+            return $sale;
+        }
+
+        return $regular;
+    }
+
     public static function weight_grams($product_id, $minimum = 1)
     {
         $weight_kg = ProductMeta::get_number($product_id, 'weight', 0);
@@ -89,7 +114,7 @@ class ProductData
             return 0.0;
         }
 
-        $base = (float) ($product['price'] ?? 0);
+        $base = (float) (self::resolve_effective_price((int) $product_id) ?? 0);
         $adjustment_name = (string) ($product['price_adjustment_name'] ?? '');
         $adjustments = isset($product['price_adjustment_options']) && is_array($product['price_adjustment_options'])
             ? $product['price_adjustment_options']

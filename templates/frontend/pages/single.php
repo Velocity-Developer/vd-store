@@ -32,11 +32,7 @@
         <div style="flex: 1;">
             <h1 class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mb-2"><?php echo esc_html($title); ?></h1>
             <?php echo \WpStore\Frontend\Template::render('components/breadcrumb', ['post_id' => $id]); ?>
-            <div class="wps-text-sm wps-text-gray-900 wps-mb-4">
-                <?php if ($price !== null) : ?>
-                    <?php echo esc_html(($currency ?? 'Rp') . ' ' . number_format_i18n((float) $price, 0)); ?>
-                <?php endif; ?>
-            </div>
+            <?php echo wps_product_price_html((int) $id, ['wrapper_class' => 'wps-mb-4']); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
             <?php
             $single_sold_count = (int) get_post_meta((int) $id, '_store_sold_count', true);
             $single_review_count = (int) get_post_meta((int) $id, '_store_review_count', true);
@@ -66,7 +62,6 @@
                 $min_order = get_post_meta($id, '_store_min_order', true);
                 $weight_kg = get_post_meta($id, '_store_weight_kg', true);
                 $ptype = get_post_meta($id, '_store_product_type', true);
-                $sale_price = get_post_meta($id, '_store_sale_price', true);
                 $terms = get_the_terms($id, 'store_product_cat');
                 $cats = [];
                 if (is_array($terms)) {
@@ -106,18 +101,6 @@
                                 <td style="padding: 8px; color:#6b7280; font-size:12px;">Tipe</td>
                                 <td style="padding: 8px; text-align: right;" class="wps-text-sm wps-text-gray-900">
                                     <?php echo esc_html($ptype === 'digital' ? 'Produk Digital' : 'Produk Fisik'); ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                        <?php
-                        $wps_settings_tmp = get_option('wp_store_settings', []);
-                        $wps_hide_sale_for_guest = !empty($wps_settings_tmp['members_only_discount']) && !is_user_logged_in();
-                        ?>
-                        <?php if ($sale_price !== '' && $sale_price !== null && !$wps_hide_sale_for_guest) : ?>
-                            <tr style="border-top: 1px solid #e5e7eb;">
-                                <td style="padding: 8px; color:#6b7280; font-size:12px;">Harga Promo</td>
-                                <td style="padding: 8px; text-align: right;" class="wps-text-sm wps-text-gray-900">
-                                    <?php echo esc_html(($currency ?? 'Rp') . ' ' . number_format_i18n((float) $sale_price, 0)); ?>
                                 </td>
                             </tr>
                         <?php endif; ?>

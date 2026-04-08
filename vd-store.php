@@ -176,3 +176,87 @@ function wps_discount_badge_html($product_id)
     }
     return '';
 }
+
+function wps_product_price_html($product_id, $args = [])
+{
+    $product_id = (int) $product_id;
+    if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
+        return '';
+    }
+
+    $args = wp_parse_args(is_array($args) ? $args : [], [
+        'countdown' => false,
+        'currency' => '',
+        'wrapper_class' => 'wps-price',
+        'sale_group_class' => 'wps-flex wps-items-baseline wps-gap-2 wps-price-group',
+        'sale_class' => 'wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text',
+        'regular_class' => 'wps-text-sm wps-text-gray-500',
+        'price_class' => 'wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text',
+        'empty_class' => 'wps-text-sm wps-text-gray-500',
+        'show_empty' => true,
+    ]);
+    $countdown_attr = $args['countdown'];
+    $currency = is_string($args['currency']) && $args['currency'] !== ''
+        ? $args['currency']
+        : (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
+
+    $product = \WpStore\Domain\Product\ProductData::map_post($product_id);
+    if ($product === null) {
+        return '';
+    }
+
+    $price = array_key_exists('regular_price', $product) ? $product['regular_price'] : \WpStore\Domain\Product\ProductData::resolve_regular_price($product_id);
+    $sale = array_key_exists('sale_price', $product) ? $product['sale_price'] : \WpStore\Domain\Product\ProductData::resolve_sale_price($product_id);
+    $want_countdown = is_bool($countdown_attr)
+        ? $countdown_attr
+        : in_array(strtolower((string) $countdown_attr), ['1', 'true', 'yes'], true);
+
+    $until_raw = (string) \WpStore\Domain\Product\ProductMeta::get($product_id, 'sale_until', '');
+    $until_ts = $until_raw ? strtotime($until_raw) : 0;
+    $now_ts = current_time('timestamp');
+    $sale_active = $sale !== null
+        && $sale > 0
+        && (($price !== null && $sale < $price) || $price === null)
+        && ($until_ts === 0 || $until_ts > $now_ts);
+
+    $settings = get_option('wp_store_settings', []);
+    if (!empty($settings['members_only_discount']) && !is_user_logged_in()) {
+        $sale_active = false;
+    }
+
+    $wrapper_class = trim((string) $args['wrapper_class']);
+    $sale_group_class = trim((string) $args['sale_group_class']);
+    $sale_class = trim((string) $args['sale_class']);
+    $regular_class = trim((string) $args['regular_class']);
+    $price_class = trim((string) $args['price_class']);
+    $empty_class = trim((string) $args['empty_class']);
+    $show_empty = (bool) $args['show_empty'];
+
+    $html = '<div' . ($wrapper_class !== '' ? ' class="' . esc_attr($wrapper_class) . '"' : '') . '>';
+    if ($sale_active) {
+        $html .= '<div' . ($sale_group_class !== '' ? ' class="' . esc_attr($sale_group_class) . '"' : '') . '>';
+        $html .= '<span' . ($sale_class !== '' ? ' class="' . esc_attr($sale_class) . '"' : '') . '>' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $sale, 0, ',', '.')) . '</span>';
+        if ($price !== null && (float) $price > 0) {
+            $html .= '<span' . ($regular_class !== '' ? ' class="' . esc_attr($regular_class) . '"' : '') . ' style="text-decoration: line-through;">' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $price, 0, ',', '.')) . '</span>';
+        }
+        $html .= '</div>';
+    } else {
+        if ($price !== null) {
+            $html .= '<div' . ($price_class !== '' ? ' class="' . esc_attr($price_class) . '"' : '') . '>' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $price, 0, ',', '.')) . '</div>';
+        } elseif ($show_empty) {
+            $html .= '<div' . ($empty_class !== '' ? ' class="' . esc_attr($empty_class) . '"' : '') . '>Harga belum diatur.</div>';
+        }
+    }
+
+    if ($want_countdown && $until_ts > $now_ts) {
+        wp_enqueue_script('alpinejs');
+        $end_js = esc_js($until_raw);
+        $html .= '<div class="wps-text-xs wps-text-gray-700 wps-mt-1" x-data="{ end: new Date(\'' . $end_js . '\'), d:0,h:0,m:0,s:0, tick(){ const diff = Math.max(0, this.end - new Date()); this.d = Math.floor(diff/86400000); this.h = Math.floor((diff%86400000)/3600000); this.m = Math.floor((diff%3600000)/60000); this.s = Math.floor((diff%60000)/1000); }, init(){ this.tick(); setInterval(()=>this.tick(), 1000); } } ?? {}" x-init="init">';
+        $html .= '<span>Berakhir dalam </span><span x-text="d"></span><span> hari </span><span x-text="h"></span><span> jam </span><span x-text="m"></span><span> menit </span><span x-text="s"></span><span> detik</span>';
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+
+    return $html;
+}

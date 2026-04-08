@@ -175,9 +175,20 @@
             };
         };
     }
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('wpStoreWishlistWidget', () => window.wpStoreWishlistWidget());
-    });
+    (() => {
+        const register = () => {
+            if (!window.Alpine || typeof window.Alpine.data !== 'function') {
+                return false;
+            }
+            window.Alpine.data('wpStoreWishlistWidget', () => window.wpStoreWishlistWidget());
+            return true;
+        };
+        if (!register()) {
+            document.addEventListener('alpine:init', register, {
+                once: true
+            });
+        }
+    })();
 </script>
 <div x-data="wpStoreWishlistWidget()" x-init="init()">
     <div class="">

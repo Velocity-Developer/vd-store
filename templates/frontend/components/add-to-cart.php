@@ -140,9 +140,20 @@
             };
         };
     }
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('wpStoreAddToCart', (params) => window.wpStoreAddToCart(params));
-    });
+    (() => {
+        const register = () => {
+            if (!window.Alpine || typeof window.Alpine.data !== 'function') {
+                return false;
+            }
+            window.Alpine.data('wpStoreAddToCart', (params) => window.wpStoreAddToCart(params));
+            return true;
+        };
+        if (!register()) {
+            document.addEventListener('alpine:init', register, {
+                once: true
+            });
+        }
+    })();
 </script>
 <div x-data="wpStoreAddToCart({
         id: <?php echo (int) $id; ?>,

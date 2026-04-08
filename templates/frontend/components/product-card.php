@@ -12,17 +12,14 @@ $actions_html = isset($actions_html) && is_string($actions_html) ? $actions_html
       </div>
       <?php echo esc_html($item['title']); ?>
     </a>
-    <div class="wps-text-xxs wps-text-gray-900 wps-mb-4">
-      <?php if (isset($item['price']) && $item['price'] !== null) : ?>
-        <?php
-        $price_val = (float) ($item['price']);
-        $formatted_price = ($currency ?? 'Rp') === 'Rp'
-          ? number_format($price_val, 0, ',', '.')
-          : number_format_i18n($price_val, 0);
-        echo esc_html(($currency ?? 'Rp') . ' ' . $formatted_price);
-        ?>
-      <?php endif; ?>
-    </div>
+    <?php echo wps_product_price_html((int) $item['id'], [
+      'wrapper_class' => 'wps-mb-4',
+      'sale_group_class' => 'wps-flex wps-items-baseline wps-gap-1',
+      'sale_class' => 'wps-text-xxs wps-text-gray-900 wps-font-medium',
+      'regular_class' => 'wps-text-xxs wps-text-gray-500',
+      'price_class' => 'wps-text-xxs wps-text-gray-900 wps-font-medium',
+      'show_empty' => false,
+    ]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     <?php if ($extra_html !== '') : ?>
       <div class="wps-mb-4">
         <?php echo $extra_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>

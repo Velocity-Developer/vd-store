@@ -1073,56 +1073,7 @@ class Shortcode
         ], $atts);
 
         $id = $this->resolve_product_id((int) $atts['id']);
-        if ($id <= 0 || get_post_type($id) !== 'store_product') {
-            return '';
-        }
-        $product = $this->product_payload($id);
-        if ($product === null) {
-            return '';
-        }
-        $currency = $this->get_currency();
-        $price = $product['price'];
-        $sale = $product['sale_price'];
-        $countdownAttr = $atts['countdown'];
-        $wantCountdown = false;
-        if (is_bool($countdownAttr)) {
-            $wantCountdown = $countdownAttr;
-        } else {
-            $wantCountdown = in_array(strtolower((string) $countdownAttr), ['1', 'true', 'yes'], true);
-        }
-        $untilRaw = (string) ProductMeta::get($id, 'sale_until', '');
-        $untilTs = $untilRaw ? strtotime($untilRaw) : 0;
-        $nowTs = current_time('timestamp');
-        $saleActive = $sale !== null && $sale > 0 && (($price !== null && $sale < $price) || $price === null) && ($untilTs === 0 || $untilTs > $nowTs);
-        $settings = get_option('wp_store_settings', []);
-        $membersOnly = !empty($settings['members_only_discount']);
-        if ($membersOnly && !is_user_logged_in()) {
-            $saleActive = false;
-        }
-        $html = '<div class="wps-price">';
-        if ($saleActive) {
-            $html .= '<div class="wps-flex wps-items-baseline wps-gap-2 wps-price-group">';
-            $html .= '<span class="wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($sale, 0, ',', '.')) . '</span>';
-            if ($price !== null && $price > 0) {
-                $html .= '<span class="wps-text-sm wps-text-gray-500" style="text-decoration: line-through;">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($price, 0, ',', '.')) . '</span>';
-            }
-            $html .= '</div>';
-        } else {
-            if ($price !== null) {
-                $html .= '<div class="wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text">' . esc_html(($currency ?: 'Rp') . ' ' . number_format($price, 0, ',', '.')) . '</div>';
-            } else {
-                $html .= '<div class="wps-text-sm wps-text-gray-500 ">Harga belum diatur.</div>';
-            }
-        }
-        if ($wantCountdown && $untilTs > $nowTs) {
-            wp_enqueue_script('alpinejs');
-            $endJs = esc_js($untilRaw);
-            $html .= '<div class="wps-text-xs wps-text-gray-700 wps-mt-1" x-data="{ end: new Date(\'' . $endJs . '\'), d:0,h:0,m:0,s:0, tick(){ const diff = Math.max(0, this.end - new Date()); this.d = Math.floor(diff/86400000); this.h = Math.floor((diff%86400000)/3600000); this.m = Math.floor((diff%3600000)/60000); this.s = Math.floor((diff%60000)/1000); }, init(){ this.tick(); setInterval(()=>this.tick(), 1000); } } ?? {}" x-init="init">';
-            $html .= '<span>Berakhir dalam </span><span x-text="d"></span><span> hari </span><span x-text="h"></span><span> jam </span><span x-text="m"></span><span> menit </span><span x-text="s"></span><span> detik</span>';
-            $html .= '</div>';
-        }
-        $html .= '</div>';
-        return $html;
+        return $id > 0 ? wps_product_price_html($id, ['countdown' => $atts['countdown']]) : '';
     }
 
     public function render_single($atts = [])

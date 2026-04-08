@@ -8,6 +8,7 @@ class Assets
     {
         add_action('wp_enqueue_scripts', [$this, 'enqueue']);
         add_action('wp_footer', [$this, 'print_global_assets']);
+        add_filter('script_loader_tag', [$this, 'add_defer_to_core_scripts'], 10, 3);
     }
 
     public function enqueue()
@@ -17,16 +18,15 @@ class Assets
             'https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js',
             [],
             null,
-            true
+            false
         );
-        wp_add_inline_script('alpinejs', 'window.deferLoadingAlpineJs = true;', 'before');
 
         wp_register_script(
             'wp-store-vendor',
             WP_STORE_URL . 'assets/frontend/js/vendor.bundle.js',
             [],
             WP_STORE_VERSION,
-            true
+            false
         );
 
         wp_register_script(
@@ -34,8 +34,12 @@ class Assets
             WP_STORE_URL . 'assets/frontend/js/store.js',
             ['alpinejs', 'wp-store-vendor'],
             WP_STORE_VERSION,
-            true
+            false
         );
+
+        wp_script_add_data('alpinejs', 'defer', true);
+        wp_script_add_data('wp-store-vendor', 'defer', true);
+        wp_script_add_data('wp-store-frontend', 'defer', true);
 
         wp_register_style(
             'wp-store-frontend-css',
@@ -167,6 +171,25 @@ class Assets
         wp_enqueue_script('wp-store-frontend');
     }
 
+    public function add_defer_to_core_scripts($tag, $handle, $src)
+    {
+        $deferred = [
+            'alpinejs',
+            'wp-store-vendor',
+            'wp-store-frontend',
+        ];
+
+        if (!in_array($handle, $deferred, true)) {
+            return $tag;
+        }
+
+        if (strpos($tag, ' defer') !== false) {
+            return $tag;
+        }
+
+        return preg_replace('/^<script\b/i', '<script defer', $tag, 1) ?: $tag;
+    }
+
     public function print_global_assets()
     {
 ?>
@@ -255,131 +278,145 @@ class Assets
             </div>
         </div>
         <script>
-            document.addEventListener('alpine:init', () => {
-                Alpine.data('wpStoreCartOffcanvas', () => ({
-                    open: false,
-                    loading: false,
-                    updatingKey: '',
-                    cart: [],
-                    total: 0,
-                    urlKeranjang: '',
-                    urlCheckout: '',
-                    currency: '<?php echo esc_js(($settings['currency_symbol'] ?? 'Rp')); ?>',
-                    formatPrice(value) {
-                        const v = typeof value === 'number' ? value : parseFloat(value || 0);
-                        if (this.currency === 'USD') {
-                            return new Intl.NumberFormat('en-US', {
+            if (typeof window.wpStoreCartOffcanvas !== 'function') {
+                window.wpStoreCartOffcanvas = function() {
+                    return {
+                        open: false,
+                        loading: false,
+                        updatingKey: '',
+                        cart: [],
+                        total: 0,
+                        urlKeranjang: '',
+                        urlCheckout: '',
+                        currency: '<?php echo esc_js(($settings['currency_symbol'] ?? 'Rp')); ?>',
+                        formatPrice(value) {
+                            const v = typeof value === 'number' ? value : parseFloat(value || 0);
+                            if (this.currency === 'USD') {
+                                return new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: 'USD',
+                                    minimumFractionDigits: 0
+                                }).format(v);
+                            }
+                            return new Intl.NumberFormat('id-ID', {
                                 style: 'currency',
-                                currency: 'USD',
+                                currency: 'IDR',
                                 minimumFractionDigits: 0
                             }).format(v);
-                        }
-                        return new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0
-                        }).format(v);
-                    },
-                    getItemKey(i) {
-                        const opts = i && i.options ? i.options : {};
-                        let s = '';
-                        try {
-                            s = JSON.stringify(opts);
-                        } catch (e) {
-                            s = '';
-                        }
-                        return String(i.id) + ':' + s;
-                    },
-                    async fetchPage() {
-                        try {
-                            const res = await fetch(wpStoreSettings.restUrl + 'settings/page-urls', {
-                                credentials: 'same-origin',
-                                headers: {
-                                    'X-WP-Nonce': wpStoreSettings.nonce
-                                }
-                            });
-                            const data = await res.json();
-                            if (!res.ok) {
-                                return;
+                        },
+                        getItemKey(i) {
+                            const opts = i && i.options ? i.options : {};
+                            let s = '';
+                            try {
+                                s = JSON.stringify(opts);
+                            } catch (e) {
+                                s = '';
                             }
-                            this.urlKeranjang = data.data.page_cart || '';
-                            this.urlCheckout = data.data.page_checkout || '';
-                        } catch (e) {
-                            this.urlKeranjang = '';
-                            this.urlCheckout = '';
-                        }
-                    },
-                    async fetchCart() {
-                        try {
-                            const res = await fetch(wpStoreSettings.restUrl + 'cart', {
-                                credentials: 'same-origin',
-                                headers: {
-                                    'X-WP-Nonce': wpStoreSettings.nonce
+                            return String(i.id) + ':' + s;
+                        },
+                        async fetchPage() {
+                            try {
+                                const res = await fetch(wpStoreSettings.restUrl + 'settings/page-urls', {
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'X-WP-Nonce': wpStoreSettings.nonce
+                                    }
+                                });
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    return;
                                 }
-                            });
-                            const data = await res.json();
-                            this.cart = data.items || [];
-                            this.total = data.total || 0;
-                        } catch (e) {
-                            this.cart = [];
-                            this.total = 0;
-                        }
-                    },
-                    async updateItem(item, qty) {
-                        this.loading = true;
-                        try {
-                            const res = await fetch(wpStoreSettings.restUrl + 'cart', {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-WP-Nonce': wpStoreSettings.nonce
-                                },
-                                body: JSON.stringify({
-                                    id: item.id,
-                                    qty,
-                                    options: (item.options || {})
-                                })
-                            });
-                            const data = await res.json();
-                            if (!res.ok) {
-                                return;
+                                this.urlKeranjang = data.data.page_cart || '';
+                                this.urlCheckout = data.data.page_checkout || '';
+                            } catch (e) {
+                                this.urlKeranjang = '';
+                                this.urlCheckout = '';
                             }
-                            this.cart = data.items || [];
-                            this.total = data.total || 0;
-                            document.dispatchEvent(new CustomEvent('wp-store:cart-updated', {
-                                detail: data
-                            }));
-                        } catch (e) {} finally {
-                            this.loading = false;
-                            this.updatingKey = '';
+                        },
+                        async fetchCart() {
+                            try {
+                                const res = await fetch(wpStoreSettings.restUrl + 'cart', {
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'X-WP-Nonce': wpStoreSettings.nonce
+                                    }
+                                });
+                                const data = await res.json();
+                                this.cart = data.items || [];
+                                this.total = data.total || 0;
+                            } catch (e) {
+                                this.cart = [];
+                                this.total = 0;
+                            }
+                        },
+                        async updateItem(item, qty) {
+                            this.loading = true;
+                            try {
+                                const res = await fetch(wpStoreSettings.restUrl + 'cart', {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-WP-Nonce': wpStoreSettings.nonce
+                                    },
+                                    body: JSON.stringify({
+                                        id: item.id,
+                                        qty,
+                                        options: (item.options || {})
+                                    })
+                                });
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    return;
+                                }
+                                this.cart = data.items || [];
+                                this.total = data.total || 0;
+                                document.dispatchEvent(new CustomEvent('wp-store:cart-updated', {
+                                    detail: data
+                                }));
+                            } catch (e) {} finally {
+                                this.loading = false;
+                                this.updatingKey = '';
+                            }
+                        },
+                        increment(item) {
+                            this.updateItem(item, item.qty + 1);
+                        },
+                        decrement(item) {
+                            const q = item.qty > 1 ? item.qty - 1 : 0;
+                            this.updateItem(item, q);
+                        },
+                        remove(item) {
+                            this.updatingKey = this.getItemKey(item);
+                            this.updateItem(item, 0);
+                        },
+                        init() {
+                            this.fetchCart();
+                            this.fetchPage();
+                            document.addEventListener('wp-store:cart-updated', (e) => {
+                                const data = e.detail || {};
+                                this.cart = data.items || [];
+                                this.total = data.total || 0;
+                            });
+                            window.addEventListener('wp-store:open-cart', () => {
+                                this.open = true;
+                            });
                         }
-                    },
-                    increment(item) {
-                        this.updateItem(item, item.qty + 1);
-                    },
-                    decrement(item) {
-                        const q = item.qty > 1 ? item.qty - 1 : 0;
-                        this.updateItem(item, q);
-                    },
-                    remove(item) {
-                        this.updatingKey = this.getItemKey(item);
-                        this.updateItem(item, 0);
-                    },
-                    init() {
-                        this.fetchCart();
-                        this.fetchPage();
-                        document.addEventListener('wp-store:cart-updated', (e) => {
-                            const data = e.detail || {};
-                            this.cart = data.items || [];
-                            this.total = data.total || 0;
-                        });
-                        window.addEventListener('wp-store:open-cart', () => {
-                            this.open = true;
-                        });
+                    };
+                };
+            }
+            (() => {
+                const register = () => {
+                    if (!window.Alpine || typeof window.Alpine.data !== 'function') {
+                        return false;
                     }
-                }));
-            });
+                    window.Alpine.data('wpStoreCartOffcanvas', () => window.wpStoreCartOffcanvas());
+                    return true;
+                };
+                if (!register()) {
+                    document.addEventListener('alpine:init', register, { once: true });
+                }
+            })();
         </script>
         <div x-data="wpStoreCartOffcanvas()" x-init="init()" x-cloak>
             <div class="wps-offcanvas-backdrop" x-show="open" @click="open = false" x-transition.opacity></div>

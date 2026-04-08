@@ -107,7 +107,7 @@ class ProductController
                     continue;
                 }
 
-                $priceNum = $product['price'];
+                $priceNum = $product['regular_price'];
                 $saleNum = ProductData::resolve_sale_price($id);
                 $saleActive = $saleNum !== null;
                 $settings = get_option('wp_store_settings', []);
@@ -181,6 +181,7 @@ class ProductController
             'slug' => $data['slug'],
             'excerpt' => $data['excerpt'],
             'price' => $data['price'],
+            'regular_price' => $data['regular_price'],
             'stock' => $data['stock'],
             'image' => $data['image'],
             'link' => $data['link'],
