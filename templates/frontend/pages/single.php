@@ -1,4 +1,4 @@
-<div class="wps-p-4 single-product">
+﻿<div class="wps-p-4 single-product">
     <div class="wps-flex wps-gap-4 wps-items-start wps-mb-4 product-detail">
         <div class="wps-w-full" style="flex: 1;">
             <?php $image_src = (!empty($image) ? $image : (WP_STORE_URL . 'assets/frontend/img/noimg.webp')); ?>
@@ -42,8 +42,7 @@
                 <div class="wps-flex wps-flex-wrap wps-gap-2 wps-items-center wps-mb-4">
                     <?php if ($single_review_count > 0) : ?>
                         <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9999px;background:#f8fafc;border:1px solid #e5e7eb;color:#475569;font-size:12px;line-height:1;">
-                            <span style="color:#f59e0b;font-size:14px;line-height:1;">★</span>
-                            <strong style="color:#111827;font-weight:600;"><?php echo esc_html(number_format_i18n($single_rating_average, 1)); ?>/5</strong>
+                            <?php echo \WpStore\Domain\Review\RatingRenderer::summary_html($single_rating_average, $single_review_count, ['show_count' => false, 'class' => 'wps-gap-1']); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                             <span><?php echo esc_html(sprintf(_n('%d ulasan', '%d ulasan', $single_review_count, 'wp-store'), $single_review_count)); ?></span>
                         </span>
                     <?php endif; ?>
@@ -161,6 +160,14 @@
         </div>
     </div>
     <?php
+    $product_reviews_html = do_shortcode('[wp_store_product_reviews id="' . esc_attr((string) $id) . '" limit="20"]');
+    if (trim((string) $product_reviews_html) !== '') :
+    ?>
+        <div class="wps-mt-8 product-reviews">
+            <?php echo $product_reviews_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+        </div>
+    <?php endif; ?>
+    <?php
     $related_html = do_shortcode('[wp_store_related id="' . esc_attr((string) $id) . '" per_page="4"]');
     if (trim((string) $related_html) !== '') :
     ?>
@@ -170,3 +177,4 @@
         </div>
     <?php endif; ?>
 </div>
+

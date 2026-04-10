@@ -43,6 +43,15 @@
                                 </td>
                                 <td class="wps-td">
                                     <div x-text="item.title" class="wps-text-sm wps-text-gray-900"></div>
+                                    <template x-if="item.options && Object.keys(item.options).length">
+                                        <div class="wps-text-xs wps-text-gray-500 wps-mt-1">
+                                            <span x-text="Object.entries(item.options).map(([k,v]) => k + ': ' + v).join(' • ')"></span>
+                                        </div>
+                                    </template>
+                                    <div class="wps-text-xs wps-text-gray-500 wps-mt-1">
+                                        <span>Harga satuan: </span>
+                                        <span x-text="formatPrice(item.price)"></span>
+                                    </div>
                                 </td>
                                 <td class="wps-td">
                                     <div class="wps-flex wps-items-center wps-gap-1">
@@ -53,6 +62,7 @@
                                 </td>
                                 <td class="wps-td wps-text-right">
                                     <div class="wps-text-sm wps-text-gray-900" x-text="formatPrice(item.subtotal)"></div>
+                                    <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-text="formatPrice(item.price) + ' x ' + item.qty"></div>
                                     <button type="button" @click="remove(item)" :disabled="loading && updatingKey === getItemKey(item)" class="wps-btn wps-btn-danger wps-btn-sm" :style="(loading && updatingKey === getItemKey(item)) ? 'opacity:.7; pointer-events:none; margin-top:6px;' : 'margin-top:6px;'">
                                         <template x-if="loading && updatingKey === getItemKey(item)">
                                             <span><?php echo wps_icon(['name' => 'spinner', 'size' => 14]); ?></span>

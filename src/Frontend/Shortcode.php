@@ -16,6 +16,9 @@ class Shortcode
         add_shortcode('wp_store_single', [$this, 'render_single']);
         add_shortcode('wp_store_related', [$this, 'render_related']);
         add_shortcode('wp_store_gallery', [$this, 'render_gallery']);
+        add_shortcode('wp_store_rating', [$this, 'render_rating']);
+        add_shortcode('wp_store_review_count', [$this, 'render_review_count']);
+        add_shortcode('wp_store_product_reviews', [$this, 'render_product_reviews']);
         add_shortcode('wp_store_recently_viewed', [$this, 'render_recently_viewed']);
         add_shortcode('wp_store_thumbnail', [$this, 'render_thumbnail']);
         add_shortcode('wp_store_price', [$this, 'render_price']);
@@ -721,6 +724,79 @@ class Shortcode
             'image_src' => (string) $image_src,
             'items' => $items,
         ]);
+    }
+
+    public function render_product_reviews($atts = [])
+    {
+        $atts = shortcode_atts([
+            'id' => 0,
+            'limit' => 20,
+        ], $atts);
+
+        $product_id = $this->resolve_product_id((int) $atts['id']);
+        if ($product_id <= 0) {
+            return '';
+        }
+
+        return Template::render('components/product-reviews', [
+            'product_id' => $product_id,
+            'limit' => max(1, min(100, (int) $atts['limit'])),
+            'review_repo' => new \WpStore\Domain\Review\ProductReviewRepository(),
+        ]);
+    }
+
+    public function render_rating($atts = [])
+    {
+        $atts = shortcode_atts([
+            'id' => 0,
+            'size' => 16,
+            'show_value' => 'true',
+            'show_count' => 'true',
+            'class' => '',
+            'count_text' => __('ulasan', 'vd-store'),
+        ], $atts);
+
+        $product_id = $this->resolve_product_id((int) $atts['id']);
+        if ($product_id <= 0) {
+            return '';
+        }
+
+        $summary = (new \WpStore\Domain\Review\ProductReviewRepository())->product_summary($product_id);
+
+        return \WpStore\Domain\Review\RatingRenderer::summary_html(
+            (float) ($summary['rating_average'] ?? 0),
+            (int) ($summary['review_count'] ?? 0),
+            [
+                'size' => max(10, (int) $atts['size']),
+                'show_value' => filter_var($atts['show_value'], FILTER_VALIDATE_BOOLEAN),
+                'show_count' => filter_var($atts['show_count'], FILTER_VALIDATE_BOOLEAN),
+                'class' => sanitize_text_field((string) $atts['class']),
+                'count_text' => sanitize_text_field((string) $atts['count_text']),
+            ]
+        );
+    }
+
+    public function render_review_count($atts = [])
+    {
+        $atts = shortcode_atts([
+            'id' => 0,
+            'class' => '',
+            'suffix' => __('ulasan', 'vd-store'),
+        ], $atts);
+
+        $product_id = $this->resolve_product_id((int) $atts['id']);
+        if ($product_id <= 0) {
+            return '';
+        }
+
+        $summary = (new \WpStore\Domain\Review\ProductReviewRepository())->product_summary($product_id);
+        $count = (int) ($summary['review_count'] ?? 0);
+
+        return sprintf(
+            '<span class="%1$s">%2$s</span>',
+            esc_attr(trim((string) $atts['class'])),
+            esc_html(sprintf(__('%1$d %2$s', 'vd-store'), $count, (string) $atts['suffix']))
+        );
     }
 
     public function render_recently_viewed($atts = [])

@@ -146,6 +146,7 @@ class CheckoutController
         $discount_amount = 0;
         $discount_type = '';
         $discount_value = 0;
+        $scope = 'product';
         $lines = $service->build_lines($items);
         foreach ($lines as $line) {
             $total += isset($line['subtotal']) ? (float) $line['subtotal'] : 0;
@@ -178,21 +179,37 @@ class CheckoutController
                 $is_not_expired = !($expires_ts > 0 && $expires_ts <= $now_ts);
                 $is_min_purchase_met = !($min_purchase > 0 && $total < $min_purchase);
                 $is_usage_available = !($usage_limit > 0 && $usage_count >= $usage_limit);
-                if ($scope === 'shipping') {
-                    $coupon_id = 0;
-                    $coupon_code = '';
-                } elseif ($is_started && $is_not_expired && $is_min_purchase_met && $is_usage_available) {
-                    if ($type === 'percent') {
-                        $pct = max(0, min(100, $value));
-                        $discount_amount = round(($total * $pct) / 100);
-                        $discount_type = 'percent';
-                        $discount_value = $pct;
+                if ($is_started && $is_not_expired && $is_min_purchase_met && $is_usage_available) {
+                    if ($scope === 'shipping') {
+                        if ($shipping_cost_req <= 0) {
+                            $coupon_id = 0;
+                            $coupon_code = '';
+                        } else {
+                            if ($type === 'percent') {
+                                $pct = max(0, min(100, $value));
+                                $discount_amount = round(($shipping_cost_req * $pct) / 100);
+                                $discount_type = 'percent';
+                                $discount_value = $pct;
+                            } else {
+                                $discount_amount = max(0, $value);
+                                $discount_type = 'nominal';
+                                $discount_value = $discount_amount;
+                            }
+                            $discount_amount = min($discount_amount, $shipping_cost_req);
+                        }
                     } else {
-                        $discount_amount = max(0, $value);
-                        $discount_type = 'nominal';
-                        $discount_value = $discount_amount;
+                        if ($type === 'percent') {
+                            $pct = max(0, min(100, $value));
+                            $discount_amount = round(($total * $pct) / 100);
+                            $discount_type = 'percent';
+                            $discount_value = $pct;
+                        } else {
+                            $discount_amount = max(0, $value);
+                            $discount_type = 'nominal';
+                            $discount_value = $discount_amount;
+                        }
+                        $discount_amount = min($discount_amount, $total);
                     }
-                    $discount_amount = min($discount_amount, $total);
                 } else {
                     $coupon_id = 0;
                     $coupon_code = '';
@@ -230,7 +247,9 @@ class CheckoutController
             'discount_type' => $discount_type,
             'discount_value' => $discount_value,
             'discount_amount' => $discount_amount,
-            'order_total' => max(0, $total - $discount_amount) + max(0, $shipping_cost_req),
+            'order_total' => $scope === 'shipping'
+                ? max(0, $total) + max(0, $shipping_cost_req - $discount_amount)
+                : max(0, $total - $discount_amount) + max(0, $shipping_cost_req),
             'request_id' => $request_id,
         ]);
 

@@ -10,6 +10,8 @@ class OrderMetaBoxes
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
         add_action('add_meta_boxes', [$this, 'add_proofs_box']);
         add_action('add_meta_boxes', [$this, 'add_summary_box']);
+        add_action('add_meta_boxes', [$this, 'add_editable_boxes']);
+        add_action('save_post_store_order', [$this, 'save_native_meta_boxes']);
     }
 
     public function enqueue_styles()
@@ -35,6 +37,10 @@ class OrderMetaBoxes
 
     public function register_metaboxes()
     {
+        if (!function_exists('new_cmb2_box')) {
+            return;
+        }
+
         $status_box = new_cmb2_box([
             'id'            => 'wp_store_order_status_box',
             'title'         => 'Status Pesanan',
@@ -81,39 +87,10 @@ class OrderMetaBoxes
             'type' => 'text',
         ]);
 
-        // Layanan: gunakan select sesuai setting Shipping -> Couriers
-        $settings = get_option('wp_store_settings', []);
-        $active_couriers = isset($settings['shipping_couriers']) && is_array($settings['shipping_couriers']) ? $settings['shipping_couriers'] : [];
-        $courier_labels = [
-            'jne'     => 'JNE',
-            'sicepat' => 'SiCepat',
-            'ide'     => 'IDExpress',
-            'sap'     => 'SAP Express',
-            'ninja'   => 'Ninja',
-            'jnt'     => 'J&T Express',
-            'tiki'    => 'TIKI',
-            'wahana'  => 'Wahana Express',
-            'pos'     => 'POS Indonesia',
-            'sentral' => 'Sentral Cargo',
-            'lion'    => 'Lion Parcel',
-            'rex'     => 'Royal Express Asia',
-        ];
-        $service_options = [];
-        if (!empty($active_couriers)) {
-            foreach ($active_couriers as $code) {
-                if (isset($courier_labels[$code])) {
-                    $service_options[$code] = $courier_labels[$code];
-                }
-            }
-        } else {
-            // fallback: tampilkan semua opsi jika belum ada setting
-            $service_options = $courier_labels;
-        }
         $details->add_field([
-            'name'    => 'Layanan',
-            'id'      => '_store_order_shipping_courier',
-            'type'    => 'select',
-            'options' => $service_options,
+            'name' => 'Layanan',
+            'id'   => '_store_order_shipping_service',
+            'type' => 'text',
         ]);
 
         $details->add_field([
@@ -141,6 +118,126 @@ class OrderMetaBoxes
             'id'   => '_store_order_admin_note',
             'type' => 'textarea_small',
         ]);
+    }
+
+    public function add_editable_boxes()
+    {
+        add_meta_box(
+            'wp_store_order_status_native',
+            'Status & Resi',
+            [$this, 'render_status_box'],
+            'store_order',
+            'side',
+            'high'
+        );
+
+        add_meta_box(
+            'wp_store_order_shipping_native',
+            'Pengiriman & Catatan Admin',
+            [$this, 'render_shipping_box'],
+            'store_order',
+            'side',
+            'default'
+        );
+    }
+
+    public function render_status_box($post)
+    {
+        $order_id = isset($post->ID) ? (int) $post->ID : 0;
+        if ($order_id <= 0) {
+            echo '<p>Tidak ada data.</p>';
+            return;
+        }
+
+        wp_nonce_field('wp_store_save_order_meta', 'wp_store_order_meta_nonce');
+
+        $status = (string) get_post_meta($order_id, '_store_order_status', true);
+        $tracking = (string) get_post_meta($order_id, '_store_order_tracking_number', true);
+        $labels = $this->status_options();
+
+        echo '<p><label for="wp-store-order-status" style="display:block; margin-bottom:6px; font-weight:600;">Status Pesanan</label>';
+        echo '<select id="wp-store-order-status" name="_store_order_status" class="widefat">';
+        foreach ($labels as $key => $label) {
+            echo '<option value="' . esc_attr($key) . '" ' . selected($status, $key, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select></p>';
+
+        echo '<p><label for="wp-store-order-tracking-number" style="display:block; margin-bottom:6px; font-weight:600;">No. Resi</label>';
+        echo '<input id="wp-store-order-tracking-number" type="text" name="_store_order_tracking_number" class="widefat" value="' . esc_attr($tracking) . '" placeholder="Masukkan nomor resi"></p>';
+    }
+
+    public function render_shipping_box($post)
+    {
+        $order_id = isset($post->ID) ? (int) $post->ID : 0;
+        if ($order_id <= 0) {
+            echo '<p>Tidak ada data.</p>';
+            return;
+        }
+
+        $courier = (string) get_post_meta($order_id, '_store_order_shipping_courier', true);
+        $service = (string) get_post_meta($order_id, '_store_order_shipping_service', true);
+        $shipping_cost = (string) get_post_meta($order_id, '_store_order_shipping_cost', true);
+        $admin_note = (string) get_post_meta($order_id, '_store_order_admin_note', true);
+
+        echo '<p><label for="wp-store-order-shipping-courier" style="display:block; margin-bottom:6px; font-weight:600;">Kurir</label>';
+        echo '<input id="wp-store-order-shipping-courier" type="text" name="_store_order_shipping_courier" class="widefat" value="' . esc_attr($courier) . '" placeholder="Contoh: ide"></p>';
+
+        echo '<p><label for="wp-store-order-shipping-service" style="display:block; margin-bottom:6px; font-weight:600;">Layanan</label>';
+        echo '<input id="wp-store-order-shipping-service" type="text" name="_store_order_shipping_service" class="widefat" value="' . esc_attr($service) . '" placeholder="Contoh: Idtruck"></p>';
+
+        echo '<p><label for="wp-store-order-shipping-cost" style="display:block; margin-bottom:6px; font-weight:600;">Biaya Ongkir</label>';
+        echo '<input id="wp-store-order-shipping-cost" type="text" name="_store_order_shipping_cost" class="widefat" value="' . esc_attr($shipping_cost) . '" placeholder="Contoh: 35000"></p>';
+
+        echo '<p><label for="wp-store-order-admin-note" style="display:block; margin-bottom:6px; font-weight:600;">Catatan Admin</label>';
+        echo '<textarea id="wp-store-order-admin-note" name="_store_order_admin_note" class="widefat" rows="4" placeholder="Catatan internal admin">' . esc_textarea($admin_note) . '</textarea></p>';
+    }
+
+    public function save_native_meta_boxes($post_id)
+    {
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        $nonce = isset($_POST['wp_store_order_meta_nonce']) ? (string) $_POST['wp_store_order_meta_nonce'] : '';
+        if ($nonce === '' || !wp_verify_nonce($nonce, 'wp_store_save_order_meta')) {
+            return;
+        }
+
+        $status = isset($_POST['_store_order_status']) ? sanitize_key((string) $_POST['_store_order_status']) : '';
+        $tracking = isset($_POST['_store_order_tracking_number']) ? sanitize_text_field((string) $_POST['_store_order_tracking_number']) : '';
+        $courier = isset($_POST['_store_order_shipping_courier']) ? sanitize_text_field((string) $_POST['_store_order_shipping_courier']) : '';
+        $service = isset($_POST['_store_order_shipping_service']) ? sanitize_text_field((string) $_POST['_store_order_shipping_service']) : '';
+        $shipping_cost = isset($_POST['_store_order_shipping_cost']) ? (float) preg_replace('/[^0-9.]/', '', (string) $_POST['_store_order_shipping_cost']) : 0;
+        $admin_note = isset($_POST['_store_order_admin_note']) ? sanitize_textarea_field((string) $_POST['_store_order_admin_note']) : '';
+
+        $allowed_statuses = array_keys($this->status_options());
+        if (!in_array($status, $allowed_statuses, true)) {
+            $status = 'pending';
+        }
+
+        update_post_meta($post_id, '_store_order_status', $status);
+        update_post_meta($post_id, '_store_order_tracking_number', $tracking);
+        update_post_meta($post_id, '_store_order_shipping_courier', $courier);
+        update_post_meta($post_id, '_store_order_shipping_service', $service);
+        update_post_meta($post_id, '_store_order_shipping_cost', max(0, $shipping_cost));
+        update_post_meta($post_id, '_store_order_admin_note', $admin_note);
+    }
+
+    private function status_options()
+    {
+        return [
+            'pending' => 'Pending',
+            'awaiting_payment' => 'Menunggu Pembayaran',
+            'paid' => 'Sudah Dibayar',
+            'processing' => 'Diproses',
+            'shipped' => 'Dikirim',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
+        ];
     }
 
     public function add_proofs_box()

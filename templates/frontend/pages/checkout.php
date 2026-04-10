@@ -440,6 +440,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                         },
                         body: JSON.stringify({
                             code,
+                            shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
                             items: this.cart.filter(i => i.selected !== false).map(i => ({
                                 id: i.id,
                                 qty: i.qty,
@@ -450,7 +451,9 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                     const data = await res.json();
                     if (res.ok && data && data.success) {
                         this.discountAmount = data.discount || 0;
-                        if (data.type === 'percent') {
+                        if (data.scope === 'shipping') {
+                            this.discountLabel = 'Diskon Ongkir';
+                        } else if (data.type === 'percent') {
                             this.discountLabel = `Diskon Kupon (${data.value || 0}%)`;
                         } else {
                             this.discountLabel = 'Diskon Kupon';

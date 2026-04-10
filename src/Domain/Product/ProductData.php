@@ -139,8 +139,8 @@ class ProductData
                     $amount = (float) $row['price'];
                 }
 
-                if ($label === $selected && $amount > 0) {
-                    return $amount;
+                if ($label === $selected) {
+                    return $base + max(0, $amount);
                 }
             }
         }

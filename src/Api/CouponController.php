@@ -34,6 +34,7 @@ class CouponController
         $params = $request->get_json_params();
         $code = isset($params['code']) ? sanitize_text_field($params['code']) : '';
         $items = isset($params['items']) && is_array($params['items']) ? $params['items'] : [];
+        $shipping_cost = isset($params['shipping_cost']) ? max(0, (float) $params['shipping_cost']) : 0;
         if ($code === '') {
             return new WP_REST_Response([
                 'success' => false,
@@ -97,21 +98,32 @@ class CouponController
                 'message' => 'Kupon sudah mencapai batas penggunaan.',
             ], 400);
         }
-        if ($scope === 'shipping') {
-            return new WP_REST_Response([
-                'success' => false,
-                'message' => 'Kupon diskon ongkir hanya bisa dipakai setelah ongkir dipilih.',
-            ], 400);
-        }
-
         $discount = 0;
-        if ($type === 'percent') {
-            $pct = max(0, min(100, $value));
-            $discount = round(($total_products * $pct) / 100);
+        if ($scope === 'shipping') {
+            if ($shipping_cost <= 0) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'message' => 'Kupon diskon ongkir hanya bisa dipakai setelah ongkir dipilih.',
+                ], 400);
+            }
+
+            if ($type === 'percent') {
+                $pct = max(0, min(100, $value));
+                $discount = round(($shipping_cost * $pct) / 100);
+            } else {
+                $discount = max(0, $value);
+            }
+
+            $discount = min($discount, $shipping_cost);
         } else {
-            $discount = max(0, $value);
+            if ($type === 'percent') {
+                $pct = max(0, min(100, $value));
+                $discount = round(($total_products * $pct) / 100);
+            } else {
+                $discount = max(0, $value);
+            }
+            $discount = min($discount, $total_products);
         }
-        $discount = min($discount, $total_products);
 
         return new WP_REST_Response([
             'success' => true,
