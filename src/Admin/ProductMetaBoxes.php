@@ -114,7 +114,9 @@ class ProductMetaBoxes
 
         $validation = ProductFields::validate_submission('admin');
         if (is_wp_error($validation)) {
-            $this->queue_validation_notice($validation->get_error_message());
+            $error_data = $validation->get_error_data();
+            $error_field = is_array($error_data) && !empty($error_data['field']) ? (string) $error_data['field'] : '';
+            $this->queue_validation_notice($validation->get_error_message(), $error_field);
 
             if (!$this->drafting_for_validation && in_array(get_post_status($post_id), ['publish', 'pending'], true)) {
                 $this->drafting_for_validation = true;
@@ -152,10 +154,13 @@ class ProductMetaBoxes
         echo '<div class="notice notice-error is-dismissible"><p>' . esc_html($message) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
-    private function queue_validation_notice($message)
+    private function queue_validation_notice($message, $field = '')
     {
-        add_filter('redirect_post_location', static function ($location) use ($message) {
-            return add_query_arg('wp_store_product_error', rawurlencode((string) $message), $location);
+        add_filter('redirect_post_location', static function ($location) use ($message, $field) {
+            return add_query_arg([
+                'wp_store_product_error' => rawurlencode((string) $message),
+                'wp_store_product_error_field' => rawurlencode((string) $field),
+            ], $location);
         });
     }
 

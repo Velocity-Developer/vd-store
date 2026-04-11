@@ -651,7 +651,7 @@ class CustomerProfile
                                 </div>
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-3">
                                     <span class="wps-badge wps-bg-blue-500 wps-text-white wps-text-xs wps-font-medium wps-px-2.5 wps-py-0.5 rounded-full" x-text="statusLabel(order.status)"></span>
-                                    <a :href="order.tracking_url" class="wps-btn wps-btn-secondary">Tracking</a>
+                                    <a :href="order.tracking_url" class="wps-btn wps-btn-secondary">Detail</a>
                                 </div>
                                 <div class="wps-mt-3" x-show="Array.isArray(order.items) && order.items.length > 0">
                                     <div class="wps-grid wps-gap-2" style="grid-template-columns: none; gap: .5rem;">

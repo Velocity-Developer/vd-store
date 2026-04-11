@@ -164,7 +164,6 @@ class ProductFields
         $min = isset($field['min']) && $field['min'] !== '' ? ' min="' . esc_attr((string) $field['min']) . '"' : '';
         $step = isset($field['step']) && $field['step'] !== '' ? ' step="' . esc_attr((string) $field['step']) . '"' : '';
         $placeholder_attr = $placeholder !== '' ? ' placeholder="' . esc_attr($placeholder) . '"' : '';
-        $required_attr = $required ? ' required' : '';
         $col_class = !empty($field['full_width']) ? 'col-12' : 'col-md-6';
         $show_if_product_type = isset($field['show_if_product_type']) ? sanitize_key((string) $field['show_if_product_type']) : '';
         $current_product_type = self::current_product_type($post_id);
@@ -172,10 +171,20 @@ class ProductFields
         $wrapper_attrs = '';
         if ($show_if_product_type !== '') {
             $wrapper_attrs .= ' data-show-if-product-type="' . esc_attr($show_if_product_type) . '"';
+            $wrapper_attrs .= ' data-product-type-conditional="1"';
             if (!$is_conditionally_visible) {
                 $wrapper_attrs .= ' style="display:none;"';
             }
         }
+        if ($required) {
+            $wrapper_attrs .= ' data-field-required="1"';
+        }
+
+        $error_field = self::request_error_field($context);
+        $error_message = self::request_error_message($context);
+        $has_error = ($error_field !== '' && $error_field === $meta_key);
+        $control_error_class = $has_error ? ' is-invalid' : '';
+        $required_data_attr = $required ? ' data-required="1"' : '';
 
         ob_start();
         ?>
@@ -184,15 +193,16 @@ class ProductFields
                 <input type="hidden" name="<?php echo esc_attr($meta_key); ?>" value="0">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="<?php echo esc_attr($meta_key); ?>" name="<?php echo esc_attr($meta_key); ?>" value="1" <?php checked($value, '1'); ?>>
-                    <label class="form-check-label" for="<?php echo esc_attr($meta_key); ?>"><?php echo esc_html($label); ?></label>
+                    <label class="form-check-label" for="<?php echo esc_attr($meta_key); ?>"><?php echo esc_html($label); ?><?php if ($required) : ?> <span class="text-danger">*</span><?php endif; ?></label>
                     <?php if ($desc !== '') : ?><div class="form-text"><?php echo esc_html($desc); ?></div><?php endif; ?>
+                    <?php if ($has_error && $error_message !== '') : ?><div class="invalid-feedback d-block"><?php echo esc_html($error_message); ?></div><?php endif; ?>
                 </div>
             <?php else : ?>
-                <label class="form-label" for="<?php echo esc_attr($meta_key); ?>"><?php echo esc_html($label); ?></label>
+                <label class="form-label" for="<?php echo esc_attr($meta_key); ?>"><?php echo esc_html($label); ?><?php if ($required) : ?> <span class="text-danger">*</span><?php endif; ?></label>
                 <?php if ($type === 'textarea') : ?>
-                    <textarea id="<?php echo esc_attr($meta_key); ?>" name="<?php echo esc_attr($meta_key); ?>" class="form-control" rows="<?php echo esc_attr((string) ($field['rows'] ?? 4)); ?>"<?php echo $placeholder_attr; ?><?php echo $required_attr; ?>><?php echo esc_textarea($value); ?></textarea>
+                    <textarea id="<?php echo esc_attr($meta_key); ?>" name="<?php echo esc_attr($meta_key); ?>" class="form-control<?php echo esc_attr($control_error_class); ?>" rows="<?php echo esc_attr((string) ($field['rows'] ?? 4)); ?>"<?php echo $placeholder_attr; ?><?php echo $required_data_attr; ?>><?php echo esc_textarea($value); ?></textarea>
                 <?php elseif ($type === 'select') : ?>
-                    <select id="<?php echo esc_attr($meta_key); ?>" name="<?php echo esc_attr($meta_key); ?>" class="form-select"<?php echo $required_attr; ?>>
+                    <select id="<?php echo esc_attr($meta_key); ?>" name="<?php echo esc_attr($meta_key); ?>" class="form-select<?php echo esc_attr($control_error_class); ?>"<?php echo $required_data_attr; ?>>
                         <?php foreach ((array) ($field['options'] ?? []) as $option_value => $option_label) : ?>
                             <option value="<?php echo esc_attr((string) $option_value); ?>" <?php selected($value, (string) $option_value); ?>><?php echo esc_html((string) $option_label); ?></option>
                         <?php endforeach; ?>
@@ -252,19 +262,20 @@ class ProductFields
                             </button>
                             <button type="button" class="<?php echo esc_attr($clear_button_class); ?>" <?php disabled($file_url === ''); ?>>Hapus Pilihan</button>
                         </div>
-                        <input id="<?php echo esc_attr($meta_key); ?>" type="url" name="<?php echo esc_attr($meta_key); ?>" class="form-control vmp-file-link-field__input" value="<?php echo esc_attr($file_url); ?>" placeholder="<?php echo esc_attr('https://contoh.com/file.zip'); ?>">
-                        <div class="vmp-file-link-field__preview" data-placeholder="<?php echo esc_attr('Belum ada file dipilih.'); ?>">
-                            <?php echo self::render_file_link_preview_html($file_url); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                        </div>
+                    <input id="<?php echo esc_attr($meta_key); ?>" type="url" name="<?php echo esc_attr($meta_key); ?>" class="form-control vmp-file-link-field__input<?php echo esc_attr($control_error_class); ?>" value="<?php echo esc_attr($file_url); ?>" placeholder="<?php echo esc_attr('https://contoh.com/file.zip'); ?>"<?php echo $required_data_attr; ?>>
+                    <div class="vmp-file-link-field__preview" data-placeholder="<?php echo esc_attr('Belum ada file dipilih.'); ?>">
+                        <?php echo self::render_file_link_preview_html($file_url); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                     </div>
+                </div>
                 <?php elseif ($type === 'file') : ?>
                     <input id="<?php echo esc_attr($meta_key); ?>" type="file" name="<?php echo esc_attr($meta_key); ?>" class="form-control">
                     <?php if (!empty($value)) : ?><div class="form-text"><?php echo esc_html((string) $value); ?></div><?php endif; ?>
                 <?php else : ?>
                     <?php $html_type = in_array($type, ['text', 'number', 'email', 'url', 'date'], true) ? $type : 'text'; ?>
-                    <input id="<?php echo esc_attr($meta_key); ?>" type="<?php echo esc_attr($html_type); ?>" name="<?php echo esc_attr($meta_key); ?>" class="form-control" value="<?php echo esc_attr($value); ?>"<?php echo $placeholder_attr; ?><?php echo $min; ?><?php echo $step; ?><?php echo $required_attr; ?>>
+                    <input id="<?php echo esc_attr($meta_key); ?>" type="<?php echo esc_attr($html_type); ?>" name="<?php echo esc_attr($meta_key); ?>" class="form-control<?php echo esc_attr($control_error_class); ?>" value="<?php echo esc_attr($value); ?>"<?php echo $placeholder_attr; ?><?php echo $min; ?><?php echo $step; ?><?php echo $required_data_attr; ?>>
                 <?php endif; ?>
                 <?php if ($desc !== '' && $type !== 'checkbox') : ?><div class="form-text"><?php echo esc_html($desc); ?></div><?php endif; ?>
+                <?php if ($has_error && $error_message !== '') : ?><div class="invalid-feedback d-block"><?php echo esc_html($error_message); ?></div><?php endif; ?>
             <?php endif; ?>
         </div>
         <?php
@@ -303,7 +314,7 @@ class ProductFields
                 continue;
             }
 
-             if (!self::field_visible_for_product_type($field, $submitted_product_type)) {
+            if (!self::field_visible_for_product_type($field, $submitted_product_type)) {
                 continue;
             }
 
@@ -313,13 +324,13 @@ class ProductFields
 
             if ($type === 'number') {
                 if ($raw === '' || !is_numeric($raw)) {
-                    return new \WP_Error('required_field', sprintf(__('%s wajib diisi.', 'vd-store'), $label));
+                    return self::validation_error('required_field', $meta_key, $label, sprintf(__('%s wajib diisi.', 'vd-store'), $label));
                 }
 
                 $value = (float) $raw;
                 $min = isset($field['min']) && is_numeric($field['min']) ? (float) $field['min'] : null;
                 if ($min !== null && $value < $min) {
-                    return new \WP_Error('min_field', sprintf(__('%s harus lebih besar dari 0 untuk menghitung ongkir.', 'vd-store'), $label));
+                    return self::validation_error('min_field', $meta_key, $label, sprintf(__('%s harus lebih besar dari 0 untuk menghitung ongkir.', 'vd-store'), $label));
                 }
 
                 continue;
@@ -330,11 +341,33 @@ class ProductFields
             }
 
             if ($raw === '' || $raw === null || $raw === []) {
-                return new \WP_Error('required_field', sprintf(__('%s wajib diisi.', 'vd-store'), $label));
+                return self::validation_error('required_field', $meta_key, $label, sprintf(__('%s wajib diisi.', 'vd-store'), $label));
             }
         }
 
         return true;
+    }
+
+    public static function request_error_field($context = 'frontend')
+    {
+        $query_key = $context === 'admin' ? 'wp_store_product_error_field' : 'vmp_error_field';
+        return isset($_GET[$query_key]) ? sanitize_key((string) wp_unslash($_GET[$query_key])) : '';
+    }
+
+    public static function request_error_message($context = 'frontend')
+    {
+        $query_key = $context === 'admin' ? 'wp_store_product_error' : 'vmp_error';
+        return isset($_GET[$query_key]) ? sanitize_text_field((string) wp_unslash($_GET[$query_key])) : '';
+    }
+
+    private static function validation_error($code, $field_key, $label, $message)
+    {
+        $error = new \WP_Error((string) $code, (string) $message);
+        $error->add_data([
+            'field' => (string) $field_key,
+            'label' => (string) $label,
+        ]);
+        return $error;
     }
 
     private static function current_product_type($post_id = 0)

@@ -1,5 +1,127 @@
 jQuery(document).ready(function ($) {
     const $doc = $(document);
+    let validationDialog = null;
+
+    function ensureValidationDialog() {
+        if (validationDialog) {
+            return validationDialog;
+        }
+
+        const dialog = document.createElement('div');
+        dialog.className = 'vmp-validation-dialog';
+        dialog.innerHTML = [
+            '<div class="vmp-validation-dialog__backdrop" data-vmp-dialog-close="1"></div>',
+            '<div class="vmp-validation-dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="vmp-validation-dialog-title">',
+            '<div class="vmp-validation-dialog__header">',
+            '<h3 id="vmp-validation-dialog-title" class="vmp-validation-dialog__title">Field wajib belum lengkap</h3>',
+            '<button type="button" class="vmp-validation-dialog__close" aria-label="Tutup" data-vmp-dialog-close="1">×</button>',
+            '</div>',
+            '<div class="vmp-validation-dialog__body">',
+            '<p class="vmp-validation-dialog__text">Lengkapi field berikut sebelum menyimpan produk.</p>',
+            '<ul class="vmp-validation-dialog__list"></ul>',
+            '</div>',
+            '<div class="vmp-validation-dialog__footer">',
+            '<button type="button" class="button button-primary" data-vmp-dialog-close="1">Tutup</button>',
+            '</div>',
+            '</div>',
+        ].join('');
+
+        dialog.addEventListener('click', function (event) {
+            if (event.target && event.target.getAttribute('data-vmp-dialog-close') === '1') {
+                dialog.classList.remove('is-open');
+            }
+        });
+
+        document.body.appendChild(dialog);
+        validationDialog = dialog;
+        return validationDialog;
+    }
+
+    function fieldLabel($control) {
+        const explicit = String($control.attr('data-field-label') || '').trim();
+        if (explicit) {
+            return explicit;
+        }
+
+        const id = String($control.attr('id') || '').trim();
+        if (id) {
+            const label = $('label[for="' + id.replace(/"/g, '\\"') + '"]').first().text().trim();
+            if (label) {
+                return label.replace(/\s*\*+\s*$/, '');
+            }
+        }
+
+        const wrapLabel = $control.closest('[data-field-required], .col-12, .col-md-6, .form-field, p, .cmb-row').find('label').first().text().trim();
+        if (wrapLabel) {
+            return wrapLabel.replace(/\s*\*+\s*$/, '');
+        }
+
+        return 'Field wajib';
+    }
+
+    function isMissingRequired($control) {
+        if ($control.prop('disabled')) {
+            return false;
+        }
+
+        const tag = String($control.prop('tagName') || '').toLowerCase();
+        const type = String($control.attr('type') || '').toLowerCase();
+
+        if (type === 'hidden') {
+            return false;
+        }
+
+        if (type === 'checkbox') {
+            return !$control.prop('checked');
+        }
+
+        if (type === 'radio') {
+            const name = String($control.attr('name') || '');
+            if (!name) {
+                return !$control.prop('checked');
+            }
+            return $control.closest('form').find('input[type="radio"][name="' + name.replace(/"/g, '\\"') + '"]:checked').length === 0;
+        }
+
+        if (tag === 'select') {
+            return String($control.val() || '').trim() === '';
+        }
+
+        return String($control.val() || '').trim() === '';
+    }
+
+    function collectMissingRequiredFields($form) {
+        const labels = [];
+        const seen = new Set();
+
+        $form.find('[data-required="1"]').each(function () {
+            const $control = $(this);
+            if (!isMissingRequired($control)) {
+                $control.removeClass('is-invalid');
+                return;
+            }
+
+            $control.addClass('is-invalid');
+            const label = fieldLabel($control);
+            if (!seen.has(label)) {
+                labels.push(label);
+                seen.add(label);
+            }
+        });
+
+        return labels;
+    }
+
+    function showValidationDialog(labels) {
+        const dialog = ensureValidationDialog();
+        const list = dialog.querySelector('.vmp-validation-dialog__list');
+        if (list) {
+            list.innerHTML = (Array.isArray(labels) ? labels : []).map(function (label) {
+                return '<li>' + $('<div>').text(label).html() + '</li>';
+            }).join('');
+        }
+        dialog.classList.add('is-open');
+    }
 
     function fieldWrap(selector) {
         const $field = $(selector);
@@ -23,7 +145,19 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            if (expectedType === type) {
+            const visible = expectedType === type;
+            $fieldWrap.find('input, select, textarea').each(function () {
+                const $control = $(this);
+                if ($control.is('[type="hidden"]')) {
+                    return;
+                }
+
+                const shouldRequire = visible && $control.attr('data-required') === '1';
+                $control.attr('aria-required', shouldRequire ? 'true' : 'false');
+                $control.prop('disabled', !visible);
+            });
+
+            if (visible) {
                 $fieldWrap.show();
             } else {
                 $fieldWrap.hide();
@@ -346,4 +480,22 @@ jQuery(document).ready(function ($) {
     toggleProductTypeFields();
     initMediaFields();
     initFileLinkFields();
+
+    const $productForm = $('#post');
+    if ($productForm.length) {
+        $productForm.on('submit', function (event) {
+            const missingFields = collectMissingRequiredFields($productForm);
+            if (!missingFields.length) {
+                return;
+            }
+
+            event.preventDefault();
+            showValidationDialog(missingFields);
+
+            const firstInvalid = $productForm.find('.is-invalid:visible').first();
+            if (firstInvalid.length) {
+                firstInvalid.trigger('focus');
+            }
+        });
+    }
 });

@@ -25,9 +25,10 @@ class ProductColumns
             
             $new_columns[$key] = $title;
             
-            // Insert Price after Title
+            // Insert Price and Author after Title
             if ($key === 'title') {
                 $new_columns['price'] = 'Harga';
+                $new_columns['author_name'] = 'Author';
             }
         }
         
@@ -51,6 +52,16 @@ class ProductColumns
                 $price = is_array($product) ? ($product['price'] ?? null) : null;
                 if ($price !== null) {
                     echo 'Rp ' . number_format((float) $price, 0, ',', '.');
+                } else {
+                    echo '-';
+                }
+                break;
+
+            case 'author_name':
+                $author_id = (int) get_post_field('post_author', $post_id);
+                if ($author_id > 0) {
+                    $user = get_userdata($author_id);
+                    echo esc_html($user ? $user->display_name : ('User #' . $author_id));
                 } else {
                     echo '-';
                 }

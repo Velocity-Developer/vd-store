@@ -110,7 +110,7 @@ JS;
                     <td>
                         <select id="_store_coupon_type" name="_store_coupon_type">
                             <option value="percent" <?php selected($type, 'percent'); ?>>Persentase (%)</option>
-                            <option value="nominal" <?php selected($type, 'nominal'); ?>>Nominal (Rp)</option>
+                            <option value="nominal" <?php selected($type, 'nominal'); ?>>Nominal Harga</option>
                         </select>
                     </td>
                 </tr>
