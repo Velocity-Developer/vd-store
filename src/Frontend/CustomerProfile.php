@@ -636,19 +636,96 @@ class CustomerProfile
                     <template x-if="!ordersLoading && orders.length === 0">
                         <div class="wps-text-center wps-text-gray-500">Belum ada pesanan.</div>
                     </template>
-                    <div class="wps-grid wps-gap-4" x-show="!ordersLoading" style="display: none; grid-template-columns: none; gap: 1rem;">
+                    <div class="wps-grid wps-gap-3" x-show="!ordersLoading" style="display: none; grid-template-columns: none; gap: .75rem;">
                         <template x-for="order in orders" :key="order.id">
                             <div class="wps-card wps-p-4">
-                                <div class="wps-flex wps-justify-between wps-items-center">
+                                <div class="wps-flex wps-justify-between wps-items-start wps-gap-3">
                                     <div>
                                         <div class="wps-text-sm wps-text-gray-900 wps-font-medium">#<span x-text="order.order_number || order.id"></span></div>
                                         <div class="wps-text-xs wps-text-gray-500" x-text="order.date"></div>
                                     </div>
-                                    <div class="wps-text-sm wps-text-gray-900 wps-font-medium"><?php echo esc_html(($currency ?: 'Rp')); ?> <span x-text="formatCurrency(order.total)"></span></div>
+                                    <div class="wps-text-right">
+                                        <div class="wps-text-sm wps-text-gray-900 wps-font-medium"><?php echo esc_html(($currency ?: 'Rp')); ?> <span x-text="formatCurrency(order.total)"></span></div>
+                                        <div class="wps-text-xs wps-text-gray-500" x-text="(Array.isArray(order.items) ? order.items.length : 0) + ' item'"></div>
+                                    </div>
                                 </div>
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-3">
                                     <span class="wps-badge wps-bg-blue-500 wps-text-white wps-text-xs wps-font-medium wps-px-2.5 wps-py-0.5 rounded-full" x-text="statusLabel(order.status)"></span>
                                     <a :href="order.tracking_url" class="wps-btn wps-btn-secondary">Tracking</a>
+                                </div>
+                                <div class="wps-mt-3" x-show="Array.isArray(order.items) && order.items.length > 0">
+                                    <div class="wps-grid wps-gap-2" style="grid-template-columns: none; gap: .5rem;">
+                                        <template x-for="item in order.items" :key="order.id + '-' + item.product_id + '-' + optionsText(item)">
+                                            <div style="border-top:1px solid #eef2f7;padding-top:10px;">
+                                                <div class="wps-flex wps-gap-3 wps-items-start">
+                                                    <div style="width:48px;height:48px;flex-shrink:0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#f8fafc;">
+                                                        <img x-show="item.image" :src="item.image" :alt="item.title" style="width:100%;height:100%;object-fit:cover;">
+                                                    </div>
+                                                    <div style="flex:1;">
+                                                        <div class="wps-flex wps-justify-between wps-items-start wps-gap-3">
+                                                            <div style="min-width:0;flex:1;">
+                                                                <template x-if="item.product_url">
+                                                                    <a class="wps-text-sm wps-text-gray-900 wps-font-medium" style="line-height:1.35;text-decoration:none;" :href="item.product_url" x-text="item.title" target="_blank"></a>
+                                                                </template>
+                                                                <template x-if="!item.product_url">
+                                                                    <div class="wps-text-sm wps-text-gray-900 wps-font-medium" style="line-height:1.35;" x-text="item.title"></div>
+                                                                </template>
+                                                                <div class="wps-text-xs wps-text-gray-500" x-show="optionsText(item)" x-text="optionsText(item)"></div>
+                                                            </div>
+                                                            <div class="wps-text-sm wps-text-gray-900 wps-font-medium" style="white-space:nowrap;" x-text="'Rp ' + formatCurrency(item.subtotal)"></div>
+                                                        </div>
+                                                        <div class="wps-flex wps-items-center wps-gap-2 wps-mt-1 wps-flex-wrap">
+                                                            <div class="wps-text-xs wps-text-gray-500" x-text="'Rp ' + formatCurrency(item.price) + ' x ' + item.qty"></div>
+                                                            <span class="wps-text-xs wps-text-gray-400">&bull;</span>
+                                                            <div class="wps-text-xs wps-text-gray-500" x-text="'Qty ' + item.qty"></div>
+                                                        </div>
+
+                                                        <div class="wps-mt-2 wps-flex wps-items-center wps-gap-2 wps-flex-wrap" x-show="item.review">
+                                                            <span class="wps-badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;">Sudah Dinilai</span>
+                                                            <div class="wps-text-xs wps-text-gray-500" x-text="'Rating ' + ((item.review && item.review.rating) ? item.review.rating : 0) + '/5'"></div>
+                                                        </div>
+                                                        <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="item.review && item.review.content" x-text="item.review ? item.review.content : ''"></div>
+
+                                                        <div class="wps-mt-2" x-show="item.can_review && !item.review">
+                                                            <button type="button" class="wps-btn wps-btn-secondary" style="padding:.3rem .65rem;font-size:12px;line-height:1.2;" @click="toggleReviewForm(order.id, item)">
+                                                                Beri Ulasan
+                                                            </button>
+                                                        </div>
+
+                                                        <div class="wps-mt-2" x-show="item._reviewOpen && item.can_review && !item.review" style="display:none;">
+                                                            <div class="wps-card wps-p-4" style="background:#f8fafc;border:1px solid #e5e7eb;">
+                                                                <div class="wps-form-group">
+                                                                    <label class="wps-label">Rating</label>
+                                                                    <select class="wps-input" x-model.number="reviewDraft(order.id, item).rating">
+                                                                        <option value="5">5 - Sangat Baik</option>
+                                                                        <option value="4">4 - Baik</option>
+                                                                        <option value="3">3 - Cukup</option>
+                                                                        <option value="2">2 - Kurang</option>
+                                                                        <option value="1">1 - Buruk</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="wps-form-group">
+                                                                    <label class="wps-label">Judul Ulasan</label>
+                                                                    <input type="text" class="wps-input" x-model="reviewDraft(order.id, item).title" placeholder="Ringkasan singkat ulasan">
+                                                                </div>
+                                                                <div class="wps-form-group">
+                                                                    <label class="wps-label">Ulasan</label>
+                                                                    <textarea class="wps-input" rows="4" x-model="reviewDraft(order.id, item).content" placeholder="Ceritakan pengalaman Anda memakai produk ini"></textarea>
+                                                                </div>
+                                                                <div class="wps-flex wps-gap-2" style="justify-content:flex-end;">
+                                                                    <button type="button" class="wps-btn wps-btn-secondary" @click="item._reviewOpen = false">Batal</button>
+                                                                    <button type="button" class="wps-btn wps-btn-primary" :disabled="reviewSavingKey === reviewKey(order.id, item.product_id)" @click="submitReview(order, item)">
+                                                                        <span x-show="reviewSavingKey !== reviewKey(order.id, item.product_id)">Simpan Ulasan</span>
+                                                                        <span x-show="reviewSavingKey === reviewKey(order.id, item.product_id)" style="display:none;">Menyimpan...</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -674,6 +751,8 @@ class CustomerProfile
                     ...<?php echo wp_json_encode($profile_state); ?>,
                     orders: [],
                     ordersLoading: false,
+                    reviewDrafts: {},
+                    reviewSavingKey: '',
                     profile: {
                         first_name: '',
                         last_name: '',
@@ -788,6 +867,43 @@ class CustomerProfile
                         };
                         return m[s] || s;
                     },
+                    reviewKey(orderId, productId) {
+                        return String(orderId || 0) + ':' + String(productId || 0);
+                    },
+                    reviewDraft(orderId, item) {
+                        const key = this.reviewKey(orderId, item && item.product_id ? item.product_id : 0);
+                        if (!this.reviewDrafts[key]) {
+                            const existing = item && item.review ? item.review : null;
+                            this.reviewDrafts[key] = {
+                                rating: existing && existing.rating ? Number(existing.rating) : 5,
+                                title: existing && existing.title ? String(existing.title) : '',
+                                content: existing && existing.content ? String(existing.content) : '',
+                            };
+                        }
+                        return this.reviewDrafts[key];
+                    },
+                    toggleReviewForm(orderId, item) {
+                        this.reviewDraft(orderId, item);
+                        item._reviewOpen = !item._reviewOpen;
+                    },
+                    optionsText(item) {
+                        const options = item && item.options && typeof item.options === 'object' ? item.options : {};
+                        const rows = [];
+                        Object.keys(options).forEach((key) => {
+                            const value = options[key];
+                            if (Array.isArray(value)) {
+                                const joined = value.filter(Boolean).join(', ');
+                                if (joined) {
+                                    rows.push(key + ': ' + joined);
+                                }
+                                return;
+                            }
+                            if (value !== null && value !== undefined && String(value).trim() !== '') {
+                                rows.push(key + ': ' + String(value).trim());
+                            }
+                        });
+                        return rows.join(' &bull; ');
+                    },
 
                     async fetchOrders() {
                         try {
@@ -804,6 +920,45 @@ class CustomerProfile
                             this.orders = [];
                         } finally {
                             this.ordersLoading = false;
+                        }
+                    },
+                    async submitReview(order, item) {
+                        const key = this.reviewKey(order.id, item.product_id);
+                        const draft = this.reviewDraft(order.id, item);
+                        const payload = {
+                            order_id: Number(order.id || 0),
+                            product_id: Number(item.product_id || 0),
+                            rating: Number(draft.rating || 0),
+                            title: String(draft.title || ''),
+                            content: String(draft.content || ''),
+                        };
+
+                        if (payload.order_id <= 0 || payload.product_id <= 0 || payload.rating <= 0 || payload.content.trim() === '') {
+                            this.showToast('Isi rating dan ulasan terlebih dahulu.', 'error');
+                            return;
+                        }
+
+                        try {
+                            this.reviewSavingKey = key;
+                            const res = await fetch(wpStoreSettings.restUrl + 'customer/reviews', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-WP-Nonce': wpStoreSettings.nonce
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                            const data = await res.json();
+                            if (!res.ok) {
+                                throw new Error(data && data.message ? data.message : 'Ulasan gagal disimpan.');
+                            }
+                            this.showToast(data && data.message ? data.message : 'Ulasan berhasil disimpan.', 'success');
+                            await this.fetchOrders();
+                        } catch (err) {
+                            this.showToast(err && err.message ? err.message : 'Ulasan gagal disimpan.', 'error');
+                        } finally {
+                            this.reviewSavingKey = '';
                         }
                     },
 
@@ -1255,3 +1410,4 @@ class CustomerProfile
         return ob_get_clean();
     }
 }
+

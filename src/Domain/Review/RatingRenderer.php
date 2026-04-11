@@ -10,7 +10,7 @@ class RatingRenderer
         return round($rating * 2) / 2;
     }
 
-    public static function stars_html($rating, $size = 16, $extra_class = '')
+    public static function stars_html($rating, $size = 16, $extra_class = 'text-warning align-middle me-1')
     {
         $rating = self::normalize($rating);
         $size = max(10, (int) $size);
@@ -54,7 +54,7 @@ class RatingRenderer
         if ($show_value) {
             $parts[] = sprintf(
                 '<span class="%1$s">%2$s/5</span>',
-                esc_attr('wps-text-sm wps-text-gray-900'),
+                esc_attr('wps-text-sm wps-text-gray-900 align-middle'),
                 esc_html(number_format($rating, 1, ',', '.'))
             );
         }

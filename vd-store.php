@@ -87,6 +87,35 @@ function wp_store_init()
         dbDelta($sql2);
     }
 
+    $review_table = $wpdb->prefix . 'vmp_reviews';
+    $review_exists = $wpdb->get_var("SHOW TABLES LIKE '$review_table'") === $review_table;
+    if ($should_migrate || !$review_exists) {
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql3 = "CREATE TABLE {$review_table} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            product_id bigint(20) unsigned NOT NULL,
+            order_id bigint(20) unsigned NOT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+            seller_id bigint(20) unsigned NOT NULL DEFAULT 0,
+            rating tinyint(3) unsigned NOT NULL DEFAULT 0,
+            title varchar(190) NOT NULL DEFAULT '',
+            content longtext NOT NULL,
+            image_ids text NULL,
+            is_approved tinyint(1) unsigned NOT NULL DEFAULT 1,
+            created_at datetime NOT NULL,
+            updated_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY vmp_review_unique (product_id,order_id,user_id),
+            KEY vmp_review_product (product_id),
+            KEY vmp_review_order (order_id),
+            KEY vmp_review_user (user_id),
+            KEY vmp_review_seller (seller_id),
+            KEY vmp_review_approved_created (is_approved,created_at)
+        ) {$charset_collate};";
+        dbDelta($sql3);
+    }
+
     $plugin = new \WpStore\Core\Plugin();
     $plugin->run();
 }

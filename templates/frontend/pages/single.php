@@ -163,7 +163,7 @@
     $product_reviews_html = do_shortcode('[wp_store_product_reviews id="' . esc_attr((string) $id) . '" limit="20"]');
     if (trim((string) $product_reviews_html) !== '') :
     ?>
-        <div class="wps-mt-8 product-reviews">
+        <div class="wps-mt-8 product-reviews py-4">
             <?php echo $product_reviews_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
         </div>
     <?php endif; ?>

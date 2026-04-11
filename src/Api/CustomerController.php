@@ -4,6 +4,7 @@ namespace WpStore\Api;
 
 use WP_REST_Request;
 use WP_REST_Response;
+use WpStore\Domain\Review\ProductReviewRepository;
 
 class CustomerController
 {
@@ -68,6 +69,14 @@ class CustomerController
             [
                 'methods' => 'GET',
                 'callback' => [$this, 'get_orders'],
+                'permission_callback' => [$this, 'check_auth'],
+            ],
+        ]);
+
+        register_rest_route('wp-store/v1', '/customer/reviews', [
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'submit_review'],
                 'permission_callback' => [$this, 'check_auth'],
             ],
         ]);
@@ -305,6 +314,7 @@ class CustomerController
         if (!$user) {
             return new WP_REST_Response([], 200);
         }
+        $review_repo = new ProductReviewRepository();
         $email = (string) $user->user_email;
         $settings = get_option('wp_store_settings', []);
         $tracking_id = isset($settings['page_tracking']) ? absint($settings['page_tracking']) : 0;
@@ -352,14 +362,52 @@ class CustomerController
                 'total' => (float) get_post_meta($oid, '_store_order_total', true),
                 'status' => (string) (get_post_meta($oid, '_store_order_status', true) ?: 'pending'),
                 'tracking_url' => add_query_arg(['order' => $order_number], $tracking_base),
-                'items' => $this->normalize_order_items($raw_items)
+                'items' => $this->normalize_order_items(
+                    $raw_items,
+                    $oid,
+                    $user_id,
+                    (string) (get_post_meta($oid, '_store_order_status', true) ?: 'pending'),
+                    $review_repo->reviews_for_order_user($oid, $user_id)
+                )
             ];
         }
         wp_reset_postdata();
         return new WP_REST_Response($orders, 200);
     }
 
-    private function normalize_order_items($items)
+    public function submit_review(WP_REST_Request $request)
+    {
+        $user_id = get_current_user_id();
+        $order_id = (int) $request->get_param('order_id');
+        $product_id = (int) $request->get_param('product_id');
+        $rating = (int) $request->get_param('rating');
+        $title = (string) $request->get_param('title');
+        $content = (string) $request->get_param('content');
+
+        $repo = new ProductReviewRepository();
+        $review_id = $repo->save([
+            'order_id' => $order_id,
+            'product_id' => $product_id,
+            'user_id' => $user_id,
+            'rating' => $rating,
+            'title' => $title,
+            'content' => $content,
+            'image_ids' => [],
+        ]);
+
+        if ($review_id <= 0) {
+            return new WP_REST_Response([
+                'message' => 'Ulasan gagal disimpan. Pastikan pesanan sudah selesai dan isi ulasan lengkap.',
+            ], 400);
+        }
+
+        return new WP_REST_Response([
+            'message' => 'Ulasan berhasil disimpan.',
+            'review_id' => $review_id,
+        ], 200);
+    }
+
+    private function normalize_order_items($items, $order_id = 0, $user_id = 0, $order_status = 'pending', $review_map = [])
     {
         $out = [];
         $map = [];
@@ -375,13 +423,24 @@ class CustomerController
             $key = (string) $pid . '|' . wp_json_encode($opts);
             if (!isset($map[$key])) {
                 $map[$key] = count($out);
+                $product_review = ($pid > 0 && isset($review_map[$pid]) && is_array($review_map[$pid])) ? $review_map[$pid] : null;
                 $out[] = [
                     'product_id' => $pid,
                     'title' => $title !== '' ? $title : get_the_title($pid),
+                    'product_url' => get_permalink($pid) ?: '',
                     'qty' => $qty,
                     'price' => $price,
                     'subtotal' => $price * $qty,
                     'options' => $opts,
+                    'image' => get_the_post_thumbnail_url($pid, 'thumbnail') ?: '',
+                    'can_review' => ((int) $order_id > 0 && (int) $user_id > 0 && (string) $order_status === 'completed'),
+                    'review' => $product_review ? [
+                        'id' => (int) ($product_review['id'] ?? 0),
+                        'rating' => (int) ($product_review['rating'] ?? 0),
+                        'title' => (string) ($product_review['title'] ?? ''),
+                        'content' => (string) ($product_review['content'] ?? ''),
+                        'created_at' => (string) ($product_review['created_at'] ?? ''),
+                    ] : null,
                 ];
             } else {
                 $idx = (int) $map[$key];
