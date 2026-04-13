@@ -888,7 +888,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                         <span class="wps-text-sm wps-text-green-700" x-text="'- ' + formatPrice(discountAmount)"></span>
                                     </div>
                                 </template>
-                                <template x-if="shippingCost">
+                                <template x-if="shippingCost && !shouldHideShipping()">
                                     <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
                                         <span class="wps-text-sm wps-text-gray-500">
                                             Ongkir (
