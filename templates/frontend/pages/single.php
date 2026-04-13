@@ -1,36 +1,10 @@
 ﻿<div class="wps-p-4 single-product">
     <div class="wps-flex wps-gap-4 wps-items-start wps-mb-4 product-detail">
         <div class="wps-w-full" style="flex: 1;">
-            <?php $image_src = (!empty($image) ? $image : (WP_STORE_URL . 'assets/frontend/img/noimg.webp')); ?>
-            <?php
-            $gallery_raw = get_post_meta((int) $id, '_store_gallery_ids', true);
-            $items = [];
-            $featured_thumb = get_the_post_thumbnail_url((int) $id, 'thumbnail');
-            $featured_thumb = $featured_thumb ? $featured_thumb : $image_src;
-            $items[] = [
-                'full' => $image_src,
-                'thumb' => $featured_thumb
-            ];
-            if (is_array($gallery_raw) && !empty($gallery_raw)) {
-                foreach ($gallery_raw as $k => $v) {
-                    $aid = is_numeric($k) ? (int) $k : 0;
-                    $full = $aid ? (wp_get_attachment_image_url($aid, 'large') ?: (is_string($v) ? $v : '')) : (is_string($v) ? $v : '');
-                    $thumb = $aid ? (wp_get_attachment_image_url($aid, 'thumbnail') ?: $full) : $full;
-                    if ($full) {
-                        $items[] = ['full' => $full, 'thumb' => $thumb];
-                    }
-                }
-            }
-            ?>
-            <?php echo \WpStore\Frontend\Template::render('components/product-gallery', [
-                'id' => (int) $id,
-                'title' => (string) $title,
-                'image_src' => (string) $image_src,
-                'items' => $items,
-            ]); ?>
+            <?php echo do_shortcode('[wp_store_gallery id="' . esc_attr((string) $id) . '"]'); ?>
         </div>
         <div style="flex: 1;">
-            <h1 class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mb-2"><?php echo esc_html($title); ?></h1>
+            <h1 class="fs-3 fw-bold wps-text-gray-900 wps-mb-2"><?php echo esc_html($title); ?></h1>
             <?php echo \WpStore\Frontend\Template::render('components/breadcrumb', ['post_id' => $id]); ?>
             <?php echo wps_product_price_html((int) $id, ['wrapper_class' => 'wps-mb-4']); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
             <?php
@@ -119,7 +93,7 @@
                 'title' => (string) $title,
                 'price' => $price,
                 'stock' => $stock,
-                'image' => $image_src,
+                'image' => (!empty($image) ? $image : (WP_STORE_URL . 'assets/frontend/img/noimg.webp')),
                 'currency' => $currency ?? 'Rp',
             ]);
             $single_after_summary = trim((string) ob_get_clean());
@@ -177,4 +151,3 @@
         </div>
     <?php endif; ?>
 </div>
-

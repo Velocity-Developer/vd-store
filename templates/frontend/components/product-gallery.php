@@ -7,12 +7,15 @@ $items = isset($items) && is_array($items) ? $items : [];
 $ptype_single = get_post_meta((int) $id, '_store_product_type', true);
 $is_digital_single = ($ptype_single === 'digital') || (bool) get_post_meta((int) $id, '_store_is_digital', true);
 ?>
+<div class="wps-product-gallery" data-wps-product-gallery data-gallery-id="<?php echo esc_attr((string) $id); ?>">
 <?php if (count($items) > 1) : ?>
-    <div class="wps-position-relative wps-w-full wps-products-carousel" data-wps-carousel data-cell-align="center" data-contain="true" data-wrap-around="true" data-page-dots="true" data-prev-next-buttons="true" data-draggable="true">
+    <div class="wps-position-relative wps-w-full wps-products-carousel wps-product-gallery-main" data-wps-carousel data-cell-align="center" data-contain="true" data-wrap-around="true" data-page-dots="true" data-prev-next-buttons="true" data-draggable="true">
         <div class="main-carousel carousel-main" id="wps-main-carousel-<?php echo esc_attr((string) $id); ?>">
-            <?php foreach ($items as $gi) : ?>
+            <?php foreach ($items as $index => $gi) : ?>
                 <div class="carousel-cell wps-mx-0">
-                    <img class="wps-w-full wps-rounded wps-img-320" src="<?php echo esc_url((string) ($gi['full'] ?? '')); ?>" alt="<?php echo esc_attr($title); ?>">
+                    <button type="button" class="wps-product-gallery-open" data-gallery-open data-gallery-index="<?php echo esc_attr((string) $index); ?>" aria-label="<?php echo esc_attr(sprintf(__('Lihat gambar %d', 'wp-store'), $index + 1)); ?>">
+                        <img class="wps-w-full wps-rounded wps-img-320" src="<?php echo esc_url((string) ($gi['full'] ?? '')); ?>" alt="<?php echo esc_attr($title); ?>">
+                    </button>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -23,18 +26,18 @@ $is_digital_single = ($ptype_single === 'digital') || (bool) get_post_meta((int)
             </span>
         <?php endif; ?>
     </div>
-    <div class="wps-mt-2 wps-products-carousel" data-wps-carousel data-as-nav-for="#wps-main-carousel-<?php echo esc_attr((string) $id); ?>" data-cell-align="left" data-contain="true" data-wrap-around="false" data-page-dots="false" data-prev-next-buttons="false" data-draggable="true">
-        <div class="main-carousel carousel-nav">
-            <?php foreach ($items as $gi) : ?>
-                <div class="carousel-cell wps-mr-2" style="width:64px;">
-                    <img class="wps-img-60 wps-rounded" src="<?php echo esc_url((string) ($gi['thumb'] ?? '')); ?>" alt="">
-                </div>
-            <?php endforeach; ?>
-        </div>
+    <div class="wps-product-gallery-thumbs wps-mt-3" role="tablist" aria-label="<?php echo esc_attr__('Thumbnail galeri produk', 'wp-store'); ?>">
+        <?php foreach ($items as $index => $gi) : ?>
+            <button type="button" class="wps-product-gallery-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" data-gallery-thumb data-gallery-index="<?php echo esc_attr((string) $index); ?>" aria-label="<?php echo esc_attr(sprintf(__('Pilih gambar %d', 'wp-store'), $index + 1)); ?>">
+                <img class="wps-img-60 wps-rounded" src="<?php echo esc_url((string) ($gi['thumb'] ?? '')); ?>" alt="">
+            </button>
+        <?php endforeach; ?>
     </div>
 <?php else : ?>
-    <div style="position:relative;display:block;">
-        <img class="wps-w-full wps-rounded wps-img-320" src="<?php echo esc_url($image_src); ?>" alt="<?php echo esc_attr($title); ?>">
+    <div class="wps-product-gallery-main-single" style="position:relative;display:block;">
+        <button type="button" class="wps-product-gallery-open" data-gallery-open data-gallery-index="0" aria-label="<?php echo esc_attr__('Lihat gambar produk', 'wp-store'); ?>">
+            <img class="wps-w-full wps-rounded wps-img-320" src="<?php echo esc_url($image_src); ?>" alt="<?php echo esc_attr($title); ?>">
+        </button>
         <?php if ($is_digital_single) : ?>
             <span class="wps-text-xs wps-text-white" style="position:absolute;top:8px;left:8px;display:flex;align-items:center;background:#111827cc;color:#fff;border-radius:9999px;padding:2px 6px;backdrop-filter:saturate(180%) blur(4px);">
                 <?php echo wps_icon(['name' => 'cloud-download', 'size' => 12, 'stroke_color' => '#ffffff']); ?>
@@ -43,3 +46,22 @@ $is_digital_single = ($ptype_single === 'digital') || (bool) get_post_meta((int)
         <?php endif; ?>
     </div>
 <?php endif; ?>
+    <div class="wps-product-gallery-viewer" data-gallery-viewer hidden>
+        <div class="wps-product-gallery-viewer__backdrop" data-gallery-close></div>
+        <div class="wps-product-gallery-viewer__dialog" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr($title); ?>">
+            <button type="button" class="wps-product-gallery-viewer__close" data-gallery-close aria-label="<?php echo esc_attr__('Tutup gambar', 'wp-store'); ?>">&times;</button>
+            <?php if (count($items) > 1) : ?>
+                <button type="button" class="wps-product-gallery-viewer__nav is-prev" data-gallery-prev aria-label="<?php echo esc_attr__('Gambar sebelumnya', 'wp-store'); ?>">&lsaquo;</button>
+                <button type="button" class="wps-product-gallery-viewer__nav is-next" data-gallery-next aria-label="<?php echo esc_attr__('Gambar berikutnya', 'wp-store'); ?>">&rsaquo;</button>
+            <?php endif; ?>
+            <div class="wps-product-gallery-viewer__content">
+                <img src="" alt="<?php echo esc_attr($title); ?>" data-gallery-viewer-image>
+            </div>
+        </div>
+    </div>
+    <div class="wps-display-none" data-gallery-images>
+        <?php foreach ($items as $index => $gi) : ?>
+            <span data-gallery-image="<?php echo esc_attr((string) $index); ?>" data-full="<?php echo esc_url((string) ($gi['full'] ?? '')); ?>"></span>
+        <?php endforeach; ?>
+    </div>
+</div>

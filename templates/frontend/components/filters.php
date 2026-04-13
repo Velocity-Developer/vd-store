@@ -28,24 +28,24 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
           :min="price_min_bound"
           :max="price_max_bound"
           step="1"
-          x-model.number="min_price"
-          @input="clampPrices(); update()"
+          x-model.number="active_min_price"
+          @input="clampPrices(); syncInputsFromRange(); update()"
           class="wps-range min">
         <input type="range"
           :min="price_min_bound"
           :max="price_max_bound"
           step="1"
-          x-model.number="max_price"
-          @input="clampPrices(); update()"
+          x-model.number="active_max_price"
+          @input="clampPrices(); syncInputsFromRange(); update()"
           class="wps-range max">
       </div>
     </div>
     <div class="wps-price-input wps-mt-2">
       <div class="wps-form-group wps-mb-0">
-        <input class="wps-input" type="number" min="0" step="1" x-model.number="min_price" @input="clampPrices(); update()">
+        <input class="wps-input" type="number" min="0" step="1" x-model="min_price_input" @input="syncFromInputs(); update()" placeholder="Min">
       </div>
       <div class="wps-form-group wps-mb-0">
-        <input class="wps-input" type="number" min="0" step="1" x-model.number="max_price" @input="clampPrices(); update()">
+        <input class="wps-input" type="number" min="0" step="1" x-model="max_price_input" @input="syncFromInputs(); update()" placeholder="Max">
       </div>
     </div>
     <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
@@ -66,8 +66,12 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
       </div>
     </div>
     <div class="wps-mt-4 wps-flex wps-justify-between wps-items-center">
-      <a href="<?php echo esc_url($reset_url); ?>" class="wps-btn wps-btn-secondary"><?php echo wps_icon(['name' => 'trash', 'size' => 16, 'class' => 'wps-mr-2']); ?>Reset</a>
+      <button type="button" class="wps-btn wps-btn-secondary" @click="resetFilters"><?php echo wps_icon(['name' => 'trash', 'size' => 16, 'class' => 'wps-mr-2']); ?>Reset</button>
       <button type="submit" class="wps-btn wps-btn-primary"><?php echo wps_icon(['name' => 'sliders2', 'size' => 16, 'class' => 'wps-mr-2']); ?>Terapkan</button>
+    </div>
+    <div class="wps-filter-loading wps-mt-3" x-show="updating" x-cloak>
+      <span class="wps-filter-loading__spinner" aria-hidden="true"></span>
+      <span><?php echo esc_html__('Loading...', 'wp-store'); ?></span>
     </div>
   </div>
 </form>
@@ -75,10 +79,13 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
   document.addEventListener('alpine:init', () => {
     Alpine.data('wpStoreFilters', () => ({
       sort: <?php echo wp_json_encode((string) ($current['sort'] ?? '')); ?>,
-      min_price: <?php echo is_numeric($current['min_price'] ?? '') ? (float) $current['min_price'] : '""'; ?>,
-      max_price: <?php echo is_numeric($current['max_price'] ?? '') ? (float) $current['max_price'] : '""'; ?>,
+      min_price_input: <?php echo is_numeric($current['min_price'] ?? '') ? wp_json_encode((string) ((float) $current['min_price'])) : '""'; ?>,
+      max_price_input: <?php echo is_numeric($current['max_price'] ?? '') ? wp_json_encode((string) ((float) $current['max_price'])) : '""'; ?>,
+      active_min_price: <?php echo is_numeric($current['min_price'] ?? '') ? (float) $current['min_price'] : (isset($price_min_global) ? (float) $price_min_global : 0); ?>,
+      active_max_price: <?php echo is_numeric($current['max_price'] ?? '') ? (float) $current['max_price'] : (isset($price_max_global) ? (float) $price_max_global : 0); ?>,
       price_min_bound: <?php echo isset($price_min_global) ? (float) $price_min_global : 0; ?>,
       price_max_bound: <?php echo isset($price_max_global) ? (float) $price_max_global : 0; ?>,
+      reset_url: <?php echo wp_json_encode($reset_url); ?>,
       cats: <?php echo wp_json_encode(array_values($current['cats'] ?? [])); ?>,
       locked_cats: <?php echo wp_json_encode(isset($locked_cats) ? array_values($locked_cats) : []); ?>,
       updating: false,
@@ -87,18 +94,10 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
       init() {
         this.parseQueryIntoState();
         this.enforceLockedCats();
-        if (this.min_price === '' || isNaN(this.min_price)) this.min_price = this.price_min_bound;
-        if (this.max_price === '' || isNaN(this.max_price)) this.max_price = this.price_max_bound;
+        if (this.min_price_input === '') this.active_min_price = this.price_min_bound;
+        if (this.max_price_input === '') this.active_max_price = this.price_max_bound;
         this.clampPrices();
         this.$watch('sort', () => this.update());
-        this.$watch('min_price', () => {
-          this.clampPrices();
-          this.update();
-        });
-        this.$watch('max_price', () => {
-          this.clampPrices();
-          this.update();
-        });
         this.$watch('cats', () => {
           this.enforceLockedCats();
           this.update();
@@ -140,16 +139,29 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
       },
       get rangeFillStyle() {
         const span = Math.max(1, this.price_max_bound - this.price_min_bound);
-        const minPct = Math.max(0, Math.min(100, ((this.min_price - this.price_min_bound) / span) * 100));
-        const maxPct = Math.max(0, Math.min(100, ((this.max_price - this.price_min_bound) / span) * 100));
+        const minPct = Math.max(0, Math.min(100, ((this.active_min_price - this.price_min_bound) / span) * 100));
+        const maxPct = Math.max(0, Math.min(100, ((this.active_max_price - this.price_min_bound) / span) * 100));
         const left = Math.min(minPct, maxPct);
         const right = Math.max(0, 100 - Math.max(minPct, maxPct));
         return `left:${left}%; right:${right}%;`;
       },
       clampPrices() {
-        if (this.min_price < this.price_min_bound) this.min_price = this.price_min_bound;
-        if (this.max_price > this.price_max_bound) this.max_price = this.price_max_bound;
-        if (this.min_price > this.max_price) this.min_price = this.max_price;
+        if (this.active_min_price < this.price_min_bound) this.active_min_price = this.price_min_bound;
+        if (this.active_max_price > this.price_max_bound) this.active_max_price = this.price_max_bound;
+        if (this.active_min_price > this.active_max_price) this.active_min_price = this.active_max_price;
+      },
+      syncInputsFromRange() {
+        this.min_price_input = this.active_min_price <= this.price_min_bound ? '' : String(Math.round(this.active_min_price));
+        this.max_price_input = this.active_max_price >= this.price_max_bound ? '' : String(Math.round(this.active_max_price));
+      },
+      syncFromInputs() {
+        const minRaw = String(this.min_price_input || '').trim();
+        const maxRaw = String(this.max_price_input || '').trim();
+        this.active_min_price = minRaw === '' ? this.price_min_bound : parseFloat(minRaw);
+        this.active_max_price = maxRaw === '' ? this.price_max_bound : parseFloat(maxRaw);
+        if (!Number.isFinite(this.active_min_price)) this.active_min_price = this.price_min_bound;
+        if (!Number.isFinite(this.active_max_price)) this.active_max_price = this.price_max_bound;
+        this.clampPrices();
       },
       enforceLockedCats() {
         const base = Array.isArray(this.cats) ? this.cats.map((n) => parseInt(n, 10)).filter((n) => Number.isFinite(n)) : [];
@@ -175,8 +187,10 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
       buildQuery() {
         const p = new URLSearchParams();
         if (this.sort) p.set('sort', this.sort);
-        if (this.min_price !== '' && this.min_price !== null && !isNaN(this.min_price)) p.set('min_price', this.min_price);
-        if (this.max_price !== '' && this.max_price !== null && !isNaN(this.max_price)) p.set('max_price', this.max_price);
+        const minRaw = String(this.min_price_input || '').trim();
+        const maxRaw = String(this.max_price_input || '').trim();
+        if (minRaw !== '') p.set('min_price', minRaw);
+        if (maxRaw !== '') p.set('max_price', maxRaw);
         (Array.isArray(this.cats) ? this.cats : []).forEach((c) => {
           const n = parseInt(c, 10);
           if (Number.isFinite(n) && n > 0) p.append('cats[]', String(n));
@@ -191,12 +205,12 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
           const mn = qs.get('min_price');
           const mx = qs.get('max_price');
           if (sp !== null) this.sort = String(sp);
-          if (mn !== null) this.min_price = parseFloat(mn);
-          if (mx !== null) this.max_price = parseFloat(mx);
+          this.min_price_input = mn !== null ? String(mn) : '';
+          this.max_price_input = mx !== null ? String(mx) : '';
           const cats = qs.getAll('cats[]').map((v) => parseInt(v, 10)).filter((n) => Number.isFinite(n) && n > 0);
           if (cats.length) this.cats = cats;
+          this.syncFromInputs();
           this.enforceLockedCats();
-          this.clampPrices();
         } catch (e) {}
       },
       refreshShop() {
@@ -244,6 +258,18 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
           history.pushState({}, '', next);
           this.refreshShop();
         }, 120);
+      },
+      resetFilters() {
+        this.sort = '';
+        this.min_price_input = '';
+        this.max_price_input = '';
+        this.active_min_price = this.price_min_bound;
+        this.active_max_price = this.price_max_bound;
+        this.cats = Array.isArray(this.locked_cats) ? this.locked_cats.slice() : [];
+        this.enforceLockedCats();
+        const next = this.reset_url || window.location.pathname.replace(/\/page\/\d+\/?$/, '/');
+        history.pushState({}, '', next);
+        this.refreshShop();
       }
     }))
   });

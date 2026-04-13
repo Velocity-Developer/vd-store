@@ -115,35 +115,49 @@ class Shortcode
             'link' => $product['link'],
             'image' => $product['image'],
             'price' => $product['price'],
+            'regular_price' => $product['regular_price'] ?? null,
+            'sale_price' => $product['sale_price'] ?? null,
             'stock' => $product['stock'],
+            'sold_count' => (int) ($product['sold_count'] ?? 0),
+            'rating_average' => (float) ($product['rating_average'] ?? 0),
         ];
     }
 
-    private function apply_product_filters(array $args, $sort, $min_price, $max_price, array $cats)
+    private function price_stats_for_products(array $product_ids)
     {
-        $meta_query = [];
+        $prices = [];
+        foreach ($product_ids as $product_id) {
+            $price = ProductData::resolve_effective_price((int) $product_id);
+            if ($price === null || !is_numeric($price)) {
+                continue;
+            }
+            $prices[] = (float) $price;
+        }
 
-        if ($min_price !== null && $min_price >= 0) {
-            $meta_query[] = [
-                'key' => '_store_price',
-                'value' => $min_price,
-                'type' => 'NUMERIC',
-                'compare' => '>=',
+        if (empty($prices)) {
+            return [
+                'min' => 0.0,
+                'max' => 0.0,
+                'avg' => 0.0,
             ];
         }
 
-        if ($max_price !== null && $max_price >= 0) {
-            $meta_query[] = [
-                'key' => '_store_price',
-                'value' => $max_price,
-                'type' => 'NUMERIC',
-                'compare' => '<=',
-            ];
-        }
+        return [
+            'min' => (float) min($prices),
+            'max' => (float) max($prices),
+            'avg' => (float) (array_sum($prices) / count($prices)),
+        ];
+    }
 
-        if (!empty($meta_query)) {
-            $args['meta_query'] = ['relation' => 'AND'] + $meta_query;
-        }
+    private function build_shop_query_args(array $cats, $sort)
+    {
+        $args = [
+            'post_type' => 'store_product',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'fields' => 'ids',
+            'no_found_rows' => true,
+        ];
 
         if (!empty($cats)) {
             $args['tax_query'] = [
@@ -169,20 +183,13 @@ class Shortcode
             $args['meta_key'] = '_store_rating_average';
             $args['orderby'] = 'meta_value_num';
             $args['order'] = 'DESC';
-        } elseif ($sort === 'cheap') {
-            $args['meta_key'] = '_store_price';
-            $args['orderby'] = 'meta_value_num';
-            $args['order'] = 'ASC';
-        } elseif ($sort === 'expensive') {
-            $args['meta_key'] = '_store_price';
-            $args['orderby'] = 'meta_value_num';
+        } else {
+            $args['orderby'] = 'date';
             $args['order'] = 'DESC';
         }
 
         return $args;
     }
-
-
 
     public function filter_single_content($content)
     {
@@ -240,13 +247,6 @@ class Shortcode
                 if ($id > 0) $cats[] = $id;
             }
         }
-        $args = [
-            'post_type' => 'store_product',
-            'posts_per_page' => $per_page,
-            'paged' => $paged,
-            'post_status' => 'publish',
-        ];
-
         if (empty($cats) && is_tax('store_product_cat')) {
             $term = get_queried_object();
             if ($term && isset($term->term_id)) {
@@ -254,34 +254,56 @@ class Shortcode
             }
         }
 
-        $args = $this->apply_product_filters($args, $sort, $min_price, $max_price, $cats);
-
-        $query = new \WP_Query($args);
-        $max_pages = (int) $query->max_num_pages;
-        if ($paged > $max_pages && $max_pages > 0) {
-            $paged = $max_pages;
-            $args['paged'] = $paged;
-            $query = new \WP_Query($args);
-        }
         $currency = (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
+        $query = new \WP_Query($this->build_shop_query_args($cats, $sort));
         $items = [];
-        if ($query->have_posts()) {
-            while ($query->have_posts()) {
-                $query->the_post();
-                $id = get_the_ID();
-                $item = $this->card_item_from_product($id, $this->get_thumbnail_size());
-                if ($item !== null) {
-                    $items[] = $item;
-                }
+        $product_ids = $query->posts;
+        foreach ($product_ids as $product_id) {
+            $item = $this->card_item_from_product((int) $product_id, $this->get_thumbnail_size());
+            if ($item === null) {
+                continue;
             }
-            wp_reset_postdata();
+
+            $price = isset($item['price']) && is_numeric($item['price']) ? (float) $item['price'] : null;
+            if ($price === null) {
+                continue;
+            }
+            if ($min_price !== null && $min_price >= 0 && $price < (float) $min_price) {
+                continue;
+            }
+            if ($max_price !== null && $max_price >= 0 && $price > (float) $max_price) {
+                continue;
+            }
+
+            $items[] = $item;
         }
+
+        if ($sort === 'cheap' || $sort === 'expensive') {
+            usort($items, static function ($left, $right) use ($sort) {
+                $left_price = isset($left['price']) && is_numeric($left['price']) ? (float) $left['price'] : 0.0;
+                $right_price = isset($right['price']) && is_numeric($right['price']) ? (float) $right['price'] : 0.0;
+                if ($left_price === $right_price) {
+                    return strcasecmp((string) ($left['title'] ?? ''), (string) ($right['title'] ?? ''));
+                }
+                return $sort === 'cheap'
+                    ? ($left_price <=> $right_price)
+                    : ($right_price <=> $left_price);
+            });
+        }
+
+        $total_items = count($items);
+        $total_pages = max(1, (int) ceil($total_items / $per_page));
+        if ($paged > $total_pages) {
+            $paged = $total_pages;
+        }
+        $items = array_slice($items, max(0, ($paged - 1) * $per_page), $per_page);
+
         return Template::render('pages/shop', [
             'items' => $items,
             'currency' => $currency,
             'page' => (int) $paged,
-            'pages' => (int) $query->max_num_pages,
-            'total' => (int) $query->found_posts
+            'pages' => (int) $total_pages,
+            'total' => (int) $total_items
         ]);
     }
 
@@ -695,7 +717,7 @@ class Shortcode
         $featured = get_the_post_thumbnail_url($id, 'large');
         $fallback = WP_STORE_URL . 'assets/frontend/img/noimg.webp';
         $image_src = $featured ?: ($product['image'] ?: $fallback);
-        $gallery_raw = get_post_meta((int) $id, '_store_gallery_ids', true);
+        $gallery_ids = ProductMeta::gallery_ids((int) $id);
         $items = [];
         $featured_thumb = get_the_post_thumbnail_url((int) $id, 'thumbnail');
         $featured_thumb = $featured_thumb ? $featured_thumb : $image_src;
@@ -704,15 +726,18 @@ class Shortcode
             'thumb' => $featured_thumb,
         ];
 
-        if (is_array($gallery_raw) && !empty($gallery_raw)) {
-            foreach ($gallery_raw as $k => $v) {
-                $aid = is_numeric($k) ? (int) $k : 0;
-                $full = $aid ? (wp_get_attachment_image_url($aid, 'large') ?: (is_string($v) ? $v : '')) : (is_string($v) ? $v : '');
-                $thumb = $aid ? (wp_get_attachment_image_url($aid, 'thumbnail') ?: $full) : $full;
+        if (!empty($gallery_ids)) {
+            foreach ($gallery_ids as $attachment_id) {
+                $attachment_id = (int) $attachment_id;
+                if ($attachment_id <= 0) {
+                    continue;
+                }
+                $full = wp_get_attachment_image_url($attachment_id, 'large');
+                $thumb = wp_get_attachment_image_url($attachment_id, 'thumbnail');
                 if ($full) {
                     $items[] = [
                         'full' => $full,
-                        'thumb' => $thumb,
+                        'thumb' => $thumb ?: $full,
                     ];
                 }
             }
@@ -850,55 +875,6 @@ class Shortcode
                 ];
             }
         }
-        global $wpdb;
-        $min_price_global = 0.0;
-        $max_price_global = 0.0;
-        $avg_price_global = 0.0;
-        $sqlMin = $wpdb->prepare(
-            "SELECT MIN(CAST(pm.meta_value AS DECIMAL(18,2))) 
-             FROM {$wpdb->postmeta} pm 
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id 
-             WHERE p.post_type = %s AND p.post_status = %s AND pm.meta_key = %s AND pm.meta_value <> ''",
-            'store_product',
-            'publish',
-            '_store_price'
-        );
-        $sqlMax = $wpdb->prepare(
-            "SELECT MAX(CAST(pm.meta_value AS DECIMAL(18,2))) 
-             FROM {$wpdb->postmeta} pm 
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id 
-             WHERE p.post_type = %s AND p.post_status = %s AND pm.meta_key = %s AND pm.meta_value <> ''",
-            'store_product',
-            'publish',
-            '_store_price'
-        );
-        $minv = $wpdb->get_var($sqlMin);
-        $maxv = $wpdb->get_var($sqlMax);
-        $sqlAvg = $wpdb->prepare(
-            "SELECT AVG(CAST(pm.meta_value AS DECIMAL(18,2))) 
-             FROM {$wpdb->postmeta} pm 
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id 
-             WHERE p.post_type = %s AND p.post_status = %s AND pm.meta_key = %s AND pm.meta_value <> ''",
-            'store_product',
-            'publish',
-            '_store_price'
-        );
-        $avgv = $wpdb->get_var($sqlAvg);
-        if ($minv !== null && $minv !== '') {
-            $min_price_global = (float) $minv;
-        }
-        if ($maxv !== null && $maxv !== '') {
-            $max_price_global = (float) $maxv;
-        }
-        if ($avgv !== null && $avgv !== '') {
-            $avg_price_global = (float) $avgv;
-        }
-        if ($min_price_global < 0) $min_price_global = 0.0;
-        if ($max_price_global < $min_price_global) $max_price_global = $min_price_global;
-        // Add a small padding for UI friendliness
-        $min_price_global = floor($min_price_global);
-        $max_price_global = ceil($max_price_global);
-        $avg_price_global = round($avg_price_global);
         $current = [
             'sort' => isset($_GET['sort']) ? sanitize_key($_GET['sort']) : '',
             'min_price' => isset($_GET['min_price']) ? (float) $_GET['min_price'] : '',
@@ -921,15 +897,6 @@ class Shortcode
                 }
             }
         }
-        $req = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
-        $path = parse_url($req, PHP_URL_PATH);
-        if (is_string($path)) {
-            $path = preg_replace('#/page/\d+/?#', '/', $path);
-            if (!$path) $path = '/';
-        } else {
-            $path = '/';
-        }
-        $reset_url = home_url($path);
         $locked_cats = [];
         if (is_tax('store_product_cat')) {
             $term = get_queried_object();
@@ -940,6 +907,32 @@ class Shortcode
                 }
             }
         }
+        if (is_tax('store_product_cat')) {
+            $term = get_queried_object();
+            $reset_url = ($term && !is_wp_error($term)) ? get_term_link($term) : get_post_type_archive_link('store_product');
+        } elseif (is_post_type_archive('store_product') || (get_query_var('post_type') === 'store_product' && !is_singular())) {
+            $reset_url = get_post_type_archive_link('store_product');
+        } else {
+            $req = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
+            $path = parse_url($req, PHP_URL_PATH);
+            if (!is_string($path) || $path === '') {
+                $path = '/';
+            }
+            $path = preg_replace('#/page/\d+/?#', '/', $path);
+            $home_path = (string) wp_parse_url(home_url('/'), PHP_URL_PATH);
+            if ($home_path !== '' && $home_path !== '/' && strpos($path, $home_path) === 0) {
+                $path = substr($path, strlen($home_path));
+                $path = '/' . ltrim((string) $path, '/');
+            }
+            $reset_url = home_url($path ?: '/');
+        }
+        if (is_wp_error($reset_url) || !is_string($reset_url) || $reset_url === '') {
+            $reset_url = home_url('/');
+        }
+        $price_stats = $this->price_stats_for_products((new \WP_Query($this->build_shop_query_args(!empty($current['cats']) ? $current['cats'] : $locked_cats, 'latest')))->posts);
+        $min_price_global = floor(max(0.0, (float) ($price_stats['min'] ?? 0)));
+        $max_price_global = ceil(max($min_price_global, (float) ($price_stats['max'] ?? 0)));
+        $avg_price_global = round((float) ($price_stats['avg'] ?? 0));
         return Template::render('components/filters', [
             'categories' => $categories,
             'current' => $current,
@@ -971,7 +964,7 @@ class Shortcode
                 <button class="wps-btn wps-btn-secondary" @click="openFilters = true"><?php echo esc_html__('Filter', 'wp-store'); ?></button>
             </div>
             <div class="wps-flex wps-gap-4">
-                <div x-show="!isMobile" x-cloak style="width:300px;flex:0 0 300px;"><?php echo $filters; ?></div>
+                <div x-show="!isMobile" x-cloak style="width:260px;flex:0 0 260px;"><?php echo $filters; ?></div>
                 <div style="flex:1 1 auto;"><?php echo $shop; ?></div>
             </div>
             <template x-if="openFilters">
@@ -1191,6 +1184,7 @@ class Shortcode
     public function render_add_to_cart($atts = [])
     {
         wp_enqueue_script('alpinejs');
+        $raw_atts = is_array($atts) ? $atts : [];
         $atts = shortcode_atts([
             'id' => 0,
             'label' => '+',
@@ -1215,7 +1209,11 @@ class Shortcode
         $adv_name = $product['price_adjustment_name'];
         $adv_values = $product['price_adjustment_options'];
         $nonce = wp_create_nonce('wp_rest');
-        $label = (is_string($atts['text']) && $atts['text'] !== '') ? $atts['text'] : $atts['label'];
+        if (array_key_exists('text', $raw_atts)) {
+            $label = (string) $atts['text'];
+        } else {
+            $label = (is_string($atts['text']) && $atts['text'] !== '') ? $atts['text'] : $atts['label'];
+        }
         $wantQty = false;
         if (is_bool($atts['qty'])) {
             $wantQty = $atts['qty'];

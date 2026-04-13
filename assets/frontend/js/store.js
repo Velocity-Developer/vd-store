@@ -308,16 +308,127 @@
       }
     });
   };
+  const initProductGalleries = () => {
+    const galleries = document.querySelectorAll("[data-wps-product-gallery]");
+    galleries.forEach((gallery) => {
+      if (gallery.__wpsGalleryReady) return;
+      gallery.__wpsGalleryReady = true;
+
+      const mainTrack = gallery.querySelector(".carousel-main");
+      const mainFlkty = mainTrack && mainTrack.__flickity ? mainTrack.__flickity : null;
+      const thumbs = Array.from(gallery.querySelectorAll("[data-gallery-thumb]"));
+      const openerButtons = Array.from(gallery.querySelectorAll("[data-gallery-open]"));
+      const viewer = gallery.querySelector("[data-gallery-viewer]");
+      const viewerImage = gallery.querySelector("[data-gallery-viewer-image]");
+      const imageNodes = Array.from(gallery.querySelectorAll("[data-gallery-image]"));
+      const images = imageNodes
+        .map((node) => node.getAttribute("data-full") || "")
+        .filter(Boolean);
+
+      let currentIndex = 0;
+
+      const updateThumbs = (index) => {
+        thumbs.forEach((thumb) => {
+          const thumbIndex = parseInt(thumb.getAttribute("data-gallery-index") || "0", 10);
+          thumb.classList.toggle("is-active", thumbIndex === index);
+        });
+      };
+
+      const selectIndex = (index) => {
+        const nextIndex = Math.max(0, Math.min(images.length - 1, index));
+        currentIndex = nextIndex;
+        updateThumbs(currentIndex);
+        if (mainFlkty) {
+          mainFlkty.select(currentIndex);
+        }
+        if (viewerImage && images[currentIndex]) {
+          viewerImage.src = images[currentIndex];
+        }
+      };
+
+      thumbs.forEach((thumb) => {
+        thumb.addEventListener("click", () => {
+          const idx = parseInt(thumb.getAttribute("data-gallery-index") || "0", 10);
+          selectIndex(Number.isFinite(idx) ? idx : 0);
+        });
+      });
+
+      if (mainFlkty) {
+        mainFlkty.on("change", (index) => {
+          selectIndex(index);
+        });
+      }
+
+      const openViewer = (index) => {
+        if (!viewer || !viewerImage || !images.length) return;
+        selectIndex(index);
+        viewer.hidden = false;
+        document.body.classList.add("wps-gallery-viewer-open");
+      };
+
+      const closeViewer = () => {
+        if (!viewer) return;
+        viewer.hidden = true;
+        document.body.classList.remove("wps-gallery-viewer-open");
+      };
+
+      openerButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const idx = parseInt(button.getAttribute("data-gallery-index") || "0", 10);
+          openViewer(Number.isFinite(idx) ? idx : 0);
+        });
+      });
+
+      if (viewer) {
+        gallery.querySelectorAll("[data-gallery-close]").forEach((button) => {
+          button.addEventListener("click", closeViewer);
+        });
+        const prev = gallery.querySelector("[data-gallery-prev]");
+        const next = gallery.querySelector("[data-gallery-next]");
+        if (prev) {
+          prev.addEventListener("click", () => {
+            if (!images.length) return;
+            selectIndex((currentIndex - 1 + images.length) % images.length);
+          });
+        }
+        if (next) {
+          next.addEventListener("click", () => {
+            if (!images.length) return;
+            selectIndex((currentIndex + 1) % images.length);
+          });
+        }
+      }
+
+      document.addEventListener("keydown", (event) => {
+        if (!viewer || viewer.hidden) return;
+        if (event.key === "Escape") {
+          closeViewer();
+        } else if (event.key === "ArrowLeft" && images.length > 1) {
+          selectIndex((currentIndex - 1 + images.length) % images.length);
+        } else if (event.key === "ArrowRight" && images.length > 1) {
+          selectIndex((currentIndex + 1) % images.length);
+        }
+      });
+
+      updateThumbs(currentIndex);
+    });
+  };
   if (document.readyState !== "loading") {
     initCarousels();
+    initProductGalleries();
   } else {
     document.addEventListener("DOMContentLoaded", initCarousels);
+    document.addEventListener("DOMContentLoaded", initProductGalleries);
   }
   document.addEventListener("wp-store:ready", initCarousels);
+  document.addEventListener("wp-store:ready", initProductGalleries);
   const setupBeaverBuilderIntegration = () => {
     const content = document.querySelector(".fl-builder-content");
     if (!content) return;
-    const trigger = () => setTimeout(initCarousels, 20);
+    const trigger = () => setTimeout(() => {
+      initCarousels();
+      initProductGalleries();
+    }, 20);
     if (window.jQuery && typeof window.jQuery.fn.on === "function") {
       window.jQuery(content).on("fl-builder.layout-rendered", trigger);
       window.jQuery(content).on("fl-builder.preview-rendered", trigger);

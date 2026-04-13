@@ -155,6 +155,7 @@
         }
     })();
 </script>
+<?php $has_label = is_string($label) && trim($label) !== ''; ?>
 <div x-data="wpStoreAddToCart({
         id: <?php echo (int) $id; ?>,
         qtyEnabled: <?php echo isset($show_qty) && $show_qty ? 'true' : 'false'; ?>,
@@ -172,11 +173,13 @@
     </div>
     <button type="button" @click="add()" :disabled="loading" class="<?php echo esc_attr($btn_class); ?> wps-add-to-cart" :style="loading ? 'opacity:.7; pointer-events:none;' : ''">
         <template x-if="loading">
-            <span><?php echo wps_icon(['name' => 'spinner', 'size' => 18, 'class' => 'wps-mr-2']); ?></span>
+            <span><?php echo wps_icon(['name' => 'spinner', 'size' => 18, 'class' => $has_label ? 'wps-mr-2' : '']); ?></span>
         </template>
         <template x-if="!loading">
-            <span><?php echo wps_icon(['name' => 'cart', 'size' => 20, 'class' => 'wps-icon-20 wps-mr-2']); ?></span>
+            <span><?php echo wps_icon(['name' => 'cart', 'size' => 20, 'class' => trim('wps-icon-20' . ($has_label ? ' wps-mr-2' : ''))]); ?></span>
         </template>
-        <?php echo esc_html($label); ?>
+        <?php if ($has_label) : ?>
+            <?php echo esc_html($label); ?>
+        <?php endif; ?>
     </button>
 </div>
