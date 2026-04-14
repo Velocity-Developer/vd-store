@@ -189,16 +189,9 @@ function wps_discount_badge_html($product_id)
     if (!empty($settings['members_only_discount']) && !is_user_logged_in()) {
         return '';
     }
-    $price = get_post_meta((int) $product_id, '_store_price', true);
-    $sale = get_post_meta((int) $product_id, '_store_sale_price', true);
-    $price = $price !== '' ? (float) $price : null;
-    $sale = $sale !== '' ? (float) $sale : null;
+    $price = \WpStore\Domain\Product\ProductData::resolve_regular_price((int) $product_id);
+    $sale = \WpStore\Domain\Product\ProductData::resolve_sale_price((int) $product_id);
     if ($price !== null && $sale !== null && $price > 0 && $sale > 0 && $sale < $price) {
-        $untilRaw = (string) get_post_meta((int) $product_id, '_store_flashsale_until', true);
-        $untilTs = $untilRaw ? strtotime($untilRaw) : 0;
-        $nowTs = current_time('timestamp');
-        $active = ($untilTs === 0 || $untilTs > $nowTs);
-        if (!$active) return '';
         $percent = round((($price - $sale) / $price) * 100);
         if ($percent <= 0) return '';
         return '<span style="position:absolute;bottom:8px;right:8px;display:inline-flex;align-items:center;background:#ef4444;color:#fff;border-radius:9999px;padding:2px 6px;font-size:10px;line-height:12px;z-index:2;">' . esc_html($percent) . '%</span>';

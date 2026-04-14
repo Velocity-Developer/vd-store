@@ -73,6 +73,7 @@ class ProductData
         $until_raw = (string) ProductMeta::get($product_id, 'sale_until', '');
         $until_ts = $until_raw ? strtotime($until_raw) : 0;
         if ($until_ts > 0 && $until_ts <= current_time('timestamp')) {
+            self::clear_expired_sale($product_id);
             return null;
         }
 
@@ -159,5 +160,16 @@ class ProductData
 
         $current = (int) ProductMeta::get_number($product_id, 'sold_count', 0);
         update_post_meta($product_id, ProductMeta::meta_key('sold_count'), max(0, $current + $qty));
+    }
+
+    private static function clear_expired_sale($product_id)
+    {
+        $product_id = (int) $product_id;
+        if (!ProductMeta::is_product($product_id)) {
+            return;
+        }
+
+        delete_post_meta($product_id, ProductMeta::meta_key('sale_price'));
+        delete_post_meta($product_id, ProductMeta::meta_key('sale_until'));
     }
 }
