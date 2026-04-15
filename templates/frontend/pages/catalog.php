@@ -16,9 +16,8 @@ if (is_user_logged_in()) {
     }
   }
 </style>
-<div class="wps-container wps-mx-auto wps-my-8">
-  <div class="wps-flex wps-items-center wps-justify-between wps-mb-4">
-    <div class="wps-text-lg wps-font-medium wps-text-gray-900">Katalog Produk</div>
+<div class="wps-container wps-mx-auto wps-my-8 mx-0">
+  <div class="wps-flex wps-items-center wps-justify-end wps-mb-4">
     <a href="<?php echo esc_url($print_url); ?>" class="wps-btn wps-btn-secondary" target="_blank" rel="noopener">
       <?php echo wps_icon(['name' => 'printer', 'size' => 16, 'class' => 'wps-mr-2']); ?>
       Print Katalog

@@ -166,7 +166,6 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
   }
 </script>
 <div class="wps-container wps-mx-auto wps-my-8" x-data="wpStoreShippingChecker()">
-  <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mb-4 wps-pt-4">Cek Ongkir</div>
   <div class="wps-card wps-p-4 wps-mb-4">
     <div class="wps-grid wps-grid-cols-2 wps-gap-4">
       <div>
