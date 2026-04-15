@@ -275,10 +275,6 @@ Fungsi:
 Fungsi:
 - aksi order yang bisa dipanggil dari halaman publik
 
-#### `PageTemplates.php`
-Fungsi:
-- template halaman plugin
-
 #### `Template.php`
 Fungsi:
 - helper render template frontend
