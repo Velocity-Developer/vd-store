@@ -1,5 +1,9 @@
 <?php
 $currency = isset($currency) ? (string) $currency : (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
+$print_url = site_url('/wp-json/wp-store/v1/catalog/print');
+if (is_user_logged_in()) {
+    $print_url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $print_url);
+}
 ?>
 <style>
   @media print {
@@ -12,24 +16,12 @@ $currency = isset($currency) ? (string) $currency : (get_option('wp_store_settin
     }
   }
 </style>
-<script>
-  function wpsDownloadCatalogPdf() {
-    window.print();
-  }
-</script>
 <div class="wps-container wps-mx-auto wps-my-8">
   <div class="wps-flex wps-items-center wps-justify-between wps-mb-4">
     <div class="wps-text-lg wps-font-medium wps-text-gray-900">Katalog Produk</div>
-    <?php
-    $pdf_url = site_url('/wp-json/wp-store/v1/catalog/pdf');
-    if (is_user_logged_in()) {
-        $pdf_url = add_query_arg('_wpnonce', wp_create_nonce('wp_rest'), $pdf_url);
-    }
-    ?>
-    <a href="<?php echo esc_url($pdf_url); ?>" class="wps-btn wps-btn-secondary">
-      <?php echo wps_icon(['name' => 'filetype-pdf', 'size' => 16, 'class' => 'wps-mr-2']); ?>
-      
-      Download PDF
+    <a href="<?php echo esc_url($print_url); ?>" class="wps-btn wps-btn-secondary" target="_blank" rel="noopener">
+      <?php echo wps_icon(['name' => 'printer', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+      Print Katalog
     </a>
   </div>
   <?php if (!empty($items)) : ?>

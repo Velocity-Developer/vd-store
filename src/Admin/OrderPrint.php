@@ -79,6 +79,10 @@ class OrderPrint
                 th, td { border-color:#ddd; }
             }
         </style></head><body>';
+        echo '<div class="print-actions section" style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px;">';
+        echo '<button type="button" class="btn btn-primary" onclick="window.print()">Print</button>';
+        echo '<button type="button" class="btn" onclick="window.close()">Tutup</button>';
+        echo '</div>';
     }
 
     private function render_order_summary($order_id)
@@ -153,6 +157,7 @@ class OrderPrint
         echo '</div>';
         $this->render_order_summary($order_id);
         $this->render_shipping_info($order_id);
+        echo '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},150);});</script>';
         echo '</body></html>';
         return (string) ob_get_clean();
     }
@@ -165,6 +170,7 @@ class OrderPrint
         ob_start();
         $this->print_header_styles($title);
         $this->render_shipping_info($order_id);
+        echo '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},150);});</script>';
         echo '</body></html>';
         return (string) ob_get_clean();
     }
@@ -174,17 +180,6 @@ class OrderPrint
         $this->ensure_permission();
         $order_id = $this->get_order_id();
         $html = $this->build_invoice_html($order_id);
-        if (class_exists('\Dompdf\Dompdf')) {
-            $dompdf = new \Dompdf\Dompdf();
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->loadHtml($html);
-            $dompdf->render();
-            $pdf = $dompdf->output();
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="invoice-' . $order_id . '.pdf"');
-            echo $pdf;
-            exit;
-        }
         echo $html;
         exit;
     }
@@ -194,17 +189,6 @@ class OrderPrint
         $this->ensure_permission();
         $order_id = $this->get_order_id();
         $html = $this->build_shipping_html($order_id);
-        if (class_exists('\Dompdf\Dompdf')) {
-            $dompdf = new \Dompdf\Dompdf();
-            $dompdf->setPaper('A4', 'portrait');
-            $dompdf->loadHtml($html);
-            $dompdf->render();
-            $pdf = $dompdf->output();
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="shipping-' . $order_id . '.pdf"');
-            echo $pdf;
-            exit;
-        }
         echo $html;
         exit;
     }

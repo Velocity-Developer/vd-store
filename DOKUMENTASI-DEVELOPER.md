@@ -95,7 +95,9 @@ Fungsi:
 
 #### `OrderPrint.php`
 Fungsi:
-- cetak order
+- cetak invoice dan data pengiriman
+- memakai halaman HTML print-friendly browser
+- auto memanggil `window.print()` saat halaman dibuka
 
 #### `CouponMetaBoxes.php`
 Fungsi:
@@ -112,6 +114,7 @@ Dipakai untuk REST API.
 Fungsi:
 - endpoint produk
 - data produk untuk frontend
+- print katalog browser lewat route `catalog/print`
 
 #### `CartController.php`
 Fungsi:

@@ -38,7 +38,15 @@ class ProductController
         register_rest_route('wp-store/v1', '/catalog/pdf', [
             [
                 'methods' => 'GET',
-                'callback' => [$this, 'download_catalog_pdf'],
+                'callback' => [$this, 'print_catalog'],
+                'permission_callback' => '__return_true',
+            ],
+        ]);
+
+        register_rest_route('wp-store/v1', '/catalog/print', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'print_catalog'],
                 'permission_callback' => '__return_true',
             ],
         ]);
@@ -85,7 +93,7 @@ class ProductController
         return new WP_REST_Response($response, 200);
     }
 
-    public function download_catalog_pdf(WP_REST_Request $request)
+    public function print_catalog(WP_REST_Request $request)
     {
         $settings = get_option('wp_store_settings', []);
         $currency = ($settings['currency_symbol'] ?? 'Rp');
@@ -132,31 +140,20 @@ class ProductController
             'items' => $items,
             'currency' => $currency
         ]);
-        if (!class_exists('\Dompdf\Dompdf')) {
-            return new WP_REST_Response([
-                'success' => false,
-                'message' => 'Dompdf belum tersedia.'
-            ], 500);
-        }
-        $dompdf = new \Dompdf\Dompdf(['isRemoteEnabled' => true]);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-        $pdf = $dompdf->output();
         if (function_exists('nocache_headers')) {
             nocache_headers();
         }
         if (ob_get_length()) {
             ob_end_clean();
         }
-        $date_part = function_exists('wp_date') ? wp_date('ymd') : date('ymd');
-        $rand_part = str_pad((string) wp_rand(0, 999), 3, '0', STR_PAD_LEFT);
-        $filename = 'katalog-' . $date_part . '-' . $rand_part . '.pdf';
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Content-Length: ' . strlen($pdf));
-        echo $pdf;
+        header('Content-Type: text/html; charset=' . get_bloginfo('charset'));
+        echo $html;
         exit;
+    }
+
+    public function download_catalog_pdf(WP_REST_Request $request)
+    {
+        return $this->print_catalog($request);
     }
     public function get_product(WP_REST_Request $request)
     {

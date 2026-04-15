@@ -6,6 +6,7 @@ $currency = isset($currency) ? (string) $currency : 'Rp';
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Katalog Produk</title>
   <style>
     @page {
@@ -13,9 +14,11 @@ $currency = isset($currency) ? (string) $currency : 'Rp';
     }
 
     body {
-      font-family: sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 12px;
       color: #111;
+      margin: 0;
+      padding: 24px;
     }
 
     h1 {
@@ -94,10 +97,50 @@ $currency = isset($currency) ? (string) $currency : 'Rp';
       color: #ffffff;
       background: #ef4444;
     }
+
+    .print-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .print-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      color: #111827;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .print-btn-primary {
+      border-color: #2563eb;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    @media print {
+      .print-actions {
+        display: none;
+      }
+
+      body {
+        padding: 0;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <div class="print-actions">
+    <button type="button" class="print-btn print-btn-primary" onclick="window.print()">Print</button>
+    <button type="button" class="print-btn" onclick="window.close()">Tutup</button>
+  </div>
   <h1>Katalog Produk</h1>
   <?php if (!empty($items)) : ?>
     <table class="catalog">
@@ -163,6 +206,13 @@ $currency = isset($currency) ? (string) $currency : 'Rp';
   <?php else : ?>
     <div>Tidak ada produk.</div>
   <?php endif; ?>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.print();
+      }, 150);
+    });
+  </script>
 </body>
 
 </html>

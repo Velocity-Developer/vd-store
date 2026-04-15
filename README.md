@@ -80,6 +80,7 @@ Customer bisa:
 - filter kategori
 - filter harga
 - mengurutkan produk
+- print katalog lewat halaman print browser
 
 ### Single produk
 Customer bisa:
@@ -154,6 +155,14 @@ Di halaman edit pesanan admin tersedia field:
 - layanan
 - biaya ongkir
 - catatan admin
+
+Admin juga bisa:
+- print invoice
+- print data pengiriman
+
+Catatan:
+- print memakai halaman HTML print-friendly browser
+- tidak memakai generator PDF server-side
 
 ## Halaman dan shortcode
 
