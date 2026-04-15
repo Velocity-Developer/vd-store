@@ -149,7 +149,7 @@ class Shortcode
         ];
     }
 
-    private function build_shop_query_args(array $cats, $sort)
+    private function build_shop_query_args(array $cats, $sort, $search = '')
     {
         $args = [
             'post_type' => 'store_product',
@@ -158,6 +158,11 @@ class Shortcode
             'fields' => 'ids',
             'no_found_rows' => true,
         ];
+
+        $search = sanitize_text_field((string) $search);
+        if ($search !== '') {
+            $args['s'] = $search;
+        }
 
         if (!empty($cats)) {
             $args['tax_query'] = [
@@ -236,7 +241,9 @@ class Shortcode
             $paged = $qp > 0 ? $qp : 1;
         }
 
-        $sort = isset($_GET['sort']) ? sanitize_key($_GET['sort']) : '';
+        $request_filters = ProductQuery::normalize_filters($_GET);
+        $sort = (string) ($request_filters['sort'] ?? '');
+        $search = (string) ($request_filters['search'] ?? '');
         $min_price = isset($_GET['min_price']) ? floatval($_GET['min_price']) : null;
         $max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : null;
         $cats = [];
@@ -255,7 +262,7 @@ class Shortcode
         }
 
         $currency = (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
-        $query = new \WP_Query($this->build_shop_query_args($cats, $sort));
+        $query = new \WP_Query($this->build_shop_query_args($cats, $sort, $search));
         $items = [];
         $product_ids = $query->posts;
         foreach ($product_ids as $product_id) {
@@ -929,7 +936,8 @@ class Shortcode
         if (is_wp_error($reset_url) || !is_string($reset_url) || $reset_url === '') {
             $reset_url = home_url('/');
         }
-        $price_stats = $this->price_stats_for_products((new \WP_Query($this->build_shop_query_args(!empty($current['cats']) ? $current['cats'] : $locked_cats, 'latest')))->posts);
+        $request_filters = ProductQuery::normalize_filters($_GET);
+        $price_stats = $this->price_stats_for_products((new \WP_Query($this->build_shop_query_args(!empty($current['cats']) ? $current['cats'] : $locked_cats, 'latest', (string) ($request_filters['search'] ?? ''))))->posts);
         $min_price_global = floor(max(0.0, (float) ($price_stats['min'] ?? 0)));
         $max_price_global = ceil(max($min_price_global, (float) ($price_stats['max'] ?? 0)));
         $avg_price_global = round((float) ($price_stats['avg'] ?? 0));

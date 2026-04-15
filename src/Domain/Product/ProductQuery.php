@@ -31,7 +31,7 @@ class ProductQuery
         }
 
         return [
-            'search' => sanitize_text_field((string) ($source['search'] ?? $source['s'] ?? '')),
+            'search' => sanitize_text_field((string) ($source['search'] ?? $source['s'] ?? $source['serach'] ?? '')),
             'sort' => sanitize_key((string) ($source['sort'] ?? 'latest')),
             'cat' => (int) ($source['product_cat'] ?? $source['cat'] ?? 0),
             'author' => (int) ($source['author'] ?? 0),
