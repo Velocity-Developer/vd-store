@@ -22,7 +22,7 @@
                 <span class="wps-text-gray-900" x-text="formatPrice(item.subtotal)"></span>
             </div>
             <div class="wps-flex wps-items-center wps-gap-1">
-                <button type="button" @click="decrement(item)" class="wps-btn wps-btn-secondary wps-btn-sm" style="padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px;">-</button>
+                <button type="button" @click="decrement(item)" :disabled="!canDecrement(item)" class="wps-btn wps-btn-secondary wps-btn-sm" :style="!canDecrement(item) ? 'padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px; opacity:.45; cursor:not-allowed;' : 'padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px;'">-</button>
                 <span x-text="item.qty" class="wps-badge wps-badge-sm" style="font-size: 12px; padding: 2px 6px; line-height: 1;"></span>
                 <button type="button" @click="increment(item)" class="wps-btn wps-btn-secondary wps-btn-sm" style="padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px;">+</button>
                 <button type="button" @click="remove(item)" :disabled="loading && updatingKey === getItemKey(item)" class="wps-btn wps-btn-danger wps-btn-sm wps-ml-auto" :style="(loading && updatingKey === getItemKey(item)) ? 'opacity:.7; pointer-events:none;' : ''">

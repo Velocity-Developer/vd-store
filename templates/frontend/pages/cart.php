@@ -55,7 +55,7 @@
                                 </td>
                                 <td class="wps-td">
                                     <div class="wps-flex wps-items-center wps-gap-1">
-                                        <button type="button" @click="decrement(item)" class="wps-btn wps-btn-secondary wps-btn-sm" style="padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px;">-</button>
+                                        <button type="button" @click="decrement(item)" :disabled="!canDecrement(item)" class="wps-btn wps-btn-secondary wps-btn-sm" :style="!canDecrement(item) ? 'padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px; opacity:.45; cursor:not-allowed;' : 'padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px;'">-</button>
                                         <span x-text="item.qty" class="wps-badge wps-badge-sm" style="font-size: 12px; padding: 2px 6px; line-height: 1;"></span>
                                         <button type="button" @click="increment(item)" class="wps-btn wps-btn-secondary wps-btn-sm" style="padding: 2px 8px; font-size: 12px; line-height: 1; min-width: 24px; height: 22px;">+</button>
                                     </div>
@@ -132,6 +132,12 @@
                     }
                     return String(i.id) + ':' + s;
                 },
+                minQty(item) {
+                    return Math.max(1, Number((item && (item.min_order || item.minOrder)) || 1));
+                },
+                canDecrement(item) {
+                    return Number((item && item.qty) || 0) > this.minQty(item);
+                },
                 async fetchPage() {
                     try {
                         const res = await fetch(wpStoreSettings.restUrl + 'settings/page-urls', {
@@ -202,8 +208,10 @@
                     this.updateItem(item, item.qty + 1);
                 },
                 decrement(item) {
-                    const q = item.qty > 1 ? item.qty - 1 : 0;
-                    this.updateItem(item, q);
+                    if (!this.canDecrement(item)) {
+                        return;
+                    }
+                    this.updateItem(item, Math.max(this.minQty(item), Number(item.qty || 0) - 1));
                 },
                 remove(item) {
                     this.updatingKey = this.getItemKey(item);

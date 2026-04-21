@@ -110,7 +110,9 @@
                 },
                 async confirmAdd() {
                     try {
-                        const addQty = this.qtyEnabled ? (this.qty > 0 ? this.qty : 1) : 1;
+                        const minimumQty = this.minQty > 0 ? this.minQty : 1;
+                        const requestedQty = this.qtyEnabled ? (this.qty > 0 ? this.qty : minimumQty) : minimumQty;
+                        const addQty = Math.max(minimumQty, requestedQty);
                         const res = await fetch(wpStoreSettings.restUrl + 'cart', {
                             method: 'POST',
                             credentials: 'same-origin',

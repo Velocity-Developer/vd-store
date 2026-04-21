@@ -136,6 +136,11 @@ class CartService
             $add_qty = max(0, (int) $add_qty);
             $qty = max(0, $this->find_current_qty($cart, $product_id, $options) + $add_qty);
         }
+        if ($qty > 0) {
+            $product = ProductData::map_post($product_id);
+            $min_order = is_array($product) && isset($product['min_order']) ? max(1, (int) $product['min_order']) : 1;
+            $qty = max($min_order, $qty);
+        }
 
         $cart = $this->apply_upsert($cart, $product_id, $qty, $options, $cart_key);
         $this->write_raw_items($cart);
@@ -162,6 +167,9 @@ class CartService
                 continue;
             }
 
+            $product = ProductData::map_post($product_id);
+            $min_order = is_array($product) && isset($product['min_order']) ? max(1, (int) $product['min_order']) : 1;
+            $qty = max($min_order, $qty);
             $price = $this->resolve_price_with_options($product_id, $opts);
             $subtotal = $price * $qty;
             $total += $subtotal;
@@ -172,6 +180,7 @@ class CartService
                 'title' => get_the_title($product_id),
                 'price' => $price,
                 'qty' => $qty,
+                'min_order' => $min_order,
                 'subtotal' => $subtotal,
                 'image' => get_the_post_thumbnail_url($product_id, 'thumbnail') ?: null,
                 'link' => get_permalink($product_id),

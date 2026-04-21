@@ -329,6 +329,12 @@ class Assets
                             }
                             return String(i.id) + ':' + s;
                         },
+                        minQty(item) {
+                            return Math.max(1, Number((item && (item.min_order || item.minOrder)) || 1));
+                        },
+                        canDecrement(item) {
+                            return Number((item && item.qty) || 0) > this.minQty(item);
+                        },
                         async fetchPage() {
                             try {
                                 const res = await fetch(wpStoreSettings.restUrl + 'settings/page-urls', {
@@ -398,8 +404,10 @@ class Assets
                             this.updateItem(item, item.qty + 1);
                         },
                         decrement(item) {
-                            const q = item.qty > 1 ? item.qty - 1 : 0;
-                            this.updateItem(item, q);
+                            if (!this.canDecrement(item)) {
+                                return;
+                            }
+                            this.updateItem(item, Math.max(this.minQty(item), Number(item.qty || 0) - 1));
                         },
                         remove(item) {
                             this.updatingKey = this.getItemKey(item);
