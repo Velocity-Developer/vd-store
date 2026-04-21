@@ -240,6 +240,41 @@ class Shortcode
             }
             $paged = $qp > 0 ? $qp : 1;
         }
+        if ($paged <= 1) {
+            $candidate_paths = [];
+            $request_uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+            $redirect_url = isset($_SERVER['REDIRECT_URL']) ? (string) $_SERVER['REDIRECT_URL'] : '';
+            $path_info = isset($_SERVER['PATH_INFO']) ? (string) $_SERVER['PATH_INFO'] : '';
+            if ($request_uri !== '') {
+                $request_path = (string) parse_url($request_uri, PHP_URL_PATH);
+                if ($request_path !== '') {
+                    $candidate_paths[] = $request_path;
+                }
+            }
+            if ($redirect_url !== '') {
+                $candidate_paths[] = $redirect_url;
+            }
+            if ($path_info !== '') {
+                $candidate_paths[] = $path_info;
+            }
+            global $wp;
+            if (isset($wp) && is_object($wp) && !empty($wp->request)) {
+                $candidate_paths[] = '/' . ltrim((string) $wp->request, '/');
+            }
+
+            foreach ($candidate_paths as $candidate_path) {
+                if (!is_string($candidate_path) || $candidate_path === '') {
+                    continue;
+                }
+                if (preg_match('#(?:^|/)page/(\d+)(?:/|$)#', $candidate_path, $matches)) {
+                    $uri_page = (int) ($matches[1] ?? 0);
+                    if ($uri_page > 1) {
+                        $paged = $uri_page;
+                        break;
+                    }
+                }
+            }
+        }
 
         $request_filters = ProductQuery::normalize_filters($_GET);
         $sort = (string) ($request_filters['sort'] ?? '');
