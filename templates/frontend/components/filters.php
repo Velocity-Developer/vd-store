@@ -48,9 +48,10 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
         <input class="wps-input" type="number" min="0" step="1" x-model="max_price_input" @input="syncFromInputs(); update()" placeholder="Max">
       </div>
     </div>
-    <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
-      <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
+    <div class="wps-flex wps-justify-between wps-items-center wps-mt-2 opacity-50">
+      <div class="wps-flex wps-justify-between wps-items-center">
         <span class="wps-text-sm wps-text-gray-700" x-text="formatCurrency(price_min_bound)"></span>
+        <span class="mx-2 wps-text-sm wps-text-gray-500">-</span>
         <span class="wps-text-sm wps-text-gray-700" x-text="formatCurrency(price_max_bound)"></span>
       </div>
     </div>
