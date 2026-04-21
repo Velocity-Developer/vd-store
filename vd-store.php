@@ -282,3 +282,37 @@ function wps_product_price_html($product_id, $args = [])
 
     return $html;
 }
+
+function wp_store_add_to_cart_button($product_id, $args = [])
+{
+    $product_id = (int) $product_id;
+    if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
+        return '';
+    }
+
+    if (!shortcode_exists('wp_store_add_to_cart')) {
+        return '';
+    }
+
+    $args = wp_parse_args(is_array($args) ? $args : [], [
+        'text' => '',
+        'label' => '+',
+        'class' => 'wps-btn wps-btn-primary',
+        'qty' => 0,
+    ]);
+
+    $shortcode_atts = [
+        'id' => $product_id,
+        'text' => (string) $args['text'],
+        'label' => (string) $args['label'],
+        'class' => (string) $args['class'],
+        'qty' => (string) $args['qty'],
+    ];
+
+    $attr_html = '';
+    foreach ($shortcode_atts as $name => $value) {
+        $attr_html .= ' ' . $name . '="' . esc_attr((string) $value) . '"';
+    }
+
+    return do_shortcode('[wp_store_add_to_cart' . $attr_html . ']');
+}

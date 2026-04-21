@@ -126,14 +126,21 @@ class WishlistService
             if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
                 continue;
             }
+            $product = ProductData::map_post($product_id);
             $price = ProductData::resolve_price_with_options($product_id, $opts);
             $items[] = [
                 'id' => $product_id,
                 'title' => get_the_title($product_id),
                 'price' => $price,
+                'base_price' => is_array($product) && isset($product['price']) ? (float) $product['price'] : $price,
                 'image' => get_the_post_thumbnail_url($product_id, 'thumbnail') ?: null,
                 'link' => get_permalink($product_id),
                 'options' => $opts,
+                'min_order' => is_array($product) && isset($product['min_order']) ? max(1, (int) $product['min_order']) : 1,
+                'variant_name' => is_array($product) && isset($product['variant_name']) ? (string) $product['variant_name'] : '',
+                'variant_options' => is_array($product) && isset($product['variant_options']) && is_array($product['variant_options']) ? array_values($product['variant_options']) : [],
+                'price_adjustment_name' => is_array($product) && isset($product['price_adjustment_name']) ? (string) $product['price_adjustment_name'] : '',
+                'price_adjustment_options' => is_array($product) && isset($product['price_adjustment_options']) && is_array($product['price_adjustment_options']) ? array_values($product['price_adjustment_options']) : [],
             ];
         }
 

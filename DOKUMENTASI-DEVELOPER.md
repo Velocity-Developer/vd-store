@@ -37,6 +37,7 @@ Isi dan fungsi:
   - `wps_icon()`
   - `wps_discount_badge_html()`
   - `wps_product_price_html()`
+  - `wp_store_add_to_cart_button()`
 
 ### `Plugin.php`
 Isi dan fungsi:
@@ -363,6 +364,8 @@ Fungsi:
 ##### `add-to-cart.php`
 Fungsi:
 - tombol dan flow add to cart
+- dipakai oleh shortcode `[wp_store_add_to_cart]` dan helper PHP `wp_store_add_to_cart_button()`
+- menangani opsi produk, minimal order, dan data modal pilihan sebelum produk masuk keranjang
 
 ##### `add-to-wishlist.php`
 Fungsi:
@@ -498,7 +501,7 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 | `[wp_store_gallery]` | `render_gallery()` | `product-gallery.php` | Galeri produk. |
 | `[wp_store_thumbnail]` | `render_thumbnail()` | method langsung | Thumbnail produk. |
 | `[wp_store_price]` | `render_price()` | helper `wps_product_price_html()` | Harga produk. |
-| `[wp_store_add_to_cart]` | `render_add_to_cart()` | `add-to-cart.php` | Tombol add to cart. |
+| `[wp_store_add_to_cart]` | `render_add_to_cart()` | `add-to-cart.php` | Tombol add to cart. Untuk file PHP theme/template bisa memakai `wp_store_add_to_cart_button()`. |
 | `[wp_store_detail]` | `render_detail()` | method langsung | Link detail produk. |
 | `[wp_store_add_to_wishlist]` | `render_add_to_wishlist()` | `add-to-wishlist.php` | Tombol wishlist. |
 | `[wp_store_rating]` | `render_rating()` | `RatingRenderer.php` | Bintang rating produk. |

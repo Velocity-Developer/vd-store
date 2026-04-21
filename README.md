@@ -192,7 +192,7 @@ Catatan:
 | `[wp_store_gallery]` | Render galeri produk. |
 | `[wp_store_thumbnail]` | Render thumbnail produk. |
 | `[wp_store_price]` | Render harga produk. |
-| `[wp_store_add_to_cart]` | Tombol tambah ke keranjang. |
+| `[wp_store_add_to_cart]` | Tombol tambah ke keranjang. Untuk PHP/theme bisa memakai `wp_store_add_to_cart_button()`. |
 | `[wp_store_detail]` | Link ke detail produk. |
 | `[wp_store_add_to_wishlist]` | Tombol tambah ke wishlist. |
 | `[wp_store_rating]` | Ringkasan bintang rating produk. |
@@ -236,6 +236,17 @@ Dengan tombol icon saja:
 ```text
 [wp_store_add_to_cart id="123" text="" class="btn btn-primary btn-sm"]
 ```
+
+Kalau dipakai di file PHP theme atau template:
+
+```php
+echo wp_store_add_to_cart_button(123, [
+    'text' => '',
+    'class' => 'btn btn-primary btn-sm',
+]);
+```
+
+Fungsi ini memakai jalur yang sama dengan shortcode, jadi opsi produk, minimal order, dan modal pilihan tetap seragam.
 
 ### Harga produk
 

@@ -233,11 +233,15 @@ class Assets
                 };
                 window.dispatchEvent(new CustomEvent('wp-store:options-selected', { detail }));
                 this.show = false;
+            },
+            cancel() {
+                window.dispatchEvent(new CustomEvent('wp-store:options-cancelled'));
+                this.show = false;
             }
         }"
             x-on:wp-store:open-options-modal.window="open($event.detail)"
             x-cloak>
-            <div class="wps-modal-backdrop" x-show="show" @click.self="show=false"></div>
+            <div class="wps-modal-backdrop" x-show="show" @click.self="cancel()"></div>
             <div class="wps-modal" x-show="show">
                 <div class="wps-p-4">
                     <div class="wps-mb-4 wps-text-lg wps-font-medium wps-text-gray-900">Pilih Opsi</div>
@@ -263,7 +267,7 @@ class Assets
                         </select>
                     </div>
                     <div class="wps-flex wps-justify-between wps-items-center">
-                        <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm" @click="show=false">Batal</button>
+                        <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm" @click="cancel()">Batal</button>
                         <button type="button" class="wps-btn wps-btn-primary wps-btn-sm" @click="submit()">
                             <span>Tambah</span>
                         </button>

@@ -83,6 +83,54 @@
                     }
                     return String(i.id) + ':' + s;
                 },
+                hasSelectableOptions(item) {
+                    return !!(
+                        item &&
+                        ((Array.isArray(item.variant_options) && item.variant_options.length) ||
+                            (Array.isArray(item.price_adjustment_options) && item.price_adjustment_options.length))
+                    );
+                },
+                hasSelectedRequiredOptions(item) {
+                    const options = item && item.options ? item.options : {};
+                    const needVariant = !!(item && item.variant_name && Array.isArray(item.variant_options) && item.variant_options.length);
+                    const needPrice = !!(item && item.price_adjustment_name && Array.isArray(item.price_adjustment_options) && item.price_adjustment_options.length);
+                    return (!needVariant || !!options[item.variant_name]) && (!needPrice || !!options[item.price_adjustment_name]);
+                },
+                openOptionsModal(item) {
+                    return new Promise((resolve) => {
+                        const cleanup = () => {
+                            window.removeEventListener('wp-store:options-selected', handler);
+                            window.removeEventListener('wp-store:options-cancelled', cancelHandler);
+                        };
+                        const handler = (event) => {
+                            const detail = event.detail || {};
+                            const options = {};
+                            if (item.variant_name && detail.basic) {
+                                options[item.variant_name] = detail.basic;
+                            }
+                            if (item.price_adjustment_name && detail.adv) {
+                                options[item.price_adjustment_name] = detail.adv;
+                            }
+                            cleanup();
+                            resolve(options);
+                        };
+                        const cancelHandler = () => {
+                            cleanup();
+                            resolve(null);
+                        };
+                        window.addEventListener('wp-store:options-selected', handler, { once: true });
+                        window.addEventListener('wp-store:options-cancelled', cancelHandler, { once: true });
+                        window.dispatchEvent(new CustomEvent('wp-store:open-options-modal', {
+                            detail: {
+                                basic_name: item.variant_name || '',
+                                basic_values: Array.isArray(item.variant_options) ? item.variant_options : [],
+                                adv_name: item.price_adjustment_name || '',
+                                adv_values: Array.isArray(item.price_adjustment_options) ? item.price_adjustment_options : [],
+                                base_price: Number(item.base_price || item.price || 0)
+                            }
+                        }));
+                    });
+                },
                 async remove(item) {
                     this.updatingRemoveKey = this.getItemKey(item);
                     try {
@@ -113,9 +161,16 @@
                         this.updatingRemoveKey = '';
                     }
                 },
-                async addToCart(item) {
-                    this.updatingAddKey = this.getItemKey(item);
+                async addToCart(item, selectedOptions) {
                     try {
+                        let options = selectedOptions || (item.options || {});
+                        if (!selectedOptions && this.hasSelectableOptions(item) && !this.hasSelectedRequiredOptions(item)) {
+                            options = await this.openOptionsModal(item);
+                            if (!options || !Object.keys(options).length) {
+                                return;
+                            }
+                        }
+                        this.updatingAddKey = this.getItemKey(item);
                         const res = await fetch(wpStoreSettings.restUrl + 'cart', {
                             method: 'POST',
                             credentials: 'same-origin',
@@ -125,8 +180,8 @@
                             },
                             body: JSON.stringify({
                                 id: item.id,
-                                add_qty: 1,
-                                options: (item.options || {})
+                                add_qty: Math.max(1, Number(item.min_order || 1)),
+                                options: options
                             })
                         });
                         const data = await res.json();

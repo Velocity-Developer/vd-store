@@ -90,14 +90,24 @@
                             adv_values: this.advOptions,
                             base_price: this.basePrice
                         };
+                        const cleanup = () => {
+                            window.removeEventListener('wp-store:options-selected', handler);
+                            window.removeEventListener('wp-store:options-cancelled', cancelHandler);
+                        };
                         const handler = (e) => {
                             const d = e.detail || {};
                             this.selectedBasic = typeof d.basic === 'string' ? d.basic : '';
                             this.selectedAdv = typeof d.adv === 'string' ? d.adv : '';
-                            window.removeEventListener('wp-store:options-selected', handler);
+                            cleanup();
                             this.confirmAdd();
                         };
+                        const cancelHandler = () => {
+                            cleanup();
+                        };
                         window.addEventListener('wp-store:options-selected', handler, {
+                            once: true
+                        });
+                        window.addEventListener('wp-store:options-cancelled', cancelHandler, {
                             once: true
                         });
                         window.dispatchEvent(new CustomEvent('wp-store:open-options-modal', {
