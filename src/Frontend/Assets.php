@@ -199,6 +199,7 @@ class Assets
             basicOptions: [],
             advName: '',
             advOptions: [],
+            basePrice: 0,
             selectedBasic: '',
             selectedAdv: '',
             open(payload) {
@@ -207,9 +208,23 @@ class Assets
                 this.basicOptions = Array.isArray(p.basic_values) ? p.basic_values : [];
                 this.advName = p.adv_name || '';
                 this.advOptions = Array.isArray(p.adv_values) ? p.adv_values : [];
+                this.basePrice = Number(p.base_price || 0);
                 this.selectedBasic = '';
                 this.selectedAdv = '';
                 this.show = true;
+            },
+            formatOptionPrice(value) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(value || 0));
+            },
+            optionLabel(opt) {
+                const row = opt || {};
+                const label = row.label || '';
+                const rawAdjustment = row.amount !== undefined ? row.amount : row.price;
+                const adjustment = Number(rawAdjustment || 0);
+                if (!label || rawAdjustment === undefined || rawAdjustment === null || rawAdjustment === '') {
+                    return label;
+                }
+                return label + ' - ' + this.formatOptionPrice(this.basePrice + Math.max(0, adjustment));
             },
             submit() {
                 const detail = {
@@ -242,7 +257,7 @@ class Assets
                             <template x-for="opt in advOptions" :key="opt.label">
                                 <option
                                     :value="opt.label"
-                                    x-text="opt.price ? opt.label + ' - ' + (new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(parseFloat(opt.price || 0))) : opt.label">
+                                    x-text="optionLabel(opt)">
                                 </option>
                             </template>
                         </select>

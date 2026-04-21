@@ -22,6 +22,7 @@
                 basicOptions: Array.isArray(params.basicValues) ? params.basicValues : [],
                 advName: (params.advName || ''),
                 advOptions: Array.isArray(params.advValues) ? params.advValues : [],
+                basePrice: Number(params.basePrice || 0),
                 selectedBasic: '',
                 selectedAdv: '',
                 showToast(msg, type) {
@@ -86,7 +87,8 @@
                             basic_name: this.basicName,
                             basic_values: this.basicOptions,
                             adv_name: this.advName,
-                            adv_values: this.advOptions
+                            adv_values: this.advOptions,
+                            base_price: this.basePrice
                         };
                         const handler = (e) => {
                             const d = e.detail || {};
@@ -164,7 +166,8 @@
         basicName: '<?php echo esc_js($basic_name); ?>',
         basicValues: JSON.parse('<?php echo esc_js(wp_json_encode($basic_values)); ?>'),
         advName: '<?php echo esc_js($adv_name); ?>',
-        advValues: JSON.parse('<?php echo esc_js(wp_json_encode($adv_values)); ?>')
+        advValues: JSON.parse('<?php echo esc_js(wp_json_encode($adv_values)); ?>'),
+        basePrice: <?php echo isset($base_price) && is_numeric($base_price) ? (float) $base_price : 0; ?>
     })">
     <div x-show="qtyEnabled" x-cloak class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
         <button type="button" class=" wps-btn wps-btn-secondary wps-btn-sm wps-decrement-qty" @click="decrementQty()">-</button>

@@ -1272,6 +1272,7 @@ class Shortcode
             'basic_values' => (is_array($basic_values) ? array_values($basic_values) : []),
             'adv_name' => $adv_name ?: '',
             'adv_values' => (is_array($adv_values) ? array_values($adv_values) : []),
+            'base_price' => isset($product['price']) && is_numeric($product['price']) ? (float) $product['price'] : 0.0,
             'nonce' => $nonce,
             'show_qty' => $wantQty,
             'default_qty' => $default_qty
