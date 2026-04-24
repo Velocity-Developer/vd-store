@@ -245,7 +245,7 @@
         }
       })(window, function factory() {
         "use strict";
-        var matchesMethod = function() {
+        var matchesMethod = (function() {
           var ElemProto = window.Element.prototype;
           if (ElemProto.matches) {
             return "matches";
@@ -261,7 +261,7 @@
               return method;
             }
           }
-        }();
+        })();
         return function matchesSelector(elem, selector) {
           return elem[matchesMethod](selector);
         };
@@ -785,8 +785,7 @@
           this.element = queryElement;
           if (this.element.flickityGUID) {
             var instance = instances[this.element.flickityGUID];
-            if (instance)
-              instance.option(options);
+            if (instance) instance.option(options);
             return instance;
           }
           if (jQuery) {

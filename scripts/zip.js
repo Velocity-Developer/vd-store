@@ -8,7 +8,7 @@ const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const version = pkg.version || "0.0.0";
 const distDir = path.join(root, "dist");
 if (!fs.existsSync(distDir)) fs.mkdirSync(distDir, { recursive: true });
-const outPath = path.join(distDir, `wp-store-${version}.zip`);
+const outPath = path.join(distDir, `vd-store-${version}.zip`);
 
 const output = fs.createWriteStream(outPath);
 const archive = archiver("zip", { zlib: { level: 9 } });
@@ -50,7 +50,7 @@ archive.glob(
       "assets/frontend/js/vendor.js",
     ],
   },
-  { prefix: "wp-store" },
+  { prefix: "vd-store" },
 );
 
 archive.finalize();
