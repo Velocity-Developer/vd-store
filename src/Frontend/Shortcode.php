@@ -3,8 +3,10 @@
 namespace WpStore\Frontend;
 
 use WpStore\Domain\Product\ProductData;
+use WpStore\Domain\Product\ProductFilterRequest;
 use WpStore\Domain\Product\ProductMeta;
 use WpStore\Domain\Product\ProductQuery;
+use WpStore\Domain\Product\ProductRenderer;
 use WpStore\Domain\Product\RelatedProducts;
 use WpStore\Domain\Product\RecentlyViewed;
 
@@ -14,6 +16,12 @@ class Shortcode
     {
         add_shortcode('wp_store_shop', [$this, 'render_shop']);
         add_shortcode('wp_store_single', [$this, 'render_single']);
+        add_shortcode('wp_store_product_card', [$this, 'render_product_card']);
+        add_shortcode('wp_store_component', [$this, 'render_component']);
+        add_shortcode('wp_store_product_info', [$this, 'render_product_info']);
+        add_shortcode('wp_store_info', [$this, 'render_product_info']);
+        add_shortcode('wp_store_product_meta', [$this, 'render_product_info']);
+        add_shortcode('wp_store_buy_button', [$this, 'render_add_to_cart']);
         add_shortcode('wp_store_related', [$this, 'render_related']);
         add_shortcode('wp_store_gallery', [$this, 'render_gallery']);
         add_shortcode('wp_store_rating', [$this, 'render_rating']);
@@ -52,6 +60,7 @@ class Shortcode
         add_filter('the_content', [$this, 'filter_cart_page_content']);
         add_filter('template_include', [$this, 'override_archive_template']);
         add_action('pre_get_posts', [$this, 'adjust_archive_query']);
+        add_filter('fl_builder_loop_query_args', [$this, 'filter_beaver_builder_query_args']);
         add_action('template_redirect', [$this, 'redirect_page_conflict']);
     }
 
@@ -99,28 +108,7 @@ class Shortcode
 
     private function card_item_from_product($product_id, $image_size = 'medium')
     {
-        $product = $this->product_payload($product_id);
-        if ($product === null) {
-            return null;
-        }
-
-        $image = get_the_post_thumbnail_url((int) $product_id, $image_size);
-        if ($image) {
-            $product['image'] = $image;
-        }
-
-        return [
-            'id' => $product['id'],
-            'title' => $product['title'],
-            'link' => $product['link'],
-            'image' => $product['image'],
-            'price' => $product['price'],
-            'regular_price' => $product['regular_price'] ?? null,
-            'sale_price' => $product['sale_price'] ?? null,
-            'stock' => $product['stock'],
-            'sold_count' => (int) ($product['sold_count'] ?? 0),
-            'rating_average' => (float) ($product['rating_average'] ?? 0),
-        ];
+        return ProductRenderer::card_item((int) $product_id, $image_size);
     }
 
     private function price_stats_for_products(array $product_ids)
@@ -207,15 +195,8 @@ class Shortcode
             if ($product === null) {
                 return $content;
             }
-            $currency = (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
-            return Template::render('pages/single', [
-                'id' => $product['id'],
-                'title' => $product['title'],
-                'image' => get_the_post_thumbnail_url($id, 'large') ?: null,
-                'price' => $product['price'],
-                'stock' => $product['stock'],
-                'currency' => $currency,
-                'content' => $content
+            return ProductRenderer::render_single((int) $id, [
+                'content' => $content,
             ]);
         }
         return $content;
@@ -276,69 +257,36 @@ class Shortcode
             }
         }
 
-        $request_filters = ProductQuery::normalize_filters($_GET);
-        $sort = (string) ($request_filters['sort'] ?? '');
-        $search = (string) ($request_filters['search'] ?? '');
-        $min_price = isset($_GET['min_price']) ? floatval($_GET['min_price']) : null;
-        $max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : null;
-        $cats = [];
-        if (isset($_GET['cats'])) {
-            $raw = is_array($_GET['cats']) ? $_GET['cats'] : [$_GET['cats']];
-            foreach ($raw as $c) {
-                $id = absint($c);
-                if ($id > 0) $cats[] = $id;
-            }
-        }
-        if (empty($cats) && is_tax('store_product_cat')) {
+        $request_filters = ProductFilterRequest::from_globals();
+        if (empty($request_filters['cats']) && is_tax('store_product_cat')) {
             $term = get_queried_object();
             if ($term && isset($term->term_id)) {
-                $cats = [(int) $term->term_id];
+                $request_filters['cats'] = [(int) $term->term_id];
             }
         }
 
         $currency = (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
-        $query = new \WP_Query($this->build_shop_query_args($cats, $sort, $search));
+        $query = new \WP_Query(ProductQuery::build_query_args($request_filters, [
+            'post_type' => 'store_product',
+            'post_status' => 'publish',
+            'posts_per_page' => $per_page,
+            'paged' => $paged,
+        ]));
         $items = [];
-        $product_ids = $query->posts;
-        foreach ($product_ids as $product_id) {
+        foreach ($query->posts as $post) {
+            $product_id = is_object($post) ? (int) $post->ID : (int) $post;
             $item = $this->card_item_from_product((int) $product_id, $this->get_thumbnail_size());
             if ($item === null) {
                 continue;
             }
-
-            $price = isset($item['price']) && is_numeric($item['price']) ? (float) $item['price'] : null;
-            if ($price === null) {
-                continue;
-            }
-            if ($min_price !== null && $min_price >= 0 && $price < (float) $min_price) {
-                continue;
-            }
-            if ($max_price !== null && $max_price >= 0 && $price > (float) $max_price) {
-                continue;
-            }
-
             $items[] = $item;
         }
 
-        if ($sort === 'cheap' || $sort === 'expensive') {
-            usort($items, static function ($left, $right) use ($sort) {
-                $left_price = isset($left['price']) && is_numeric($left['price']) ? (float) $left['price'] : 0.0;
-                $right_price = isset($right['price']) && is_numeric($right['price']) ? (float) $right['price'] : 0.0;
-                if ($left_price === $right_price) {
-                    return strcasecmp((string) ($left['title'] ?? ''), (string) ($right['title'] ?? ''));
-                }
-                return $sort === 'cheap'
-                    ? ($left_price <=> $right_price)
-                    : ($right_price <=> $left_price);
-            });
-        }
-
-        $total_items = count($items);
-        $total_pages = max(1, (int) ceil($total_items / $per_page));
+        $total_items = (int) $query->found_posts;
+        $total_pages = max(1, (int) $query->max_num_pages);
         if ($paged > $total_pages) {
             $paged = $total_pages;
         }
-        $items = array_slice($items, max(0, ($paged - 1) * $per_page), $per_page);
 
         return Template::render('pages/shop', [
             'items' => $items,
@@ -738,6 +686,62 @@ class Shortcode
         ]);
     }
 
+    public function render_product_card($atts = [])
+    {
+        $atts = shortcode_atts([
+            'id' => 0,
+            'context' => 'shortcode',
+            'variant' => 'default',
+            'image_size' => '',
+            'width' => '',
+            'height' => '',
+            'crop' => 'true',
+            'class' => '',
+        ], $atts);
+
+        $card_args = [
+            'context' => $atts['context'],
+            'variant' => $atts['variant'],
+            'card_class' => $atts['class'],
+            'thumbnail_crop' => $atts['crop'],
+        ];
+        if ((string) $atts['image_size'] !== '') {
+            $card_args['image_size'] = $atts['image_size'];
+        }
+        if ((int) $atts['width'] > 0) {
+            $card_args['thumbnail_width'] = (int) $atts['width'];
+        }
+        if ((int) $atts['height'] > 0) {
+            $card_args['thumbnail_height'] = (int) $atts['height'];
+        }
+
+        $id = $this->resolve_product_id((int) $atts['id']);
+        return $id > 0 ? ProductRenderer::render_card($id, $card_args) : '';
+    }
+
+    public function render_component($atts = [])
+    {
+        $atts = shortcode_atts([
+            'id' => 0,
+            'name' => '',
+            'component' => '',
+        ], $atts);
+
+        $id = $this->resolve_product_id((int) $atts['id']);
+        $component = (string) ($atts['component'] ?: $atts['name']);
+        return $id > 0 && $component !== '' ? ProductRenderer::render_component($component, $id, $atts) : '';
+    }
+
+    public function render_product_info($atts = [])
+    {
+        $atts = shortcode_atts([
+            'id' => 0,
+        ], $atts);
+
+        $id = $this->resolve_product_id((int) $atts['id']);
+        return $id > 0 ? ProductRenderer::product_info($id, $atts) : '';
+    }
+
     public function render_gallery($atts = [])
     {
         wp_enqueue_script('wp-store-frontend');
@@ -904,6 +908,10 @@ class Shortcode
 
     public function render_filters($atts = [])
     {
+        $atts = shortcode_atts([
+            'mode' => 'auto',
+        ], $atts);
+
         $terms = get_terms([
             'taxonomy' => 'store_product_cat',
             'hide_empty' => false,
@@ -917,19 +925,13 @@ class Shortcode
                 ];
             }
         }
+        $request = ProductFilterRequest::from_globals();
         $current = [
-            'sort' => isset($_GET['sort']) ? sanitize_key($_GET['sort']) : '',
-            'min_price' => isset($_GET['min_price']) ? (float) $_GET['min_price'] : '',
-            'max_price' => isset($_GET['max_price']) ? (float) $_GET['max_price'] : '',
-            'cats' => [],
+            'sort' => (string) ($request['sort'] ?? ''),
+            'min_price' => $request['min_price'] ?? '',
+            'max_price' => $request['max_price'] ?? '',
+            'cats' => isset($request['cats']) && is_array($request['cats']) ? $request['cats'] : [],
         ];
-        if (isset($_GET['cats'])) {
-            $raw = is_array($_GET['cats']) ? $_GET['cats'] : [$_GET['cats']];
-            foreach ($raw as $c) {
-                $id = absint($c);
-                if ($id > 0) $current['cats'][] = $id;
-            }
-        }
         if (empty($current['cats']) && is_tax('store_product_cat')) {
             $term = get_queried_object();
             if ($term && isset($term->term_id)) {
@@ -971,8 +973,21 @@ class Shortcode
         if (is_wp_error($reset_url) || !is_string($reset_url) || $reset_url === '') {
             $reset_url = home_url('/');
         }
-        $request_filters = ProductQuery::normalize_filters($_GET);
-        $price_stats = $this->price_stats_for_products((new \WP_Query($this->build_shop_query_args(!empty($current['cats']) ? $current['cats'] : $locked_cats, 'latest', (string) ($request_filters['search'] ?? ''))))->posts);
+        $stats_filters = $request;
+        $stats_filters['sort'] = 'latest';
+        if (!empty($current['cats'])) {
+            $stats_filters['cats'] = $current['cats'];
+        } elseif (!empty($locked_cats)) {
+            $stats_filters['cats'] = $locked_cats;
+        }
+        $price_stats_query = new \WP_Query(ProductQuery::build_query_args($stats_filters, [
+            'post_type' => 'store_product',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'no_found_rows' => true,
+        ]));
+        $price_stats = $this->price_stats_for_products($price_stats_query->posts);
         $min_price_global = floor(max(0.0, (float) ($price_stats['min'] ?? 0)));
         $max_price_global = ceil(max($min_price_global, (float) ($price_stats['max'] ?? 0)));
         $avg_price_global = round((float) ($price_stats['avg'] ?? 0));
@@ -984,6 +999,7 @@ class Shortcode
             'price_max_global' => $max_price_global,
             'price_avg_global' => $avg_price_global,
             'locked_cats' => $locked_cats,
+            'mode' => sanitize_key((string) $atts['mode']),
         ]);
     }
 
@@ -991,10 +1007,16 @@ class Shortcode
     {
         $atts = shortcode_atts([
             'per_page' => 12,
+            'filter_mode' => 'auto',
         ], $atts);
-        wp_enqueue_script('alpinejs');
-        $filters = $this->render_filters();
+        if (sanitize_key((string) $atts['filter_mode']) !== 'off') {
+            wp_enqueue_script('alpinejs');
+        }
+        $filters = $this->render_filters(['mode' => $atts['filter_mode']]);
         $shop = $this->render_shop(['per_page' => $atts['per_page']]);
+        if (sanitize_key((string) $atts['filter_mode']) === 'off') {
+            return '<div class="wps-flex wps-gap-4"><div style="width:260px;flex:0 0 260px;">' . $filters . '</div><div style="flex:1 1 auto;">' . $shop . '</div></div>';
+        }
         ob_start();
 ?>
         <div x-data="{ openFilters:false, isMobile: window.matchMedia('(max-width: 768px)').matches } ?? {}" x-init="(() => {
@@ -1194,6 +1216,7 @@ class Shortcode
         wp_enqueue_style('wp-store-flickity');
         $atts = shortcode_atts([
             'id' => get_the_ID(),
+            'hide' => '',
         ], $atts);
         $id = (int) $atts['id'];
         if ($id <= 0) {
@@ -1209,17 +1232,11 @@ class Shortcode
         if ($product === null) {
             return '';
         }
-        $currency = (get_option('wp_store_settings', [])['currency_symbol'] ?? 'Rp');
         $content = get_post_field('post_content', $id);
         $content = apply_filters('the_content', $content);
-        return Template::render('pages/single', [
-            'id' => $product['id'],
-            'title' => $product['title'],
-            'image' => get_the_post_thumbnail_url($id, 'large') ?: null,
-            'price' => $product['price'],
-            'stock' => $product['stock'],
-            'currency' => $currency,
-            'content' => $content
+        return ProductRenderer::render_single((int) $id, [
+            'content' => $content,
+            'hide' => (string) $atts['hide'],
         ]);
     }
 
@@ -1426,20 +1443,20 @@ class Shortcode
     public function override_archive_template($template)
     {
         if (is_singular('store_product')) {
-            $tpl = WP_STORE_PATH . 'templates/frontend/single-store_product.php';
-            if (file_exists($tpl)) {
+            $tpl = Template::locate('single-store_product');
+            if ($tpl !== '') {
                 return $tpl;
             }
         }
         if (is_post_type_archive('store_product') || (get_query_var('post_type') === 'store_product' && !is_singular())) {
-            $tpl = WP_STORE_PATH . 'templates/frontend/archive-store_product.php';
-            if (file_exists($tpl)) {
+            $tpl = Template::locate('archive-store_product');
+            if ($tpl !== '') {
                 return $tpl;
             }
         }
         if (is_tax('store_product_cat')) {
-            $tpl = WP_STORE_PATH . 'templates/frontend/taxonomy-store_product_cat.php';
-            if (file_exists($tpl)) {
+            $tpl = Template::locate('taxonomy-store_product_cat');
+            if ($tpl !== '') {
                 return $tpl;
             }
         }
@@ -1450,39 +1467,13 @@ class Shortcode
     {
         if (is_admin()) return;
         if (!$query->is_main_query()) return;
-        if ($query->is_post_type_archive('store_product') || ($query->get('post_type') === 'store_product' && !$query->is_singular())) {
-            $filters = ProductQuery::normalize_filters($_GET);
-
-            if (($filters['cat'] ?? 0) <= 0 && !empty($_GET['cats'])) {
-                $raw = is_array($_GET['cats']) ? $_GET['cats'] : [$_GET['cats']];
-                foreach ($raw as $candidate) {
-                    $term_id = absint($candidate);
-                    if ($term_id > 0) {
-                        $filters['cat'] = $term_id;
-                        break;
-                    }
+        if ($query->is_post_type_archive('store_product') || $query->is_tax('store_product_cat') || ($query->get('post_type') === 'store_product' && !$query->is_singular())) {
+            $filters = ProductFilterRequest::from_globals();
+            if (empty($filters['cats']) && $query->is_tax('store_product_cat')) {
+                $term = get_queried_object();
+                if ($term && isset($term->term_id)) {
+                    $filters['cats'] = [(int) $term->term_id];
                 }
-            }
-
-            if (($filters['label'] ?? '') === '' && !empty($_GET['labels'])) {
-                $raw = is_array($_GET['labels']) ? $_GET['labels'] : [$_GET['labels']];
-                foreach ($raw as $candidate) {
-                    $label = sanitize_key($candidate);
-                    if (in_array($label, ['best', 'limited', 'new'], true)) {
-                        $filters['label'] = $label;
-                        break;
-                    }
-                }
-            }
-
-            if (($filters['sort'] ?? '') === 'az') {
-                $filters['sort'] = 'name_asc';
-            } elseif (($filters['sort'] ?? '') === 'za') {
-                $filters['sort'] = 'name_desc';
-            } elseif (($filters['sort'] ?? '') === 'cheap') {
-                $filters['sort'] = 'price_asc';
-            } elseif (($filters['sort'] ?? '') === 'expensive') {
-                $filters['sort'] = 'price_desc';
             }
 
             ProductQuery::apply_to_query($query, $filters, [
@@ -1491,6 +1482,21 @@ class Shortcode
                 'ignore_sticky_posts' => true,
             ]);
         }
+    }
+
+    public function filter_beaver_builder_query_args($args)
+    {
+        if (!is_array($args)) {
+            return $args;
+        }
+
+        $post_type = $args['post_type'] ?? '';
+        $post_types = is_array($post_type) ? $post_type : [$post_type];
+        if (!in_array('store_product', $post_types, true)) {
+            return $args;
+        }
+
+        return ProductQuery::apply_to_args($args, ProductFilterRequest::from_globals());
     }
 
     public function redirect_page_conflict()

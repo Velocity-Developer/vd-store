@@ -2,7 +2,7 @@
 <?php if (!empty($items)) : ?>
         <div class="wps-grid wps-related-grid wps-gap-4<?php echo count($items) === 1 ? ' is-single' : ''; ?>">
             <?php foreach ($items as $item) : ?>
-                <?php echo \WpStore\Frontend\Template::render('components/product-card', ['item' => $item, 'currency' => $currency, 'view_label' => 'Lihat']); ?>
+                <?php echo \WpStore\Domain\Product\ProductRenderer::render_card((int) $item['id'], ['context' => 'related', 'currency' => $currency]); ?>
             <?php endforeach; ?>
         </div>
     <?php else : ?>

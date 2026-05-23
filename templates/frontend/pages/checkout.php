@@ -91,6 +91,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
             shippingService: '',
             shippingCost: 0,
             shippingOptions: [],
+            isLoadingShipping: false,
             selectedShippingKey: '',
             couponCode: '',
             discountAmount: 0,
@@ -140,6 +141,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
             },
             async calculateAllShipping() {
                 if (this.shouldHideShipping()) {
+                    this.isLoadingShipping = false;
                     this.shippingOptions = [];
                     this.selectedShippingKey = '';
                     this.shippingCourier = '';
@@ -149,9 +151,11 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                     return;
                 }
                 if (!this.selectedSubdistrict || !Array.isArray(this.shippingCouriers) || this.shippingCouriers.length === 0) {
+                    this.isLoadingShipping = false;
                     this.recomputeAllow();
                     return;
                 }
+                this.isLoadingShipping = true;
                 this.shippingOptions = [];
                 this.selectedShippingKey = '';
                 this.shippingCourier = '';
@@ -189,6 +193,9 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                         }));
                     }
                 } catch (e) {}
+                finally {
+                    this.isLoadingShipping = false;
+                }
                 const first = this.shippingOptions.find(s => s.cost > 0) || this.shippingOptions[0] || null;
                 if (first) {
                     this.selectedShippingKey = first.courier + ':' + (first.service || '');
@@ -359,9 +366,9 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 }
             },
             async loadCities() {
-                console.log(this.selectedProvince);
                 if (!this.selectedProvince) {
                     this.cities = [];
+                    this.isLoadingCities = false;
                     return;
                 }
                 this.isLoadingCities = true;
@@ -383,6 +390,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
             async loadSubdistricts() {
                 if (!this.selectedCity) {
                     this.subdistricts = [];
+                    this.isLoadingSubdistricts = false;
                     return;
                 }
                 this.isLoadingSubdistricts = true;
@@ -765,7 +773,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Provinsi</label>
-                                <select class="wps-select" x-model="selectedProvince" @change="selectedCity=''; selectedSubdistrict=''; postalCode=''; loadCities()" id="checkout-province" name="province_id">
+                                <select class="wps-select" x-model="selectedProvince" @change="selectedCity=''; selectedSubdistrict=''; postalCode=''; shippingOptions=[]; selectedShippingKey=''; loadCities()" :disabled="isLoadingProvinces" id="checkout-province" name="province_id">
                                     <option value="">-- Pilih Provinsi --</option>
                                     <template x-for="prov in provinces" :key="prov.province_id">
                                         <option :value="prov.province_id" x-text="prov.province"></option>
@@ -775,7 +783,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Kota/Kabupaten</label>
-                                <select class="wps-select" x-model="selectedCity" @change="selectedSubdistrict=''; postalCode=(cities.find(c => String(c.city_id) === String(selectedCity)) || {}).postal_code || ''; loadSubdistricts()" :disabled="!selectedProvince" id="checkout-city" name="city_id">
+                                <select class="wps-select" x-model="selectedCity" @change="selectedSubdistrict=''; shippingOptions=[]; selectedShippingKey=''; postalCode=(cities.find(c => String(c.city_id) === String(selectedCity)) || {}).postal_code || ''; loadSubdistricts()" :disabled="!selectedProvince || isLoadingCities" id="checkout-city" name="city_id">
                                     <option value="">-- Pilih Kota/Kabupaten --</option>
                                     <template x-for="c in cities" :key="c.city_id">
                                         <option :value="c.city_id" x-text="c.city_name"></option>
@@ -785,7 +793,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             </div>
                             <div class="wps-form-group">
                                 <label class="wps-label">Kecamatan</label>
-                                <select class="wps-select" x-model="selectedSubdistrict" :disabled="!selectedCity" @change="calculateAllShipping()" id="checkout-subdistrict" name="subdistrict_id">
+                                <select class="wps-select" x-model="selectedSubdistrict" :disabled="!selectedCity || isLoadingSubdistricts || isLoadingShipping" @change="calculateAllShipping()" id="checkout-subdistrict" name="subdistrict_id">
                                     <option value="">-- Pilih Kecamatan --</option>
                                     <template x-for="s in subdistricts" :key="s.subdistrict_id">
                                         <option :value="s.subdistrict_id" x-text="s.subdistrict_name"></option>
@@ -818,10 +826,12 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Metode Pengiriman</div>
                             <div class="wps-mb-2">
+                                <div class="wps-text-xs wps-text-gray-500 wps-mb-2" x-show="isLoadingShipping" x-cloak>Memuat layanan pengiriman...</div>
                                 <div class="wps-mt-2" x-show="selectedSubdistrict && shippingOptions.length > 0">
                                     <template x-for="opt in shippingOptions" :key="opt.courier + ':' + opt.service">
                                         <button type="button" class="wps-w-full wps-btn wps-d-block wps-btn-secondary wps-btn-sm wps-mb-2"
                                             :style="(selectedShippingKey === (opt.courier + ':' + opt.service)) ? 'border-left:4px solid #3b82f6;background:#f0f9ff;' : ''"
+                                            :disabled="isLoadingShipping"
                                             @click="selectedShippingKey = opt.courier + ':' + opt.service; onSelectService()">
                                             <div class="wps-flex wps-justify-between wps-items-center wps-w-full">
                                                 <span x-text="opt.courier.toUpperCase() + ' ' + opt.service"></span>
@@ -839,7 +849,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-2" x-show="!originSubdistrict">Asal pengiriman belum diatur di pengaturan.</div>
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="Array.isArray(shippingCouriers) && shippingCouriers.length === 0">Tidak ada kurir aktif di pengaturan.</div>
                                 <div class="wps-text-xxs wps-text-gray-500 wps-mt-1" x-show="!selectedSubdistrict">Lengkapi alamat pengiriman untuk menampilkan opsi pengiriman.</div>
-                                <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="selectedSubdistrict && shippingOptions.length === 0">Tidak ada layanan tersedia, ubah kurir atau kecamatan.</div>
+                                <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="selectedSubdistrict && !isLoadingShipping && shippingOptions.length === 0">Tidak ada layanan tersedia, ubah kurir atau kecamatan.</div>
                             </div>
                         </div>
                     </div>

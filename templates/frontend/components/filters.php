@@ -2,19 +2,21 @@
 $categories = isset($categories) && is_array($categories) ? $categories : [];
 $current = isset($current) && is_array($current) ? $current : ['sort' => '', 'min_price' => '', 'max_price' => '', 'cats' => []];
 $reset_url = isset($reset_url) ? (string) $reset_url : '';
+$mode = isset($mode) ? sanitize_key((string) $mode) : 'auto';
+$use_js = $mode !== 'off';
 ?>
-<form x-data="typeof wpStoreFilters === 'function' ? wpStoreFilters() : {}" x-init="init && typeof init === 'function' ? init() : null" @submit.prevent="update && typeof update === 'function' ? update() : null" method="get" action="" class="wps-card wps-p-4" style="margin-bottom:12px;">
+<form <?php echo $use_js ? 'x-data="typeof wpStoreFilters === \'function\' ? wpStoreFilters() : {}" x-init="init && typeof init === \'function\' ? init() : null"' : ''; ?> method="get" action="" class="wps-card wps-p-4" style="margin-bottom:12px;">
   <div class="wps-text-lg wps-font-medium wps-mb-3 wps-text-bold">Filter & Urutkan</div>
   <div class="wps-mt-3">
     <label class="wps-label">Urutkan</label>
-    <select class="wps-select" name="sort" x-model="sort" @change="update">
+    <select class="wps-select" name="sort" <?php echo $use_js ? 'x-model="sort" @change="update"' : ''; ?>>
       <option value="">Default</option>
-      <option value="az" <?php echo $current['sort'] === 'az' ? 'selected' : ''; ?>>A-Z</option>
-      <option value="za" <?php echo $current['sort'] === 'za' ? 'selected' : ''; ?>>Z-A</option>
+      <option value="name_asc" <?php echo $current['sort'] === 'name_asc' ? 'selected' : ''; ?>>A-Z</option>
+      <option value="name_desc" <?php echo $current['sort'] === 'name_desc' ? 'selected' : ''; ?>>Z-A</option>
       <option value="sold_desc" <?php echo $current['sort'] === 'sold_desc' ? 'selected' : ''; ?>>Terlaris</option>
       <option value="rating_desc" <?php echo $current['sort'] === 'rating_desc' ? 'selected' : ''; ?>>Rating Tertinggi</option>
-      <option value="cheap" <?php echo $current['sort'] === 'cheap' ? 'selected' : ''; ?>>Termurah</option>
-      <option value="expensive" <?php echo $current['sort'] === 'expensive' ? 'selected' : ''; ?>>Termahal</option>
+      <option value="price_asc" <?php echo $current['sort'] === 'price_asc' ? 'selected' : ''; ?>>Termurah</option>
+      <option value="price_desc" <?php echo $current['sort'] === 'price_desc' ? 'selected' : ''; ?>>Termahal</option>
     </select>
   </div>
   <div class="wps-mt-3">
@@ -42,10 +44,10 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
     </div>
     <div class="wps-price-input wps-mt-2">
       <div class="wps-form-group wps-mb-0">
-        <input class="wps-input" type="number" min="0" step="1" x-model="min_price_input" @input="syncFromInputs(); update()" placeholder="Min">
+        <input class="wps-input" type="number" min="0" step="1" name="min_price" value="<?php echo esc_attr((string) ($current['min_price'] ?? '')); ?>" <?php echo $use_js ? 'x-model="min_price_input" @input="syncFromInputs(); update()"' : ''; ?> placeholder="Min">
       </div>
       <div class="wps-form-group wps-mb-0">
-        <input class="wps-input" type="number" min="0" step="1" x-model="max_price_input" @input="syncFromInputs(); update()" placeholder="Max">
+        <input class="wps-input" type="number" min="0" step="1" name="max_price" value="<?php echo esc_attr((string) ($current['max_price'] ?? '')); ?>" <?php echo $use_js ? 'x-model="max_price_input" @input="syncFromInputs(); update()"' : ''; ?> placeholder="Max">
       </div>
     </div>
     <div class="wps-flex wps-justify-between wps-items-center wps-mt-2 opacity-50">
@@ -60,14 +62,14 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
       <div class="" style="gap:8px;">
         <?php foreach ($categories as $cat): ?>
           <label class="wps-checkbox-label wps-display-block">
-            <input type="checkbox" class="wps-checkbox" name="cats[]" :value="<?php echo esc_attr($cat['id']); ?>" x-model="cats" @change="update" :disabled="isCatLocked(<?php echo esc_attr($cat['id']); ?>)" <?php echo in_array($cat['id'], $current['cats'], true) ? 'checked' : ''; ?>>
+            <input type="checkbox" class="wps-checkbox" name="cats[]" value="<?php echo esc_attr($cat['id']); ?>" <?php echo $use_js ? ':value="' . esc_attr($cat['id']) . '" x-model="cats" @change="update" :disabled="isCatLocked(' . esc_attr($cat['id']) . ')"' : ''; ?> <?php echo in_array($cat['id'], $current['cats'], true) ? 'checked' : ''; ?>>
             <span class="wps-text-sm wps-text-gray-900"><?php echo esc_html($cat['name']); ?></span>
           </label>
         <?php endforeach; ?>
       </div>
     </div>
     <div class="wps-mt-4 wps-flex wps-justify-between wps-items-center">
-      <button type="button" class="wps-btn wps-btn-secondary" @click="resetFilters"><?php echo wps_icon(['name' => 'trash', 'size' => 16, 'class' => 'wps-mr-2']); ?>Reset</button>
+      <a href="<?php echo esc_url($reset_url ?: remove_query_arg(['sort', 'min_price', 'max_price', 'cats', 'shop_page'])); ?>" class="wps-btn wps-btn-secondary" <?php echo $use_js ? '@click.prevent="resetFilters"' : ''; ?>><?php echo wps_icon(['name' => 'trash', 'size' => 16, 'class' => 'wps-mr-2']); ?>Reset</a>
       <button type="submit" class="wps-btn wps-btn-primary"><?php echo wps_icon(['name' => 'sliders2', 'size' => 16, 'class' => 'wps-mr-2']); ?>Terapkan</button>
     </div>
     <div class="wps-filter-loading wps-mt-3" x-show="updating" x-cloak>
@@ -76,6 +78,7 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
     </div>
   </div>
 </form>
+<?php if ($use_js) : ?>
 <script>
   document.addEventListener('alpine:init', () => {
     Alpine.data('wpStoreFilters', () => ({
@@ -275,3 +278,4 @@ $reset_url = isset($reset_url) ? (string) $reset_url : '';
     }))
   });
 </script>
+<?php endif; ?>

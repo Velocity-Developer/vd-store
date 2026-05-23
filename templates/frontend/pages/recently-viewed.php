@@ -14,7 +14,7 @@ if (empty($items)) {
     </div>
     <div class="wps-grid wps-grid-cols-2 wps-md-grid-cols-4">
         <?php foreach ($items as $item) : ?>
-            <?php echo \WpStore\Frontend\Template::render('components/product-card', ['item' => $item, 'currency' => $currency, 'view_label' => 'Detail']); ?>
+            <?php echo \WpStore\Domain\Product\ProductRenderer::render_card((int) $item['id'], ['context' => 'recently_viewed', 'currency' => $currency]); ?>
         <?php endforeach; ?>
     </div>
 </div>

@@ -2,7 +2,7 @@
     <div id="wps-shop" class="">
         <div class="wps-grid wps-shop-grid wps-gap-4<?php echo count($items) === 1 ? ' is-single' : ''; ?>">
             <?php foreach ($items as $item) : ?>
-                <?php echo \WpStore\Frontend\Template::render('components/product-card', ['item' => $item, 'currency' => $currency, 'view_label' => 'Detail']); ?>
+                <?php echo \WpStore\Domain\Product\ProductRenderer::render_card((int) $item['id'], ['context' => 'shop', 'currency' => $currency]); ?>
             <?php endforeach; ?>
         </div>
         <?php if (isset($pages) && (int) $pages > 1) : ?>

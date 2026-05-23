@@ -3,6 +3,7 @@
 namespace WpStore\Api;
 
 use WpStore\Domain\Product\ProductData;
+use WpStore\Domain\Product\ProductFilterRequest;
 use WpStore\Domain\Product\ProductQuery;
 use WP_Query;
 use WP_REST_Request;
@@ -54,7 +55,7 @@ class ProductController
 
     public function get_products(WP_REST_Request $request)
     {
-        $filters = ProductQuery::normalize_filters($request->get_params());
+        $filters = ProductFilterRequest::from_source($request->get_params());
         $per_page = isset($request['per_page']) ? (int) $request['per_page'] : 12;
         $paged = isset($request['page']) ? (int) $request['page'] : 1;
         if ($per_page <= 0 || $per_page > 50) {

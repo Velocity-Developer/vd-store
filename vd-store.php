@@ -316,3 +316,32 @@ function wp_store_add_to_cart_button($product_id, $args = [])
 
     return do_shortcode('[wp_store_add_to_cart' . $attr_html . ']');
 }
+
+function wp_store_render_product_card($product_id, $args = [])
+{
+    return \WpStore\Domain\Product\ProductRenderer::render_card((int) $product_id, is_array($args) ? $args : []);
+}
+
+function wp_store_render_product_component($component, $product_id, $args = [])
+{
+    return \WpStore\Domain\Product\ProductRenderer::render_component((string) $component, (int) $product_id, is_array($args) ? $args : []);
+}
+
+function wp_store_product_info($product_id, $args = [])
+{
+    return \WpStore\Domain\Product\ProductRenderer::product_info((int) $product_id, is_array($args) ? $args : []);
+}
+
+function wp_store_render_single_product($product_id, $args = [])
+{
+    return \WpStore\Domain\Product\ProductRenderer::render_single((int) $product_id, is_array($args) ? $args : []);
+}
+
+function wp_store_product_filter_args($base_args = [], $source = null)
+{
+    $request = $source === null
+        ? \WpStore\Domain\Product\ProductFilterRequest::from_globals()
+        : \WpStore\Domain\Product\ProductFilterRequest::from_source($source);
+
+    return \WpStore\Domain\Product\ProductQuery::apply_to_args(is_array($base_args) ? $base_args : [], $request);
+}

@@ -30,12 +30,47 @@ class ProductQuery
             $source = [];
         }
 
+        $sort = sanitize_key((string) ($source['sort'] ?? 'latest'));
+        $sort_aliases = [
+            '' => 'latest',
+            'az' => 'name_asc',
+            'za' => 'name_desc',
+            'cheap' => 'price_asc',
+            'expensive' => 'price_desc',
+        ];
+        $sort = $sort_aliases[$sort] ?? $sort;
+        if (!array_key_exists($sort, self::sort_options())) {
+            $sort = 'latest';
+        }
+
+        $cats = [];
+        $raw_cats = $source['cats'] ?? $source['product_cats'] ?? [];
+        $raw_cats = is_array($raw_cats) ? $raw_cats : [$raw_cats];
+        foreach ($raw_cats as $candidate) {
+            $id = absint($candidate);
+            if ($id > 0) {
+                $cats[] = $id;
+            }
+        }
+
+        $labels = [];
+        $raw_labels = $source['labels'] ?? $source['product_labels'] ?? [];
+        $raw_labels = is_array($raw_labels) ? $raw_labels : [$raw_labels];
+        foreach ($raw_labels as $candidate) {
+            $label = sanitize_key((string) $candidate);
+            if ($label !== '') {
+                $labels[] = $label;
+            }
+        }
+
         return [
             'search' => sanitize_text_field((string) ($source['search'] ?? $source['s'] ?? $source['serach'] ?? '')),
-            'sort' => sanitize_key((string) ($source['sort'] ?? 'latest')),
+            'sort' => $sort,
             'cat' => (int) ($source['product_cat'] ?? $source['cat'] ?? 0),
+            'cats' => array_values(array_unique($cats)),
             'author' => (int) ($source['author'] ?? 0),
             'label' => sanitize_key((string) ($source['product_label'] ?? $source['label'] ?? '')),
+            'labels' => array_values(array_unique($labels)),
             'min_price' => self::normalize_numeric_filter($source['min_price'] ?? ''),
             'max_price' => self::normalize_numeric_filter($source['max_price'] ?? ''),
         ];
@@ -59,25 +94,40 @@ class ProductQuery
         $filters = self::normalize_filters(is_array($filters) ? $filters : []);
         $overrides = is_array($overrides) ? $overrides : [];
 
-        $args = [
-            'post_type' => isset($overrides['post_type']) ? $overrides['post_type'] : 'store_product',
-            'post_status' => isset($overrides['post_status']) ? $overrides['post_status'] : 'publish',
-            'posts_per_page' => !empty($overrides['posts_per_page']) ? max(1, (int) $overrides['posts_per_page']) : 12,
-            'paged' => !empty($overrides['paged']) ? max(1, (int) $overrides['paged']) : 1,
-        ];
+        $args = wp_parse_args($overrides, [
+            'post_type' => 'store_product',
+            'post_status' => 'publish',
+            'posts_per_page' => 12,
+            'paged' => 1,
+        ]);
+
+        if (!empty($args['posts_per_page'])) {
+            $args['posts_per_page'] = (int) $args['posts_per_page'];
+        }
+        if (!empty($args['paged'])) {
+            $args['paged'] = max(1, (int) $args['paged']);
+        }
 
         if ($filters['search'] !== '') {
             $args['s'] = $filters['search'];
         }
 
-        if ($filters['cat'] > 0) {
-            $args['tax_query'] = [
+        $cats = [];
+        if (!empty($filters['cats']) && is_array($filters['cats'])) {
+            $cats = array_values(array_filter(array_map('absint', $filters['cats'])));
+        }
+        if (empty($cats) && $filters['cat'] > 0) {
+            $cats = [(int) $filters['cat']];
+        }
+
+        if (!empty($cats)) {
+            $args = self::append_tax_query($args, [
                 [
                     'taxonomy' => 'store_product_cat',
                     'field' => 'term_id',
-                    'terms' => [$filters['cat']],
+                    'terms' => $cats,
                 ],
-            ];
+            ]);
         }
 
         if ($filters['author'] > 0) {
@@ -105,7 +155,7 @@ class ProductQuery
         }
 
         if (!empty($meta_query)) {
-            $args['meta_query'] = array_merge(['relation' => 'AND'], $meta_query);
+            $args = self::append_meta_query($args, $meta_query);
         }
 
         if ($filters['sort'] === 'sold_desc') {
@@ -135,7 +185,7 @@ class ProductQuery
             $args['order'] = 'DESC';
         }
 
-        return array_merge($args, $overrides);
+        return apply_filters('wp_store_product_query_args', $args, $filters, $overrides);
     }
 
     public static function apply_to_query(\WP_Query $query, $filters = [], $overrides = [])
@@ -147,9 +197,14 @@ class ProductQuery
         }
     }
 
+    public static function apply_to_args(array $args, $filters = [])
+    {
+        return self::build_query_args($filters, $args);
+    }
+
     public static function from_request($request_args = [])
     {
-        $filters = self::normalize_filters($request_args);
+        $filters = ProductFilterRequest::from_source($request_args);
         $per_page = isset($request_args['per_page']) ? (int) $request_args['per_page'] : 12;
         $paged = isset($request_args['page']) ? (int) $request_args['page'] : 1;
 
@@ -183,5 +238,25 @@ class ProductQuery
         }
 
         return (float) $value;
+    }
+
+    private static function append_tax_query(array $args, array $queries): array
+    {
+        $existing = isset($args['tax_query']) && is_array($args['tax_query']) ? $args['tax_query'] : [];
+        $relation = $existing['relation'] ?? 'AND';
+        unset($existing['relation']);
+        $args['tax_query'] = array_merge(['relation' => $relation], array_values($existing), $queries);
+
+        return $args;
+    }
+
+    private static function append_meta_query(array $args, array $queries): array
+    {
+        $existing = isset($args['meta_query']) && is_array($args['meta_query']) ? $args['meta_query'] : [];
+        $relation = $existing['relation'] ?? 'AND';
+        unset($existing['relation']);
+        $args['meta_query'] = array_merge(['relation' => $relation], array_values($existing), $queries);
+
+        return $args;
     }
 }

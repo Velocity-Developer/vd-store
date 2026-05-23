@@ -721,3 +721,83 @@ Kalau mengubah area ini, tes ulang end-to-end:
 ### Integrasi addon
 - addon harus membaca kontrak canonical `VD Store`
 - jangan buat meta produk, order, atau kupon versi kedua kalau tidak benar-benar perlu
+
+## 11. Kontrak override tampilan dan query
+
+### Template override
+Addon klien bisa override template tanpa mengubah file `vd-store`:
+
+```php
+add_filter('wp_store_template_candidates', function ($paths, $template) {
+    $paths[] = plugin_dir_path(__FILE__) . 'templates/vd-store/' . $template . '.php';
+    return $paths;
+}, 10, 2);
+```
+
+Template default tetap menjadi fallback terakhir dari `templates/frontend`.
+
+### Renderer produk
+Gunakan renderer resmi supaya archive, related, carousel, shortcode, dan Beaver Builder memakai output yang sama:
+
+```php
+echo wp_store_render_product_card($product_id, [
+    'context' => 'archive',
+    'variant' => 'default',
+]);
+
+echo wp_store_render_product_component('price', $product_id);
+echo wp_store_render_product_component('rating', $product_id);
+echo wp_store_product_info($product_id);
+echo wp_store_render_single_product($product_id, [
+    'hide' => 'rating,related',
+]);
+```
+
+Shortcode yang tersedia:
+
+```text
+[wp_store_product_card id="123"]
+[wp_store_product_card id="123" width="400" height="400"]
+[wp_store_component id="123" name="rating"]
+[wp_store_product_info id="123"]
+[wp_store_info id="123"]
+[wp_store_single id="123" hide="rating,related"]
+```
+
+Section single produk bisa dikurangi atau diurutkan dari addon:
+
+```php
+add_filter('wp_store_single_product_sections', function ($sections, $product_id) {
+    unset($sections['rating']);
+    return $sections;
+}, 10, 2);
+```
+
+### Filter produk berbasis WP_Query args
+Filter archive sekarang dibaca lewat request terstruktur lalu diterapkan ke `WP_Query` args:
+
+```php
+$args = wp_store_product_filter_args([
+    'post_type' => 'store_product',
+    'posts_per_page' => 12,
+]);
+
+$query = new WP_Query($args);
+```
+
+Hook yang dipakai:
+
+```text
+pre_get_posts
+fl_builder_loop_query_args
+wp_store_product_query_args
+wp_store_product_filter_request
+```
+
+Mode filter:
+
+```text
+off  = full GET/non-JS
+auto = GET + enhancement ringan
+ajax = disiapkan sebagai mode lanjutan
+```
