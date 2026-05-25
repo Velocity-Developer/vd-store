@@ -801,3 +801,382 @@ off  = full GET/non-JS
 auto = GET + enhancement ringan
 ajax = disiapkan sebagai mode lanjutan
 ```
+
+## 12. Contoh pemakaian untuk plugin pendamping dan Beaver Builder
+
+Bagian ini menjelaskan contoh paling praktis. Anggap `vd-store` adalah mesin toko, sedangkan plugin pendamping hanya mengubah tampilan dan kebutuhan khusus klien.
+
+### Contoh struktur plugin pendamping
+
+Misalnya buat plugin baru:
+
+```text
+wp-content/plugins/vd-store-client-a/
+- vd-store-client-a.php
+- templates/
+  - vd-store/
+    - components/
+      - product-card.php
+    - pages/
+      - single-flex.php
+- assets/
+  - client-a.css
+```
+
+File utama plugin pendamping:
+
+```php
+<?php
+/**
+ * Plugin Name: VD Store Client A
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+add_filter('wp_store_template_candidates', function ($paths, $template) {
+    $paths[] = plugin_dir_path(__FILE__) . 'templates/vd-store/' . $template . '.php';
+    return $paths;
+}, 10, 2);
+
+add_action('wp_enqueue_scripts', function () {
+    wp_enqueue_style(
+        'vd-store-client-a',
+        plugin_dir_url(__FILE__) . 'assets/client-a.css',
+        [],
+        '1.0.0'
+    );
+});
+```
+
+Penjelasan sederhana:
+- `vd-store` tetap jalan seperti biasa.
+- Kalau `vd-store` mau render template, plugin pendamping diberi kesempatan menyediakan file pengganti.
+- Kalau file pengganti tidak ada, template bawaan `vd-store` tetap dipakai.
+
+### Contoh override product card
+
+Kalau ingin semua card produk berubah, buat file:
+
+```text
+vd-store-client-a/templates/vd-store/components/product-card.php
+```
+
+Isi contoh sederhana:
+
+```php
+<?php
+$id = (int) ($item['id'] ?? 0);
+$title = (string) ($item['title'] ?? '');
+$link = (string) ($item['link'] ?? '#');
+$thumbnail_width = isset($thumbnail_width) ? (int) $thumbnail_width : 200;
+$thumbnail_height = isset($thumbnail_height) ? (int) $thumbnail_height : 300;
+?>
+
+<article class="client-product-card">
+    <a href="<?php echo esc_url($link); ?>" class="client-product-card__image">
+        <?php echo do_shortcode('[wp_store_thumbnail id="' . esc_attr((string) $id) . '" width="' . esc_attr((string) $thumbnail_width) . '" height="' . esc_attr((string) $thumbnail_height) . '"]'); ?>
+    </a>
+
+    <h3 class="client-product-card__title">
+        <a href="<?php echo esc_url($link); ?>">
+            <?php echo esc_html($title); ?>
+        </a>
+    </h3>
+
+    <?php echo wp_store_render_product_component('price', $id); ?>
+
+    <div class="client-product-card__action">
+        <?php echo do_shortcode('[wp_store_add_to_cart id="' . esc_attr((string) $id) . '" text="Beli"]'); ?>
+    </div>
+</article>
+```
+
+Dampaknya:
+- Archive produk ikut berubah.
+- Related product ikut berubah.
+- Recently viewed ikut berubah.
+- Carousel ikut berubah.
+- Shortcode `[wp_store_product_card]` ikut berubah.
+
+Jadi developer cukup ubah satu file product card.
+
+### Contoh memanggil product card dari PHP
+
+Kalau plugin pendamping punya template custom sendiri:
+
+```php
+echo wp_store_render_product_card(get_the_ID(), [
+    'context' => 'custom-section',
+    'variant' => 'compact',
+]);
+```
+
+Kalau butuh ukuran thumbnail khusus:
+
+```php
+echo wp_store_render_product_card($product_id, [
+    'thumbnail_width' => 400,
+    'thumbnail_height' => 400,
+]);
+```
+
+Kalau tidak mengirim ukuran, ukuran default mengikuti pengaturan:
+
+```text
+wp-admin/admin.php?page=wp-store-settings&tab=style
+```
+
+### Contoh single produk fleksibel
+
+Single produk default sekarang dirender lewat:
+
+```php
+wp_store_render_single_product($product_id);
+```
+
+Kalau klien tidak mau rating dan related product:
+
+```php
+echo wp_store_render_single_product($product_id, [
+    'hide' => 'rating,related',
+]);
+```
+
+Kalau ingin aturan global dari plugin pendamping:
+
+```php
+add_filter('wp_store_single_product_sections', function ($sections, $product_id) {
+    unset($sections['rating']);
+    unset($sections['share']);
+    return $sections;
+}, 10, 2);
+```
+
+Penjelasan sederhana:
+- Section adalah bagian-bagian single produk.
+- Developer bisa mematikan bagian tertentu tanpa copy seluruh template single produk.
+- Kalau butuh layout total berbeda, override file `pages/single-flex.php`.
+
+### Contoh override layout single produk
+
+Buat file:
+
+```text
+vd-store-client-a/templates/vd-store/pages/single-flex.php
+```
+
+Isi contoh minimal:
+
+```php
+<?php
+$id = isset($id) ? (int) $id : 0;
+if ($id <= 0) {
+    return;
+}
+?>
+
+<div class="client-single-product">
+    <div class="client-single-product__media">
+        <?php echo wp_store_render_product_component('gallery', $id); ?>
+    </div>
+
+    <div class="client-single-product__summary">
+        <?php echo wp_store_render_product_component('title', $id); ?>
+        <?php echo wp_store_render_product_component('price', $id); ?>
+        <?php echo wp_store_product_info($id); ?>
+        <?php echo wp_store_render_product_component('actions', $id); ?>
+    </div>
+
+    <div class="client-single-product__description">
+        <?php echo wp_store_render_product_component('description', $id); ?>
+    </div>
+</div>
+```
+
+### Contoh komponen untuk Beaver Builder
+
+Di Beaver Builder, developer bisa membuat layout single produk secara manual, lalu isi tiap module HTML/Shortcode dengan shortcode berikut.
+
+Judul produk:
+
+```text
+[wp_store_component name="title"]
+```
+
+Gallery:
+
+```text
+[wp_store_component name="gallery"]
+```
+
+Harga:
+
+```text
+[wp_store_component name="price"]
+```
+
+Rating:
+
+```text
+[wp_store_component name="rating"]
+```
+
+Info produk:
+
+```text
+[wp_store_product_info]
+```
+
+Tombol beli:
+
+```text
+[wp_store_component name="actions"]
+```
+
+Deskripsi:
+
+```text
+[wp_store_component name="description"]
+```
+
+Related product:
+
+```text
+[wp_store_component name="related"]
+```
+
+Catatan:
+- Kalau shortcode dipakai di halaman single produk, `id` boleh dikosongkan.
+- Kalau dipakai di halaman biasa, isi `id` produk.
+
+Contoh di halaman biasa:
+
+```text
+[wp_store_component id="123" name="price"]
+[wp_store_product_info id="123"]
+[wp_store_product_card id="123"]
+```
+
+### Contoh layout Beaver Builder single produk
+
+Contoh susunan module:
+
+```text
+Row 1, dua kolom
+- Kolom kiri: [wp_store_component name="gallery"]
+- Kolom kanan:
+  - [wp_store_component name="title"]
+  - [wp_store_component name="price"]
+  - [wp_store_product_info]
+  - [wp_store_component name="actions"]
+
+Row 2
+- [wp_store_component name="description"]
+
+Row 3
+- [wp_store_component name="related"]
+```
+
+Dengan cara ini Beaver Builder hanya mengatur layout. Data produk, harga, tombol beli, dan logic cart tetap berasal dari `vd-store`.
+
+### Contoh filter produk di halaman custom
+
+Untuk halaman yang dibuat manual, pakai:
+
+```text
+[wp_store_shop_with_filters filter_mode="off" per_page="12"]
+```
+
+Mode `off` berarti:
+- Form filter submit biasa.
+- URL berisi query seperti `?sort=price_asc&min_price=10000`.
+- Tetap jalan tanpa JavaScript.
+- Cocok untuk halaman sederhana dan stabil.
+
+Mode `auto`:
+
+```text
+[wp_store_shop_with_filters filter_mode="auto" per_page="12"]
+```
+
+Mode `auto` berarti:
+- Tetap memakai query string.
+- Ada enhancement Alpine untuk pengalaman lebih halus.
+- Kalau JavaScript gagal, konsep dasarnya tetap GET.
+
+### Contoh query produk custom dari PHP
+
+Kalau plugin pendamping punya template halaman sendiri:
+
+```php
+$args = wp_store_product_filter_args([
+    'post_type' => 'store_product',
+    'posts_per_page' => 12,
+    'paged' => max(1, (int) get_query_var('paged')),
+]);
+
+$query = new WP_Query($args);
+
+while ($query->have_posts()) {
+    $query->the_post();
+    echo wp_store_render_product_card(get_the_ID());
+}
+
+wp_reset_postdata();
+```
+
+Penjelasan sederhana:
+- `wp_store_product_filter_args()` membaca filter dari URL.
+- Hasilnya menjadi args untuk `WP_Query`.
+- Card tetap dirender lewat renderer resmi.
+
+### Contoh Beaver Builder archive/query
+
+Kalau Beaver Builder memakai module Posts atau Loop dengan post type `store_product`, filter dari URL akan masuk lewat hook:
+
+```text
+fl_builder_loop_query_args
+```
+
+Artinya:
+- User pilih kategori/harga/sort dari form filter.
+- URL berubah.
+- Query Beaver Builder ikut membaca filter.
+- Developer tidak perlu menulis ulang logic filter di Beaver.
+
+Untuk filter-nya, tetap taruh shortcode ini di sidebar atau row kiri:
+
+```text
+[wp_store_filters mode="off"]
+```
+
+Atau pakai paket lengkap:
+
+```text
+[wp_store_shop_with_filters filter_mode="off"]
+```
+
+### Kapan pakai cara yang mana
+
+Pakai template override kalau:
+- desain card atau single produk berbeda jauh;
+- semua loop harus ikut berubah;
+- klien punya desain khusus.
+
+Pakai shortcode Beaver Builder kalau:
+- hanya butuh susun ulang layout;
+- ingin cepat membuat single produk custom;
+- tidak ingin membuat file template.
+
+Pakai PHP renderer kalau:
+- plugin pendamping punya template sendiri;
+- butuh loop custom;
+- butuh kontrol lebih detail dari shortcode.
+
+Pakai filter query kalau:
+- halaman produk dibuat manual;
+- query dibuat oleh Beaver Builder;
+- query dibuat oleh shortcode;
+- semua harus membaca filter URL yang sama.
