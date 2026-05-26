@@ -250,6 +250,9 @@
   gap: 8px;
   align-items: center;
 }
+.wp-store-gap-2 {
+  gap: 0.5rem;
+}
 select.wp-store-input {
   background-repeat: no-repeat !important;
   background-position: calc(100% - 4px) 12px !important;
