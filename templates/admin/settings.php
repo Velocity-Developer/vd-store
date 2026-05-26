@@ -242,7 +242,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         <template x-for="(account, index) in bankAccounts" :key="index">
                             <div class="wp-store-box-gray wp-store-mt-4" style="position: relative; padding-top: 30px;">
                                 <!-- Remove Button -->
-                                <button type="button" @click="removeBankAccount(index)" class="button-link-delete" style="position: absolute; top: 10px; right: 10px; text-decoration: none;" title="Hapus Rekening" x-show="bankAccounts.length > 0">
+                                <button type="button" @click="removeBankAccount(index)" class="wp-store-btn button-link-delete" style="position: absolute; top: 10px; right: 10px; text-decoration: none;" title="Hapus Rekening" x-show="bankAccounts.length > 0">
                                     <span class="dashicons dashicons-trash"></span> Hapus
                                 </button>
 
