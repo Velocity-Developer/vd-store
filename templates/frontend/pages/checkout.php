@@ -72,17 +72,30 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 }, 2000);
             },
             captchaRequired: <?php echo is_user_logged_in() ? 'false' : 'true'; ?>,
+            captchaFieldValue(name) {
+                const root = document.getElementById('checkout-captcha');
+                const field = (root ? root.querySelector('[name="' + name + '"]') : null) || document.querySelector('[name="' + name + '"]');
+                return String(field && field.value ? field.value : '').trim();
+            },
+            collectCaptcha() {
+                return {
+                    captcha_id: this.captchaFieldValue('captcha_id'),
+                    captcha_value: this.captchaFieldValue('captcha_value'),
+                    captcha_verified: this.captchaFieldValue('captcha_verified'),
+                    'g-recaptcha-response': this.captchaFieldValue('g-recaptcha-response'),
+                    vd_captcha_token: this.captchaFieldValue('vd_captcha_token'),
+                    vd_captcha_input: this.captchaFieldValue('vd_captcha_input')
+                };
+            },
             isCaptchaReady() {
                 if (!this.captchaRequired) return true;
                 const root = document.getElementById('checkout-captcha');
                 if (!root) return false;
-                const val = root.querySelector('input[name="captcha_value"]');
-                const idf = root.querySelector('input[name="captcha_id"]');
-                const v = String(val && val.value ? val.value : '').trim();
-                const i = String(idf && idf.value ? idf.value : '').trim();
-                const vf = root.querySelector('input[name="captcha_verified"]');
-                const vv = String(vf && vf.value ? vf.value : '').trim();
-                return v !== '' && i !== '' && vv === '1';
+                if (this.captchaFieldValue('g-recaptcha-response') !== '') return true;
+                if (this.captchaFieldValue('vd_captcha_token') !== '' && this.captchaFieldValue('vd_captcha_input') !== '') return true;
+                return this.captchaFieldValue('captcha_value') !== '' &&
+                    this.captchaFieldValue('captcha_id') !== '' &&
+                    this.captchaFieldValue('captcha_verified') === '1';
             },
             currency: '<?php echo esc_js($currency); ?>',
             originSubdistrict: '<?php echo esc_js($origin_subdistrict); ?>',
@@ -526,6 +539,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
                             payment_method: this.paymentMethod || 'bank_transfer',
                             coupon_code: this.couponCode || '',
+                            captcha: this.collectCaptcha(),
                             items: this.cart.filter(i => i.selected !== false).map(i => ({
                                 id: i.id,
                                 qty: i.qty,
@@ -938,7 +952,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                 </div>
 
                                 <div class="wps-mt-2" x-show="!loggedIn" id="checkout-captcha" @input="recomputeAllow()" @change="recomputeAllow()">
-                                    <?php echo \WpStore\Frontend\Template::render('components/captcha'); ?>
+                                    <?php echo \WpStore\Frontend\Captcha::render(['context' => 'checkout']); ?>
                                 </div>
 
                                 <div class="wps-mt-4 wps-flex wps-justify-end">

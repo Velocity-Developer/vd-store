@@ -42,17 +42,20 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
       recomputeAllow() {
         this.captchaVerified = this.isCaptchaReady();
       },
+      captchaFieldValue(name) {
+        const root = document.getElementById('shipping-captcha');
+        const field = (root ? root.querySelector('[name="' + name + '"]') : null) || document.querySelector('[name="' + name + '"]');
+        return String(field && field.value ? field.value : '').trim();
+      },
       isCaptchaReady() {
         if (!this.captchaRequired) return true;
         const root = document.getElementById('shipping-captcha');
         if (!root) return false;
-        const val = root.querySelector('input[name="captcha_value"]');
-        const idf = root.querySelector('input[name="captcha_id"]');
-        const v = String(val && val.value ? val.value : '').trim();
-        const i = String(idf && idf.value ? idf.value : '').trim();
-        const vf = root.querySelector('input[name="captcha_verified"]');
-        const vv = String(vf && vf.value ? vf.value : '').trim();
-        return v !== '' && i !== '' && vv === '1';
+        if (this.captchaFieldValue('g-recaptcha-response') !== '') return true;
+        if (this.captchaFieldValue('vd_captcha_token') !== '' && this.captchaFieldValue('vd_captcha_input') !== '') return true;
+        return this.captchaFieldValue('captcha_value') !== '' &&
+          this.captchaFieldValue('captcha_id') !== '' &&
+          this.captchaFieldValue('captcha_verified') === '1';
       },
       async loadProvinces() {
         this.isLoadingProvinces = true;
@@ -206,7 +209,7 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
     <div class="wps-divider wps-my-4"></div>
     <div>
       <div class="wps-mt-2" x-show="<?php echo is_user_logged_in() ? 'false' : 'true'; ?>" id="shipping-captcha" @input="recomputeAllow()" @change="recomputeAllow()">
-        <?php echo \WpStore\Frontend\Template::render('components/captcha'); ?>
+        <?php echo \WpStore\Frontend\Captcha::render(['context' => 'shipping_checker']); ?>
       </div>
       <div class="wps-mt-4">
         <button type="button" class="wps-btn wps-btn-primary" @click="checkShipping()" :disabled="loading || !selectedSubdistrict || couriers.length === 0 || (captchaRequired && !captchaVerified)">

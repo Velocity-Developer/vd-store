@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.1.0`
+Versi plugin: `1.2.0`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -153,7 +153,15 @@ Fungsi:
 
 #### `CaptchaController.php`
 Fungsi:
-- endpoint captcha
+- endpoint captcha gambar bawaan VD Store
+- dipakai sebagai fallback jika captcha Velocity Addons tidak aktif
+
+#### `Frontend\Captcha.php`
+Fungsi:
+- adapter captcha resmi VD Store
+- otomatis memakai shortcode `[velocity_captcha]` dari Velocity Addons jika fitur captcha Velocity Addons aktif
+- validasi Google reCAPTCHA dan image captcha Velocity Addons
+- fallback ke captcha gambar bawaan VD Store
 
 #### `ToolsController.php`
 Fungsi:
@@ -389,7 +397,8 @@ Fungsi:
 
 ##### `captcha.php`
 Fungsi:
-- komponen captcha
+- komponen captcha internal VD Store
+- jangan dipanggil langsung untuk halaman publik baru; gunakan `\WpStore\Frontend\Captcha::render()` atau shortcode `[wp_store_captcha]` supaya otomatis mengikuti Velocity Addons jika aktif
 
 ## 4. Kontrak data penting
 
@@ -397,14 +406,14 @@ Fungsi:
 
 Meta canonical produk:
 - `_store_product_type`
-- `_store_price`
+- `_store_price` boleh kosong. Produk tanpa harga tampil sebagai katalog/inquiry dan tombol beli menjadi disabled `Hubungi Admin`.
 - `_store_sale_price`
 - `_store_flashsale_until`
 - `_store_digital_file`
 - `_store_sku`
 - `_store_stock`
 - `_store_min_order`
-- `_store_weight_kg`
+- `_store_weight_kg` boleh kosong. Produk fisik tanpa berat tidak bisa dibeli karena ongkir tidak dapat dihitung.
 - `_store_gallery_ids`
 - `_store_option_name`
 - `_store_options`
@@ -712,7 +721,10 @@ Kalau mengubah area ini, tes ulang end-to-end:
 
 ### Harga
 - angka backend harus membaca harga efektif
-- helper tampilan harga dibungkus di `wps_product_price_html()`
+- helper tampilan harga lewat `wps_product_price_html()`
+- kalau perlu teks biasa, pakai `wrapper_tag => ''` dan `price_tag => 'span'`
+- produk tanpa harga tidak bisa dibeli
+- produk fisik tanpa berat tidak bisa dibeli
 
 ### Review
 - review tetap custom data

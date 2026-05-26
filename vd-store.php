@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.1.0');
+define('WP_STORE_VERSION', '1.2.0');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -209,12 +209,20 @@ function wps_product_price_html($product_id, $args = [])
     $args = wp_parse_args(is_array($args) ? $args : [], [
         'countdown' => false,
         'currency' => '',
+        'wrapper' => null,
+        'tag' => '',
+        'class' => '',
+        'wrapper_tag' => 'div',
+        'sale_group_tag' => 'div',
+        'price_tag' => 'div',
+        'empty_tag' => 'div',
         'wrapper_class' => 'wps-price',
         'sale_group_class' => 'wps-flex wps-items-baseline wps-gap-2 wps-price-group',
         'sale_class' => 'wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text',
         'regular_class' => 'wps-text-sm wps-text-gray-500',
         'price_class' => 'wps-text-lg wps-text-gray-900 wps-font-medium wps-price-text',
         'empty_class' => 'wps-text-sm wps-text-gray-500',
+        'empty_text' => '',
         'show_empty' => true,
     ]);
     $countdown_attr = $args['countdown'];
@@ -246,27 +254,51 @@ function wps_product_price_html($product_id, $args = [])
         $sale_active = false;
     }
 
+    if ($args['wrapper'] !== null) {
+        $args['wrapper_tag'] = in_array((string) $args['wrapper'], ['none', 'false', '0'], true) ? '' : (string) $args['wrapper'];
+    }
+    if (is_string($args['tag']) && $args['tag'] !== '') {
+        $args['price_tag'] = $args['tag'];
+        $args['empty_tag'] = $args['tag'];
+    }
+    if (is_string($args['class']) && $args['class'] !== '') {
+        $args['price_class'] = $args['class'];
+        $args['empty_class'] = $args['class'];
+    }
+
+    $allowed_tags = ['div', 'span', 'p'];
+    $wrapper_tag_raw = (string) $args['wrapper_tag'];
+    $wrapper_tag = $wrapper_tag_raw === '' ? '' : (in_array($wrapper_tag_raw, $allowed_tags, true) ? $wrapper_tag_raw : 'div');
+    $sale_group_tag = in_array((string) $args['sale_group_tag'], $allowed_tags, true) ? (string) $args['sale_group_tag'] : 'div';
+    $price_tag = in_array((string) $args['price_tag'], $allowed_tags, true) ? (string) $args['price_tag'] : 'div';
+    $empty_tag = in_array((string) $args['empty_tag'], $allowed_tags, true) ? (string) $args['empty_tag'] : 'div';
     $wrapper_class = trim((string) $args['wrapper_class']);
     $sale_group_class = trim((string) $args['sale_group_class']);
     $sale_class = trim((string) $args['sale_class']);
     $regular_class = trim((string) $args['regular_class']);
     $price_class = trim((string) $args['price_class']);
     $empty_class = trim((string) $args['empty_class']);
+    $empty_text = is_string($args['empty_text']) && $args['empty_text'] !== ''
+        ? $args['empty_text']
+        : (string) apply_filters('wp_store_empty_price_text', 'Hubungi Admin', $product_id, $args);
     $show_empty = (bool) $args['show_empty'];
 
-    $html = '<div' . ($wrapper_class !== '' ? ' class="' . esc_attr($wrapper_class) . '"' : '') . '>';
+    $html = '';
+    if ($wrapper_tag !== '') {
+        $html .= '<' . tag_escape($wrapper_tag) . ($wrapper_class !== '' ? ' class="' . esc_attr($wrapper_class) . '"' : '') . '>';
+    }
     if ($sale_active) {
-        $html .= '<div' . ($sale_group_class !== '' ? ' class="' . esc_attr($sale_group_class) . '"' : '') . '>';
+        $html .= '<' . tag_escape($sale_group_tag) . ($sale_group_class !== '' ? ' class="' . esc_attr($sale_group_class) . '"' : '') . '>';
         $html .= '<span' . ($sale_class !== '' ? ' class="' . esc_attr($sale_class) . '"' : '') . '>' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $sale, 0, ',', '.')) . '</span>';
         if ($price !== null && (float) $price > 0) {
             $html .= '<span' . ($regular_class !== '' ? ' class="' . esc_attr($regular_class) . '"' : '') . ' style="text-decoration: line-through;">' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $price, 0, ',', '.')) . '</span>';
         }
-        $html .= '</div>';
+        $html .= '</' . tag_escape($sale_group_tag) . '>';
     } else {
         if ($price !== null) {
-            $html .= '<div' . ($price_class !== '' ? ' class="' . esc_attr($price_class) . '"' : '') . '>' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $price, 0, ',', '.')) . '</div>';
+            $html .= '<' . tag_escape($price_tag) . ($price_class !== '' ? ' class="' . esc_attr($price_class) . '"' : '') . '>' . esc_html(($currency ?: 'Rp') . ' ' . number_format((float) $price, 0, ',', '.')) . '</' . tag_escape($price_tag) . '>';
         } elseif ($show_empty) {
-            $html .= '<div' . ($empty_class !== '' ? ' class="' . esc_attr($empty_class) . '"' : '') . '>Harga belum diatur.</div>';
+            $html .= '<' . tag_escape($empty_tag) . ($empty_class !== '' ? ' class="' . esc_attr($empty_class) . '"' : '') . '>' . esc_html($empty_text) . '</' . tag_escape($empty_tag) . '>';
         }
     }
 
@@ -278,7 +310,9 @@ function wps_product_price_html($product_id, $args = [])
         $html .= '</div>';
     }
 
-    $html .= '</div>';
+    if ($wrapper_tag !== '') {
+        $html .= '</' . tag_escape($wrapper_tag) . '>';
+    }
 
     return $html;
 }

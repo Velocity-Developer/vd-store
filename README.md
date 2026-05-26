@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.1.0`
+Versi: `1.2.0`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -33,7 +33,7 @@ Pakai `VD Store` jika ingin membuat:
 - CPT kupon: `store_coupon`
 - Taxonomy kategori produk: `store_product_cat`
 - Produk fisik dan digital
-- Harga reguler dan harga promo
+- Harga reguler dan harga promo. Harga boleh kosong untuk produk katalog/inquiry.
 - Opsi varian dan opsi harga tambahan
 - Keranjang dan wishlist
 - Checkout dan tracking order
@@ -214,7 +214,7 @@ Catatan:
 | `[wp_store_contact]` | Informasi kontak toko. |
 | `[wp_store_bank_accounts]` | Daftar rekening toko. |
 | `[wp_store_couriers]` | Logo kurir aktif. |
-| `[wp_store_captcha]` | Komponen captcha. |
+| `[wp_store_captcha]` | Komponen captcha. Memakai Velocity Addons jika aktif, fallback ke captcha bawaan VD Store jika tidak. |
 | `[wp-store-captcha]` | Alias dari `[wp_store_captcha]`. |
 
 ## Shortcode yang sering dipakai
@@ -252,6 +252,18 @@ Fungsi ini memakai jalur yang sama dengan shortcode, jadi opsi produk, minimal o
 
 ```text
 [wp_store_price id="123"]
+```
+
+Tanpa wrapper luar dan harga sebagai `span`:
+
+```text
+[wp_store_price id="123" wrapper="" tag="span"]
+```
+
+Alternatif yang lebih eksplisit:
+
+```text
+[wp_store_price id="123" wrapper="none" tag="span"]
 ```
 
 ### Galeri produk

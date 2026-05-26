@@ -101,11 +101,32 @@ class ProductData
         return $regular;
     }
 
+    public static function is_purchasable($product_id)
+    {
+        $product_id = (int) $product_id;
+        $price = self::resolve_effective_price((int) $product_id);
+        if ($price === null || !is_numeric($price)) {
+            return false;
+        }
+
+        if (!self::is_digital($product_id) && self::raw_weight_grams($product_id) <= 0) {
+            return false;
+        }
+
+        return true;
+    }
+
     public static function weight_grams($product_id, $minimum = 1)
     {
         $weight_kg = ProductMeta::get_number($product_id, 'weight', 0);
         $grams = (int) round($weight_kg * 1000);
         return max((int) $minimum, $grams);
+    }
+
+    public static function raw_weight_grams($product_id)
+    {
+        $weight_kg = ProductMeta::get_number((int) $product_id, 'weight', 0);
+        return max(0, (int) round($weight_kg * 1000));
     }
 
     public static function resolve_price_with_options($product_id, $options = [])

@@ -29,15 +29,9 @@ class OrderPublicActions
         }
 
         if (!is_user_logged_in()) {
-            $cid = isset($_POST['captcha_id']) ? sanitize_text_field($_POST['captcha_id']) : '';
-            $cval = isset($_POST['captcha_value']) ? sanitize_text_field($_POST['captcha_value']) : '';
-            if ($cid === '' || $cval === '') {
-                wp_send_json_error(['message' => 'Captcha required'], 400);
-            }
-            $stored = get_transient('wp_store_captcha_' . $cid);
-            delete_transient('wp_store_captcha_' . $cid);
-            if (!is_string($stored) || strtoupper($stored) !== strtoupper($cval)) {
-                wp_send_json_error(['message' => 'Captcha invalid'], 400);
+            $captcha = Captcha::validate($_POST);
+            if (empty($captcha['success'])) {
+                wp_send_json_error(['message' => isset($captcha['message']) ? $captcha['message'] : 'Captcha invalid'], 400);
             }
         }
 

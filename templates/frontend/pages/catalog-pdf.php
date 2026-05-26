@@ -185,7 +185,7 @@ $currency = isset($currency) ? (string) $currency : 'Rp';
           $price_fmt = number_format($price_val, 0, ',', '.');
           echo '<div class="price">' . esc_html(($currency ?? 'Rp') . ' ' . $price_fmt) . '</div>';
         } else {
-          echo '<div style="font-size:11px; color:#6b7280;">Harga belum diatur.</div>';
+          echo '<div style="font-size:11px; color:#6b7280;">' . esc_html(apply_filters('wp_store_empty_price_text', 'Hubungi Admin', (int) ($item['id'] ?? 0), [])) . '</div>';
         }
         echo '</div>';
         echo '</td>';

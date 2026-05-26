@@ -114,6 +114,11 @@ class CartController
             return new WP_REST_Response(['message' => 'Produk tidak valid'], 400);
         }
 
+        $will_add = ($add_qty !== null && $add_qty > 0) || ($add_qty === null && $qty > 0);
+        if ($will_add && !ProductData::is_purchasable($product_id)) {
+            return new WP_REST_Response(['message' => 'Hubungi Admin'], 400);
+        }
+
         if ($qty < 0) {
             $qty = 0;
         }

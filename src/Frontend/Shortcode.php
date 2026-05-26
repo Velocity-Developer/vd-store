@@ -313,9 +313,9 @@ class Shortcode
             $selector = $atts['target_button'];
         }
         $html = '<div class="wps-captcha-shortcode-wrap" data-target-button="' . esc_attr($selector) . '">';
-        $html .= Template::render('components/captcha');
+        $html .= Captcha::render();
         $html .= '</div>';
-        $html .= '<script>(function(){try{var wrap=document.currentScript&&document.currentScript.previousElementSibling; if(!wrap||!wrap.classList||!wrap.classList.contains("wps-captcha-shortcode-wrap")){wrap=document.querySelector(".wps-captcha-shortcode-wrap");} var sel=(wrap&&wrap.getAttribute("data-target-button"))||""; if(!wrap||!sel){return;} function ready(){ var verified=wrap.querySelector(\'input[name="captcha_verified"]\'); var idf=wrap.querySelector(\'input[name="captcha_id"]\'); var val=wrap.querySelector(\'input[name="captcha_value"]\'); var ok=(verified&&verified.value==="1")&&(idf&&String(idf.value).trim()!=="")&&(val&&String(val.value).trim()!==""); document.querySelectorAll(sel).forEach(function(btn){ try{ if(ok){ btn.removeAttribute("disabled"); }else{ btn.setAttribute("disabled","disabled"); } }catch(e){} }); } wrap.addEventListener("change", ready, true); wrap.addEventListener("input", ready, true); if(document.readyState!=="loading"){ ready(); } else { document.addEventListener("DOMContentLoaded", ready); } }catch(e){console&&console.warn&&console.warn(e);} })();</script>';
+        $html .= '<script>(function(){try{var wrap=document.currentScript&&document.currentScript.previousElementSibling; if(!wrap||!wrap.classList||!wrap.classList.contains("wps-captcha-shortcode-wrap")){wrap=document.querySelector(".wps-captcha-shortcode-wrap");} var sel=(wrap&&wrap.getAttribute("data-target-button"))||""; if(!wrap||!sel){return;} function value(name){var el=wrap.querySelector("[name=\""+name+"\"]")||document.querySelector("[name=\""+name+"\"]");return String(el&&el.value?el.value:"").trim();} function ready(){ var ok=false; if(value("g-recaptcha-response")!==""){ok=true;} if(value("vd_captcha_token")!==""&&value("vd_captcha_input")!==""){ok=true;} if(value("captcha_verified")==="1"&&value("captcha_id")!==""&&value("captcha_value")!==""){ok=true;} document.querySelectorAll(sel).forEach(function(btn){ try{ if(ok){ btn.removeAttribute("disabled"); }else{ btn.setAttribute("disabled","disabled"); } }catch(e){} }); } wrap.addEventListener("change", ready, true); wrap.addEventListener("input", ready, true); if(document.readyState!=="loading"){ ready(); } else { document.addEventListener("DOMContentLoaded", ready); } }catch(e){console&&console.warn&&console.warn(e);} })();</script>';
         return $html;
     }
 
@@ -1201,13 +1201,30 @@ class Shortcode
 
     public function render_price($atts)
     {
+        $raw_atts = is_array($atts) ? $atts : [];
         $atts = shortcode_atts([
             'id' => 0,
-            'countdown' => false
+            'countdown' => false,
+            'wrapper' => '',
+            'tag' => '',
+            'class' => '',
         ], $atts);
 
         $id = $this->resolve_product_id((int) $atts['id']);
-        return $id > 0 ? wps_product_price_html($id, ['countdown' => $atts['countdown']]) : '';
+        $args = ['countdown' => $atts['countdown']];
+        if (array_key_exists('wrapper', $raw_atts)) {
+            $args['wrapper_tag'] = (string) $atts['wrapper'];
+        }
+        if ((string) $atts['tag'] !== '') {
+            $args['price_tag'] = (string) $atts['tag'];
+            $args['empty_tag'] = (string) $atts['tag'];
+        }
+        if ((string) $atts['class'] !== '') {
+            $args['price_class'] = (string) $atts['class'];
+            $args['empty_class'] = (string) $atts['class'];
+        }
+
+        return $id > 0 ? wps_product_price_html($id, $args) : '';
     }
 
     public function render_single($atts = [])
@@ -1264,6 +1281,7 @@ class Shortcode
         if ($product === null) {
             return '';
         }
+        $is_purchasable = ProductData::is_purchasable((int) $id);
         $basic_name = $product['variant_name'];
         $basic_values = $product['variant_options'];
         $adv_name = $product['price_adjustment_name'];
@@ -1281,6 +1299,10 @@ class Shortcode
             $wantQty = in_array(strtolower((string) $atts['qty']), ['1', 'true', 'yes'], true);
         }
         $default_qty = max(1, (int) $product['min_order']);
+        if (!$is_purchasable) {
+            $label = (string) apply_filters('wp_store_not_purchasable_button_text', 'Hubungi Admin', $id, $atts);
+            $wantQty = false;
+        }
         return Template::render('components/add-to-cart', [
             'btn_class' => $btn_class,
             'id' => $id,
@@ -1292,7 +1314,8 @@ class Shortcode
             'base_price' => isset($product['price']) && is_numeric($product['price']) ? (float) $product['price'] : 0.0,
             'nonce' => $nonce,
             'show_qty' => $wantQty,
-            'default_qty' => $default_qty
+            'default_qty' => $default_qty,
+            'is_purchasable' => $is_purchasable,
         ]);
     }
 

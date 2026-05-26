@@ -453,7 +453,7 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                                 <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce_upload); ?>">
                                 <?php if (!is_user_logged_in()) : ?>
                                     <div class="wps-mb-2">
-                                        <?php echo \WpStore\Frontend\Template::render('components/captcha'); ?>
+                                        <?php echo \WpStore\Frontend\Captcha::render(['context' => 'payment_proof']); ?>
                                     </div>
                                 <?php endif; ?>
                                 <div class="wps-flex wps-items-center wps-gap-2">

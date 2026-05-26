@@ -136,6 +136,9 @@ class CartService
             $add_qty = max(0, (int) $add_qty);
             $qty = max(0, $this->find_current_qty($cart, $product_id, $options) + $add_qty);
         }
+        if ($qty > 0 && !ProductData::is_purchasable($product_id)) {
+            return $cart;
+        }
         if ($qty > 0) {
             $product = ProductData::map_post($product_id);
             $min_order = is_array($product) && isset($product['min_order']) ? max(1, (int) $product['min_order']) : 1;
@@ -164,6 +167,9 @@ class CartService
             $opts = isset($row['opts']) && is_array($row['opts']) ? $row['opts'] : [];
 
             if ($product_id <= 0 || $qty <= 0 || get_post_type($product_id) !== 'store_product') {
+                continue;
+            }
+            if (!ProductData::is_purchasable($product_id)) {
                 continue;
             }
 

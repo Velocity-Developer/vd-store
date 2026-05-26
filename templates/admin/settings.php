@@ -553,16 +553,6 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         </div>
                         <p class="wp-store-helper">Jika aktif, pengunjung yang belum login tidak akan melihat harga promo maupun badge diskon.</p>
                     </div>
-                    <div class="wp-store-grid-2">
-                        <div>
-                            <label class="wp-store-label" for="recaptcha_site_key">reCAPTCHA Site Key</label>
-                            <input name="recaptcha_site_key" type="text" id="recaptcha_site_key" value="<?php echo esc_attr($settings['recaptcha_site_key'] ?? ''); ?>" class="wp-store-input" placeholder="Site Key">
-                        </div>
-                        <div>
-                            <label class="wp-store-label" for="recaptcha_secret_key">reCAPTCHA Secret Key</label>
-                            <input name="recaptcha_secret_key" type="text" id="recaptcha_secret_key" value="<?php echo esc_attr($settings['recaptcha_secret_key'] ?? ''); ?>" class="wp-store-input" placeholder="Secret Key">
-                        </div>
-                    </div>
                     <div class="wp-store-box-gray wp-store-mt-4 wp-store-email-template">
                         <div class="wp-store-grid-2 wp-store-mb-4">
                             <div>

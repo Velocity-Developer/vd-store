@@ -5,6 +5,7 @@ namespace WpStore\Api;
 use WpStore\Domain\Payment\PaymentMethodRegistry;
 use WpStore\Domain\Order\OrderService;
 use WpStore\Domain\Product\ProductData;
+use WpStore\Frontend\Captcha;
 
 use WP_REST_Request;
 use WP_REST_Response;
@@ -84,6 +85,13 @@ class CheckoutController
             $shipping_courier_req = '';
             $shipping_service_req = '';
             $shipping_cost_req = 0;
+        }
+
+        if (!is_user_logged_in()) {
+            $captcha = Captcha::validate($data);
+            if (empty($captcha['success'])) {
+                return new WP_REST_Response(['message' => isset($captcha['message']) ? $captcha['message'] : 'Captcha invalid'], 400);
+            }
         }
 
         $actor_key = is_user_logged_in() ? ('user:' . get_current_user_id()) : ('guest:' . (isset($_COOKIE['wp_store_cart_key']) ? sanitize_key($_COOKIE['wp_store_cart_key']) : ''));

@@ -57,8 +57,7 @@ class ProductSchema
                         'id' => '_store_price',
                         'type' => 'number',
                         'placeholder' => '0',
-                        'desc' => 'Harga utama produk.',
-                        'required' => true,
+                        'desc' => 'Harga utama produk. Kosongkan jika produk hanya untuk katalog atau inquiry.',
                         'min' => 0,
                         'step' => 0.01,
                     ],
@@ -103,10 +102,9 @@ class ProductSchema
                         'id' => '_store_weight_kg',
                         'type' => 'number',
                         'placeholder' => '0',
-                        'desc' => 'Wajib diisi untuk perhitungan ongkir. Gunakan angka lebih dari 0.',
-                        'min' => 0.001,
+                        'desc' => 'Kosongkan jika produk hanya untuk katalog atau inquiry. Produk fisik tanpa berat tidak bisa dibeli.',
+                        'min' => 0,
                         'step' => 0.001,
-                        'required' => true,
                         'show_if_product_type' => 'physical',
                     ],
                     [
@@ -179,6 +177,11 @@ class ProductSchema
                 ],
             ],
         ];
+
+        $sections = apply_filters('wp_store_product_schema_sections', $sections, $context);
+        if (!is_array($sections)) {
+            $sections = [];
+        }
 
         $filtered = [];
         foreach ($sections as $section) {
