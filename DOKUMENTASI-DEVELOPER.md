@@ -315,9 +315,9 @@ Fungsi:
 Fungsi:
 - layout daftar produk
 
-##### `single.php`
+##### `single-flex.php`
 Fungsi:
-- layout single produk
+- layout single produk berbasis section dan komponen
 
 ##### `checkout.php`
 Fungsi:
@@ -491,7 +491,7 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 | `[wp_store_shop]` | `render_shop()` | `shop.php` | Daftar produk berdasarkan query shortcode. |
 | `[wp_store_catalog]` | `render_catalog()` | `catalog.php` | Katalog produk sederhana. |
 | `[wp_store_shop_with_filters]` | `render_shop_with_filters()` | `filters.php` + `shop.php` | Shop dengan sidebar filter. |
-| `[wp_store_single]` | `render_single()` | `single.php` | Single produk. |
+| `[wp_store_single]` | `render_single()` | `single-flex.php` | Single produk berbasis section dan komponen. |
 | `[wp_store_cart_page]` | `render_cart_page()` | `cart.php` | Halaman keranjang. |
 | `[store_cart]` | `render_cart_page()` | `cart.php` | Alias cart page. |
 | `[wp_store_checkout]` | `render_checkout()` | `checkout.php` | Halaman checkout. |

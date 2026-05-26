@@ -11,7 +11,7 @@ get_header();
     while (have_posts()) :
         the_post();
         // The content is filtered by WpStore\Frontend\Shortcode::filter_single_content
-        // which renders templates/frontend/pages/single.php
+        // which renders templates/frontend/pages/single-flex.php
         the_content();
     endwhile;
     ?>

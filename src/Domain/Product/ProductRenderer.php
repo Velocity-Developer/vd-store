@@ -106,7 +106,10 @@ class ProductRenderer
             case 'breadcrumb':
                 return Template::render('components/breadcrumb', ['post_id' => $product_id]);
             case 'price':
-                return wps_product_price_html($product_id, $args);
+                $price_args = wp_parse_args($args, [
+                    'wrapper_class' => 'wps-price wps-mb-2',
+                ]);
+                return wps_product_price_html($product_id, $price_args);
             case 'rating':
                 return self::rating_summary($product_id, $args);
             case 'info':
@@ -164,7 +167,7 @@ class ProductRenderer
         $sections = [
             'gallery' => true,
             'title' => true,
-            'breadcrumb' => true,
+            'breadcrumb' => false,
             'price' => true,
             'rating' => true,
             'info' => true,
@@ -273,7 +276,7 @@ class ProductRenderer
 
     private static function actions(int $product_id): string
     {
-        return '<div class="wps-flex wps-gap-2 wps-items-center wps-mb-2"><div>'
+        return '<div class="wps-flex wps-gap-2 wps-items-center wps-mb-4"><div>'
             . do_shortcode('[wp_store_add_to_cart id="' . esc_attr((string) $product_id) . '"]')
             . '</div><div>'
             . do_shortcode('[wp_store_add_to_wishlist id="' . esc_attr((string) $product_id) . '"]')
