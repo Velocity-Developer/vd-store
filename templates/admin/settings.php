@@ -867,7 +867,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             indonesianBanks: [
                 'Bank Mandiri', 'BRI', 'BCA', 'BNI', 'BTN', 'BSI', 'CIMB Niaga',
                 'OCBC NISP', 'Bank Permata', 'Bank Danamon', 'Panin Bank',
-                'Maybank Indonesia', 'Bank Mega', 'Bank Sinarmas', 'Bank BTN Syariah',
+                'Maybank Indonesia', 'Bank Mega', 'Bank Muamalat', 'Bank Sinarmas', 'BSN',
                 'Bank Mega Syariah', 'Bank Commonwealth', 'Bank UOB Indonesia',
                 'Bank DBS Indonesia', 'Bank Woori Saudara', 'Bank Hana Indonesia',
                 'Bank Resona Perdania', 'Bank J Trust Indonesia', 'Bank Ina Perdana',

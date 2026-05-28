@@ -470,16 +470,38 @@ class Shortcode
         }
 
         $bank_logos = [
-            'BCA'           => 'b-bca.gif',
-            'BNI'           => 'b-bni.gif',
-            'BRI'           => 'b-bri.gif',
-            'BSI'           => 'b-bsi.gif',
-            'CIMB Niaga'    => 'b-cimb.gif',
-            'Bank Danamon'  => 'b-danamon.gif',
-            'Bank Mandiri'  => 'b-mandiri.gif',
-            'Bank Mega'     => 'b-mega.gif',
+            'Bank Mandiri' => 'b-mandiri.gif',
+            'BRI' => 'b-bri.gif',
+            'BCA' => 'b-bca.gif',
+            'BNI' => 'b-bni.gif',
+            'BTN' => 'b-btn.gif',
+            'BSI' => 'b-bsi.gif',
+            'CIMB Niaga' => 'b-cimb.gif',
+            'OCBC NISP' => 'b-ocbc-nisp.gif',
+            'Bank Permata' => 'b-permata.gif',
+            'Bank Danamon' => 'b-danamon.gif',
+            'Panin Bank' => 'b-panin.gif',
+            'Maybank Indonesia' => 'b-maybank.gif',
+            'Bank Mega' => 'b-mega.gif',
             'Bank Muamalat' => 'b-muamalat.gif',
-            'Bank Permata'  => 'b-permata.gif',
+            'Bank Sinarmas' => 'b-sinarmas.gif',
+            'BSN' => 'b-bsn.gif',
+            'Bank Mega Syariah' => 'b-mega-syariah.gif',
+            'Bank Commonwealth' => 'b-commonwealth.gif',
+            'Bank UOB Indonesia' => 'b-uob.gif',
+            'Bank DBS Indonesia' => 'b-dbs.gif',
+            'Bank Woori Saudara' => 'b-bws.gif',
+            'Bank Hana Indonesia' => 'b-hana.gif',
+            'Bank Resona Perdania' => 'b-resona.gif',
+            'Bank J Trust Indonesia' => 'b-j-trust.gif',
+            'Bank Ina Perdana' => 'b-ina.gif',
+            'Bank Artha Graha' => 'b-artha.gif',
+            'Bank Index Selindo' => 'b-index.gif',
+            'Bank Ganesha' => 'b-ganesha.gif',
+            'Bank Maspion' => 'b-maspion.gif',
+            'Bank Bumi Arta' => 'b-bumi-arta.gif',
+            'Bank Victoria' => 'b-victoria.gif',
+            'Lainnya' => '',
         ];
 
         ob_start();
@@ -488,21 +510,27 @@ class Shortcode
             if (empty($acc['bank_name']) || empty($acc['bank_account'])) continue;
 
             $bank_name = (string) $acc['bank_name'];
-            $logo_file = isset($bank_logos[$bank_name]) ? $bank_logos[$bank_name] : '';
+            if ($bank_name === 'Bank BTN Syariah') {
+                $bank_name = 'BSN';
+            }
+            $logo_file = isset($bank_logos[$bank_name]) ? (string) $bank_logos[$bank_name] : '';
             $logo_url = '';
 
-            if ($logo_file) {
+            if ($logo_file && file_exists(WP_STORE_PATH . 'assets/frontend/img/bank/' . $logo_file)) {
                 $logo_url = WP_STORE_URL . 'assets/frontend/img/bank/' . $logo_file;
             }
 
             echo '<div class="wps-bank-item wps-mb-2">';
             if ($logo_url) {
-                echo '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($bank_name) . '" class="wps-mx-auto wps-mb-0" style="max-height: 40px; width: auto;">';
+                echo '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($bank_name) . '" class="wps-mx-auto wps-mb-1" style="max-height: 40px; width: auto;">';
             } else {
-                echo '<div class="wps-font-normal wps-text-lg wps-mb-0">' . esc_html($bank_name) . '</div>';
+                echo '<div class="wps-font-normal wps-text-lg wps-mb-1">' . esc_html($bank_name) . '</div>';
             }
-            echo '<div class="wps-text-sm wps-font-normal wps-mb-1">' . esc_html($acc['bank_account']) . '</div>';
-            echo '<div class="wps-text-xs wps-text-gray-700">a/n ' . esc_html($acc['bank_holder']) . '</div>';
+            echo '<div class="wps-text-sm wps-font-normal wps-mb-1">' . esc_html($acc['bank_account']) ;
+            if (!empty($acc['bank_holder']) && !empty($acc['bank_account'])) {
+                echo '<span class="wps-text-gray-700"> a/n </span>' . esc_html($acc['bank_holder']);
+            }
+            echo '</div>';
             echo '</div>';
         }
         echo '</div>';
