@@ -221,6 +221,11 @@ $use_js = $mode !== 'off';
         if (this.updating) return;
         this.updating = true;
         const url = new URL(window.location.href);
+        const curBlock = document.querySelector('#wps-shop');
+        if (!curBlock) {
+          window.location.href = url.toString();
+          return;
+        }
         fetch(url.toString(), {
             credentials: 'same-origin'
           })
@@ -228,7 +233,6 @@ $use_js = $mode !== 'off';
           .then((html) => {
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const newBlock = doc.querySelector('#wps-shop');
-            const curBlock = document.querySelector('#wps-shop');
             if (newBlock && curBlock) {
               if (window.Alpine && typeof window.Alpine.destroyTree === 'function') {
                 try {

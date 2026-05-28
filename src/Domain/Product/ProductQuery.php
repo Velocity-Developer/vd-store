@@ -91,14 +91,23 @@ class ProductQuery
 
     public static function build_query_args($filters = [], $overrides = [])
     {
-        $filters = self::normalize_filters(is_array($filters) ? $filters : []);
+        $raw_filters = is_array($filters) ? $filters : [];
+        $requested_page = isset($raw_filters['page']) ? (int) $raw_filters['page'] : 0;
+        if ($requested_page <= 0 && isset($raw_filters['paged'])) {
+            $requested_page = (int) $raw_filters['paged'];
+        }
+        if ($requested_page <= 0) {
+            $requested_page = 1;
+        }
+
+        $filters = self::normalize_filters($raw_filters);
         $overrides = is_array($overrides) ? $overrides : [];
 
         $args = wp_parse_args($overrides, [
             'post_type' => 'store_product',
             'post_status' => 'publish',
             'posts_per_page' => 12,
-            'paged' => 1,
+            'paged' => max(1, $requested_page),
         ]);
 
         if (!empty($args['posts_per_page'])) {
