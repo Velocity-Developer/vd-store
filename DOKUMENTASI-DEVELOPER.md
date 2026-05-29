@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.2.1`
+Versi plugin: `1.2.2`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -506,11 +506,17 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 
 | Shortcode | Method | Template utama | Fungsi |
 | --- | --- | --- | --- |
+| `[wp_store_product_card]` | `render_product_card()` | `product-card.php` | Render reusable product card. |
+| `[wp_store_component]` | `render_component()` | `ProductRenderer.php` | Render komponen produk reusable berdasarkan `name` atau `component`. |
+| `[wp_store_product_info]` | `render_product_info()` | `ProductRenderer::product_info()` | Tabel info/meta produk. |
+| `[wp_store_info]` | `render_product_info()` | `ProductRenderer::product_info()` | Alias info produk. |
+| `[wp_store_product_meta]` | `render_product_info()` | `ProductRenderer::product_info()` | Alias meta produk. |
 | `[wp_store_related]` | `render_related()` | `related.php` | Produk terkait. |
 | `[wp_store_gallery]` | `render_gallery()` | `product-gallery.php` | Galeri produk. |
 | `[wp_store_thumbnail]` | `render_thumbnail()` | method langsung | Thumbnail produk. |
 | `[wp_store_price]` | `render_price()` | helper `wps_product_price_html()` | Harga produk. |
 | `[wp_store_add_to_cart]` | `render_add_to_cart()` | `add-to-cart.php` | Tombol add to cart. Untuk file PHP theme/template bisa memakai `wp_store_add_to_cart_button()`. |
+| `[wp_store_buy_button]` | `render_add_to_cart()` | `add-to-cart.php` | Alias tombol beli/add to cart. |
 | `[wp_store_detail]` | `render_detail()` | method langsung | Link detail produk. |
 | `[wp_store_add_to_wishlist]` | `render_add_to_wishlist()` | `add-to-wishlist.php` | Tombol wishlist. |
 | `[wp_store_rating]` | `render_rating()` | `RatingRenderer.php` | Bintang rating produk. |
@@ -523,8 +529,8 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 
 | Shortcode | Method | Template utama | Fungsi |
 | --- | --- | --- | --- |
-| `[wp_store_cart]` | `render_cart_widget()` | `cart-widget.php` | Shortcut atau offcanvas keranjang. |
-| `[wp_store_link_profile]` | `render_link_profile()` | method langsung | Link atau icon profil customer. |
+| `[wp_store_cart]` | `render_cart_widget()` | `cart-widget.php` | Shortcut atau offcanvas keranjang. Atribut: `size` untuk ukuran icon. |
+| `[wp_store_link_profile]` | `render_link_profile()` | method langsung | Link atau icon profil customer. Atribut: `size` untuk ukuran foto profil. |
 | `[wp_store_filters]` | `render_filters()` | `filters.php` | Sidebar filter shop. |
 | `[wp_store_shipping_checker]` | `render_shipping_checker()` | `shipping-checker.php` | Cek ongkir. |
 | `[wp_store_categories]` | `render_categories()` | `categories-list.php` | Daftar kategori. |

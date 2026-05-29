@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.2.1`
+Versi: `1.2.2`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -188,11 +188,17 @@ Catatan:
 
 | Shortcode | Fungsi |
 | --- | --- |
+| `[wp_store_product_card]` | Render reusable product card. |
+| `[wp_store_component]` | Render komponen produk reusable, misalnya `title`, `price`, `rating`, `actions`, `description`, `related`. |
+| `[wp_store_product_info]` | Render tabel info/meta produk. |
+| `[wp_store_info]` | Alias dari `[wp_store_product_info]`. |
+| `[wp_store_product_meta]` | Alias dari `[wp_store_product_info]`. |
 | `[wp_store_related]` | Render produk terkait. |
 | `[wp_store_gallery]` | Render galeri produk. |
 | `[wp_store_thumbnail]` | Render thumbnail produk. |
 | `[wp_store_price]` | Render harga produk. |
 | `[wp_store_add_to_cart]` | Tombol tambah ke keranjang. Untuk PHP/theme bisa memakai `wp_store_add_to_cart_button()`. |
+| `[wp_store_buy_button]` | Alias dari `[wp_store_add_to_cart]`. |
 | `[wp_store_detail]` | Link ke detail produk. |
 | `[wp_store_add_to_wishlist]` | Tombol tambah ke wishlist. |
 | `[wp_store_rating]` | Ringkasan bintang rating produk. |
@@ -205,8 +211,8 @@ Catatan:
 
 | Shortcode | Fungsi |
 | --- | --- |
-| `[wp_store_cart]` | Shortcut atau offcanvas keranjang. |
-| `[wp_store_link_profile]` | Link atau icon ke halaman profil customer. |
+| `[wp_store_cart]` | Shortcut atau offcanvas keranjang. Atribut: `size` untuk ukuran icon. |
+| `[wp_store_link_profile]` | Link atau icon ke halaman profil customer. Atribut: `size` untuk ukuran foto profil. |
 | `[wp_store_filters]` | Sidebar filter shop. |
 | `[wp_store_shipping_checker]` | Cek ongkir di halaman publik. |
 | `[wp_store_categories]` | Daftar kategori produk. |

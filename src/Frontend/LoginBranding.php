@@ -47,16 +47,17 @@ class LoginBranding
         $primary = isset($settings['theme_primary']) ? sanitize_hex_color($settings['theme_primary']) : '#2563eb';
         $primary_hover = isset($settings['theme_primary_hover']) ? sanitize_hex_color($settings['theme_primary_hover']) : '#1d4ed8';
         $bg_color = isset($settings['login_bg_color']) ? sanitize_hex_color($settings['login_bg_color']) : '#f5f7fb';
-        $icon = function_exists('get_site_icon_url') ? get_site_icon_url(192) : '';
+        $logo = $this->login_logo_data();
 
         $css = '';
-        if ($icon) {
+        if (!empty($logo['url'])) {
             $css .= '
             .login h1 a {
-                background-image: url(' . esc_url($icon) . ');
+                background-image: url(' . esc_url($logo['url']) . ');
                 background-size: contain;
-                width: 84px;
-                height: 84px;
+                background-position: center;
+                width: ' . (int) $logo['width'] . 'px;
+                height: ' . (int) $logo['height'] . 'px;
             }';
         }
 
@@ -89,5 +90,41 @@ class LoginBranding
         ';
 
         wp_add_inline_style('login', $css);
+    }
+
+    private function login_logo_data()
+    {
+        $custom_logo_id = function_exists('get_theme_mod') ? (int) get_theme_mod('custom_logo') : 0;
+        if ($custom_logo_id > 0) {
+            $image = wp_get_attachment_image_src($custom_logo_id, 'full');
+            if (is_array($image) && !empty($image[0])) {
+                $width = isset($image[1]) ? max(1, (int) $image[1]) : 220;
+                $height = isset($image[2]) ? max(1, (int) $image[2]) : 90;
+                $max_width = 220;
+                $max_height = 110;
+                $ratio = min($max_width / $width, $max_height / $height, 1);
+
+                return [
+                    'url' => (string) $image[0],
+                    'width' => max(84, (int) round($width * $ratio)),
+                    'height' => max(60, (int) round($height * $ratio)),
+                ];
+            }
+        }
+
+        $icon = function_exists('get_site_icon_url') ? get_site_icon_url(192) : '';
+        if ($icon) {
+            return [
+                'url' => $icon,
+                'width' => 84,
+                'height' => 84,
+            ];
+        }
+
+        return [
+            'url' => '',
+            'width' => 84,
+            'height' => 84,
+        ];
     }
 }

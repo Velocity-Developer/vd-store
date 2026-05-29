@@ -124,9 +124,10 @@
 </script>
 <div x-data="wpStoreCartWidget()" x-init="init()" class="wps-rel">
     <button type="button" @click="window.dispatchEvent(new CustomEvent('wp-store:open-cart'))" class="wps-btn-icon wps-cart-button wps-rel">
-        <span class="wps-text-2xl">
-            <?php echo wps_icon(['name' => 'cart', 'size' => 16]); ?>
+        <?php $icon_size = isset($icon_size) ? max(10, min(96, (int) $icon_size)) : 16; ?>
+        <span class="wps-text-2xl" style="line-height:1;">
+            <?php echo wps_icon(['name' => 'cart', 'size' => $icon_size]); ?>
         </span>
-        <span x-text="cart.reduce((sum, item) => sum + (item.qty || 0), 0)" class="wps-absolute wps-top--6 wps-right--10 wps-bg-blue-500 wps-text-white wps-text-xs rounded-full wps-px-2.5 wps-py-0.5"></span>
+        <span x-text="cart.reduce((sum, item) => sum + (item.qty || 0), 0)" class="wps-absolute wps-top--6 wps-right--10 wps-bg-blue-500 wps-text-white wps-text-xxs rounded-full wps-px-2.5 px-1 wps-py-0.5"></span>
     </button>
 </div>

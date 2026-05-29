@@ -1371,6 +1371,15 @@ class Shortcode
     public function render_cart_widget($atts = [])
     {
         wp_enqueue_script('alpinejs');
+        $atts = shortcode_atts([
+            'size' => 16,
+        ], $atts);
+        $icon_size = (int) $atts['size'];
+        if ($icon_size <= 0) {
+            $icon_size = 16;
+        }
+        $icon_size = max(10, min(96, $icon_size));
+
         $settings = get_option('wp_store_settings', []);
         $checkout_page_id = isset($settings['page_checkout']) ? absint($settings['page_checkout']) : 0;
         $checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : '';
@@ -1382,7 +1391,8 @@ class Shortcode
             'checkout_url' => $checkout_url,
             'cart_url' => $cart_url,
             'currency' => $currency,
-            'nonce' => $nonce
+            'nonce' => $nonce,
+            'icon_size' => $icon_size,
         ]);
     }
 
@@ -1470,6 +1480,15 @@ class Shortcode
 
     public function render_link_profile($atts = [])
     {
+        $atts = shortcode_atts([
+            'size' => 32,
+        ], $atts);
+        $image_size = (int) $atts['size'];
+        if ($image_size <= 0) {
+            $image_size = 32;
+        }
+        $image_size = max(16, min(160, $image_size));
+
         $settings = get_option('wp_store_settings', []);
         $pid = isset($settings['page_profile']) ? absint($settings['page_profile']) : 0;
         $profile_url = $pid ? get_permalink($pid) : site_url('/profil-saya/');
@@ -1486,7 +1505,7 @@ class Shortcode
             $avatar_url = WP_STORE_URL . 'assets/frontend/img/user.png';
         }
         $html = '<a href="' . esc_url($profile_url) . '" class="wps-link-profile" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">'
-            . '<img src="' . esc_url($avatar_url) . '" alt="Profil" style="width:32px;height:32px;border-radius:9999px;object-fit:cover;border:1px solid #e5e7eb;" />'
+            . '<img src="' . esc_url($avatar_url) . '" alt="Profil" style="width:' . esc_attr((string) $image_size) . 'px;height:' . esc_attr((string) $image_size) . 'px;border-radius:9999px;object-fit:cover;border:1px solid #e5e7eb;" />'
             . '</a>';
         return $html;
     }

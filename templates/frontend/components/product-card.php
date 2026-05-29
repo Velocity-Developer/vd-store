@@ -10,7 +10,7 @@ $thumbnail_width = isset($thumbnail_width) ? max(1, (int) $thumbnail_width) : 20
 $thumbnail_height = isset($thumbnail_height) ? max(1, (int) $thumbnail_height) : 300;
 $thumbnail_crop = isset($thumbnail_crop) ? (string) $thumbnail_crop : 'true';
 ?>
-<div class="wps-card wps-card-hover wps-transition <?php echo esc_attr($state_class); ?><?php echo $card_class !== '' ? ' ' . esc_attr($card_class) : ''; ?>">
+<div class="wps-card wps-card-hover wps-transition h-100 <?php echo esc_attr($state_class); ?><?php echo $card_class !== '' ? ' ' . esc_attr($card_class) : ''; ?>">
   <div class="wps-p-2">
     <a class="wps-text-sm wps-text-gray-900 wps-mb-4 wps-text-bold wps-d-block wps-rel" href="<?php echo esc_url($item['link']); ?>">
       <div class="wps-mb-2">
@@ -21,9 +21,9 @@ $thumbnail_crop = isset($thumbnail_crop) ? (string) $thumbnail_crop : 'true';
     <?php echo wps_product_price_html((int) $item['id'], [
       'wrapper_class' => 'wps-mb-4',
       'sale_group_class' => 'wps-flex wps-items-baseline wps-gap-1',
-      'sale_class' => 'wps-text-xxs wps-text-gray-900 wps-font-medium',
-      'regular_class' => 'wps-text-xxs wps-text-gray-500',
-      'price_class' => 'wps-text-xxs wps-text-gray-900 wps-font-medium',
+      'sale_class' => 'wps-text-gray-900 wps-font-medium',
+      'regular_class' => 'wps-text-gray-500',
+      'price_class' => 'wps-text-gray-900 wps-font-medium',
       'show_empty' => false,
     ]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     <?php if ($extra_html !== '') : ?>
