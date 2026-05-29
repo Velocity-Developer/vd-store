@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.2.0`
+Versi plugin: `1.2.1`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
