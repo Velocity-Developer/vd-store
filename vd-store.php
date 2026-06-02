@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js
- * Version:     1.2.2
+ * Version:     1.2.3
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.2.2');
+define('WP_STORE_VERSION', '1.2.3');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 

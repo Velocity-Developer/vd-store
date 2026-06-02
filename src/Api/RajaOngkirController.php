@@ -59,8 +59,12 @@ class RajaOngkirController
 
     public static function get_rajaongkir_base_url()
     {
-        $base_url = 'https://ongkir.velocitydeveloper.id/api/v3';
-        return $base_url;
+        $settings = get_option('wp_store_settings', []);
+        $base_url = isset($settings['rajaongkir_base_url']) ? esc_url_raw(trim((string) $settings['rajaongkir_base_url'])) : '';
+        if ($base_url === '') {
+            $base_url = 'https://ongkir.velocitydeveloper.id/api/v3';
+        }
+        return untrailingslashit($base_url);
     }
 
     private function get_cart_total_weight_grams()

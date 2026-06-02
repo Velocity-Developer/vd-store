@@ -319,16 +319,6 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         </label>
                     </div>
 
-                    <div class="wp-store-box-gray wp-store-mt-4">
-                        <h4 class="wp-store-subtitle-small">API VD Ongkir</h4>
-                        <div class="wp-store-mt-2 wp-store-flex wp-store-items-center">
-                            <input name="rajaongkir_api_key" type="text" id="rajaongkir_api_key" x-ref="apiKeyInput" value="<?php echo esc_attr($settings['rajaongkir_api_key'] ?? ''); ?>" class="wp-store-input" placeholder="Masukkan API Key Starter/Basic/Pro Anda">
-                            <div class="wp-store-mt-2" style="margin-left:8px; width:120px;">
-                                <button type="button" class="wp-store-btn wp-store-btn-primary" @click="saveApiKey" :disabled="isSavingApi">Simpan API</button>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="wp-store-box-gray wp-store-mt-4" x-show="isApiValid">
                         <h4 class="wp-store-subtitle-small">Asal Pengiriman</h4>
                         <p class="wp-store-helper">Lokasi toko Anda untuk perhitungan ongkos kirim.</p>
@@ -541,6 +531,34 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             Full Site Editor</option> -->
                         </select>
                         <p class="wp-store-helper">Mengatur apakah halaman edit produk memakai Classic Editor atau Gutenberg/FSE.</p>
+                    </div>
+                    <div class="wp-store-box-gray wp-store-mt-4">
+                        <h3 class="wp-store-subtitle">Endpoint VD Ongkir</h3>
+                        <div class="wp-store-grid-2">
+                            <div>
+                                <label class="wp-store-label" for="rajaongkir_api_key">API Key</label>
+                                <input name="rajaongkir_api_key" type="password" id="rajaongkir_api_key" x-ref="apiKeyInput" value="<?php echo esc_attr($settings['rajaongkir_api_key'] ?? ''); ?>" class="wp-store-input" placeholder="Masukkan API Key VD Ongkir" autocomplete="off">
+                                <p class="wp-store-helper">API key dipakai untuk wilayah, ongkir, dan tracking.</p>
+                            </div>
+                            <div>
+                                <label class="wp-store-label" for="rajaongkir_base_url">Base URL API</label>
+                                <input name="rajaongkir_base_url" type="url" id="rajaongkir_base_url" x-ref="rajaongkirBaseUrlInput" value="<?php echo esc_attr($settings['rajaongkir_base_url'] ?? 'https://ongkir.velocitydeveloper.id/api/v3'); ?>" class="wp-store-input" placeholder="https://ongkir.velocitydeveloper.id/api/v3">
+                                <p class="wp-store-helper">Default: https://ongkir.velocitydeveloper.id/api/v3</p>
+                            </div>
+                            <div class="wp-store-flex wp-store-gap-2 wp-store-items-center">
+                                <button type="button" class="wp-store-btn wp-store-btn-primary" @click="saveApiKey" :disabled="isSavingApi">
+                                    <span x-text="isSavingApi ? 'Menyimpan...' : 'Simpan API'"></span>
+                                </button>
+                            </div>
+                            <div>
+                                <label class="wp-store-label">Test Koneksi API</label>
+                                <button type="button" class="wp-store-btn wp-store-btn-secondary" @click="testRajaOngkirConnection" :disabled="isTestingRajaOngkir">
+                                    <span class="dashicons dashicons-admin-links"></span>
+                                    <span x-text="isTestingRajaOngkir ? 'Menguji...' : 'Test Koneksi API'"></span>
+                                </button>
+                                <p class="wp-store-helper" x-show="rajaOngkirTestMessage" x-text="rajaOngkirTestMessage"></p>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="wp-store-label">Diskon Hanya untuk Member</label>
@@ -882,6 +900,8 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             isLoadingCities: false,
             isLoadingSubdistricts: false,
             isApiValid: false,
+            isTestingRajaOngkir: false,
+            rajaOngkirTestMessage: '',
             settings: {
                 shipping_origin_province: '<?php echo esc_js($settings['shipping_origin_province'] ?? ''); ?>',
                 shipping_origin_city: '<?php echo esc_js($settings['shipping_origin_city'] ?? ''); ?>',
@@ -1262,6 +1282,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             },
             async saveApiKey() {
                 const key = this.$refs.apiKeyInput ? this.$refs.apiKeyInput.value.trim() : '';
+                const baseUrl = this.$refs.rajaongkirBaseUrlInput ? this.$refs.rajaongkirBaseUrlInput.value.trim() : '';
                 this.isSavingApi = true;
                 try {
                     const response = await fetch(`${wpStoreConfig.apiUrl}/settings`, {
@@ -1272,15 +1293,16 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             'X-WP-Nonce': wpStoreConfig.nonce
                         },
                         body: JSON.stringify({
-                            rajaongkir_api_key: key
+                            rajaongkir_api_key: key,
+                            rajaongkir_base_url: baseUrl
                         })
                     });
                     const result = await response.json();
                     if (response.ok && result && result.success) {
-                        this.showNotification('API Key disimpan!', 'success');
+                        this.showNotification('Pengaturan API disimpan!', 'success');
                         await this.loadProvinces();
                     } else {
-                        this.showNotification(result.message || 'Gagal menyimpan API Key.', 'error');
+                        this.showNotification(result.message || 'Gagal menyimpan pengaturan API.', 'error');
                         this.isApiValid = false;
                     }
                 } catch (e) {
@@ -1288,6 +1310,41 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                     this.isApiValid = false;
                 } finally {
                     this.isSavingApi = false;
+                }
+            },
+            async testRajaOngkirConnection() {
+                const apiKeyInput = this.$refs.apiKeyInput || document.getElementById('rajaongkir_api_key');
+                const baseUrlInput = this.$refs.rajaongkirBaseUrlInput || document.getElementById('rajaongkir_base_url');
+                const key = apiKeyInput ? apiKeyInput.value.trim() : '';
+                const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : '';
+                this.isTestingRajaOngkir = true;
+                this.rajaOngkirTestMessage = '';
+                try {
+                    const response = await fetch(`${wpStoreConfig.apiUrl}/settings/test-rajaongkir`, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-WP-Nonce': wpStoreConfig.nonce
+                        },
+                        body: JSON.stringify({
+                            rajaongkir_api_key: key,
+                            rajaongkir_base_url: baseUrl
+                        })
+                    });
+                    const result = await response.json();
+                    if (response.ok && result && result.success) {
+                        this.rajaOngkirTestMessage = result.message || 'Koneksi API VD Ongkir berhasil.';
+                        this.showNotification(this.rajaOngkirTestMessage, 'success');
+                    } else {
+                        this.rajaOngkirTestMessage = (result && result.message) ? result.message : 'Koneksi API VD Ongkir gagal.';
+                        this.showNotification(this.rajaOngkirTestMessage, 'error');
+                    }
+                } catch (e) {
+                    this.rajaOngkirTestMessage = 'Terjadi kesalahan jaringan.';
+                    this.showNotification(this.rajaOngkirTestMessage, 'error');
+                } finally {
+                    this.isTestingRajaOngkir = false;
                 }
             },
 

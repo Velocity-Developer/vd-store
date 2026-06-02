@@ -31,6 +31,13 @@ class SettingsController
                 'permission_callback' => [$this, 'check_admin_auth'],
             ],
         ]);
+        register_rest_route('wp-store/v1', '/settings/test-rajaongkir', [
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'test_rajaongkir_connection'],
+                'permission_callback' => [$this, 'check_admin_auth'],
+            ],
+        ]);
         register_rest_route('wp-store/v1', '/settings/custom-shipping-rates', [
             [
                 'methods' => 'POST',
@@ -132,6 +139,10 @@ class SettingsController
         if (isset($params['bank_holder'])) $settings['bank_holder'] = sanitize_text_field($params['bank_holder']);
 
         if (isset($params['rajaongkir_api_key'])) $settings['rajaongkir_api_key'] = sanitize_text_field($params['rajaongkir_api_key']);
+        if (isset($params['rajaongkir_base_url'])) {
+            $base_url = esc_url_raw(trim((string) $params['rajaongkir_base_url']));
+            $settings['rajaongkir_base_url'] = $base_url !== '' ? untrailingslashit($base_url) : 'https://ongkir.velocitydeveloper.id/api/v3';
+        }
 
         if (isset($params['shipping_origin_province'])) $settings['shipping_origin_province'] = sanitize_text_field($params['shipping_origin_province']);
         if (isset($params['shipping_origin_city'])) $settings['shipping_origin_city'] = sanitize_text_field($params['shipping_origin_city']);
@@ -356,6 +367,75 @@ class SettingsController
                 : 'Semua halaman sudah ada.',
             'settings' => $settings
         ], 200);
+    }
+
+    public function test_rajaongkir_connection(WP_REST_Request $request)
+    {
+        $params = $request->get_json_params();
+        $settings = get_option('wp_store_settings', []);
+        $saved_api_key = isset($settings['rajaongkir_api_key']) ? (string) $settings['rajaongkir_api_key'] : '';
+        $api_key = isset($params['rajaongkir_api_key']) ? sanitize_text_field($params['rajaongkir_api_key']) : '';
+        if ($api_key === '') {
+            $api_key = $saved_api_key;
+        }
+
+        $base_url = isset($params['rajaongkir_base_url']) ? esc_url_raw(trim((string) $params['rajaongkir_base_url'])) : '';
+        if ($base_url === '') {
+            $base_url = \WpStore\Api\RajaOngkirController::get_rajaongkir_base_url();
+        }
+        $base_url = $base_url !== '' ? untrailingslashit($base_url) : 'https://ongkir.velocitydeveloper.id/api/v3';
+
+        if ($api_key === '') {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'API Key VD Ongkir belum diatur.'
+            ], 400);
+        }
+
+        $response = wp_remote_get($base_url . '/destination/province', [
+            'headers' => ['key' => $api_key],
+            'timeout' => 12,
+        ]);
+
+        if (is_wp_error($response)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => $response->get_error_message()
+            ], 500);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+        $data = $body !== '' ? json_decode($body, true) : null;
+
+        if ($code >= 200 && $code < 300 && is_array($data) && (isset($data['data']) || isset($data['rajaongkir']['results']))) {
+            return new WP_REST_Response([
+                'success' => true,
+                'message' => 'Koneksi API VD Ongkir berhasil.',
+                'status_code' => $code
+            ], 200);
+        }
+
+        $message = 'Koneksi API VD Ongkir gagal.';
+        if (is_array($data)) {
+            if (isset($data['message'])) {
+                $message = sanitize_text_field($data['message']);
+            } elseif (isset($data['meta']['message'])) {
+                $message = sanitize_text_field($data['meta']['message']);
+            } elseif (isset($data['rajaongkir']['status']['description'])) {
+                $message = sanitize_text_field($data['rajaongkir']['status']['description']);
+            }
+        }
+        if ($code === 401) {
+            $message = 'Unauthorized dari API VD Ongkir. Periksa API Key dan pastikan endpoint sesuai.';
+        }
+
+        return new WP_REST_Response([
+            'success' => false,
+            'message' => $message,
+            'status_code' => $code,
+            'raw' => $data
+        ], $code >= 400 ? $code : 500);
     }
 
     private function get_rajaongkir_base_url()
