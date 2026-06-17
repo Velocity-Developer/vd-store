@@ -105,6 +105,7 @@ class CustomerController
             'email' => $user->user_email,
             'phone' => get_user_meta($user_id, '_store_phone', true),
             'avatar_url' => $avatar_url,
+            'dropship' => $this->get_dropship_profile($user_id),
         ], 200);
     }
 
@@ -124,8 +125,39 @@ class CustomerController
         ]);
 
         update_user_meta($user_id, '_store_phone', $phone);
+        $this->save_dropship_profile($user_id, $request);
 
         return new WP_REST_Response(['message' => 'Profil berhasil diperbarui'], 200);
+    }
+
+    private function get_dropship_profile($user_id)
+    {
+        $user_id = (int) $user_id;
+
+        return [
+            'enabled' => !empty(get_user_meta($user_id, '_store_dropship_enabled', true)),
+            'store_name' => (string) get_user_meta($user_id, '_store_dropship_store_name', true),
+            'phone' => (string) get_user_meta($user_id, '_store_dropship_phone', true),
+            'address' => (string) get_user_meta($user_id, '_store_dropship_address', true),
+        ];
+    }
+
+    private function save_dropship_profile($user_id, WP_REST_Request $request)
+    {
+        $dropship = $request->get_param('dropship');
+        if (!is_array($dropship)) {
+            return;
+        }
+
+        $enabled = !empty($dropship['enabled']);
+        $store_name = sanitize_text_field((string) ($dropship['store_name'] ?? ''));
+        $phone = sanitize_text_field((string) ($dropship['phone'] ?? ''));
+        $address = sanitize_textarea_field((string) ($dropship['address'] ?? ''));
+
+        update_user_meta($user_id, '_store_dropship_enabled', $enabled ? 1 : 0);
+        update_user_meta($user_id, '_store_dropship_store_name', $store_name);
+        update_user_meta($user_id, '_store_dropship_phone', $phone);
+        update_user_meta($user_id, '_store_dropship_address', $address);
     }
 
     public function upload_avatar(WP_REST_Request $request)

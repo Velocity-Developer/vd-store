@@ -49,6 +49,7 @@ class CheckoutController
         $email = isset($data['email']) ? sanitize_email($data['email']) : '';
         $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
         $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
+        $dropship = $this->sanitize_dropship_payload($data);
 
         if ($name === '' || empty($items)) {
             return new WP_REST_Response(['message' => 'Data tidak lengkap'], 400);
@@ -59,6 +60,9 @@ class CheckoutController
         $address_required = isset($data['address']) ? sanitize_textarea_field($data['address']) : '';
         if ($phone === '') {
             return new WP_REST_RESPONSE(['message' => 'Telepon wajib diisi'], 400);
+        }
+        if (!empty($dropship['enabled']) && ($dropship['store_name'] === '' || $dropship['phone'] === '' || $dropship['address'] === '')) {
+            return new WP_REST_RESPONSE(['message' => 'Nama toko, no HP, dan alamat dropship wajib diisi.'], 400);
         }
         $shipping_courier_req = isset($data['shipping_courier']) ? sanitize_text_field($data['shipping_courier']) : '';
         $shipping_service_req = isset($data['shipping_service']) ? sanitize_text_field($data['shipping_service']) : '';
@@ -95,7 +99,7 @@ class CheckoutController
         }
 
         $actor_key = is_user_logged_in() ? ('user:' . get_current_user_id()) : ('guest:' . (isset($_COOKIE['wp_store_cart_key']) ? sanitize_key($_COOKIE['wp_store_cart_key']) : ''));
-        $fingerprint = md5(wp_json_encode($items) . '|' . ($data['coupon_code'] ?? '') . '|' . $shipping_courier_req . '|' . $shipping_service_req . '|' . (string) $shipping_cost_req);
+        $fingerprint = md5(wp_json_encode($items) . '|' . ($data['coupon_code'] ?? '') . '|' . $shipping_courier_req . '|' . $shipping_service_req . '|' . (string) $shipping_cost_req . '|' . wp_json_encode($dropship));
         if ($actor_key !== '') {
             $lock_key = 'wp_store_checkout_lock_' . md5($actor_key);
             $existing_lock = get_transient($lock_key);
@@ -272,6 +276,8 @@ class CheckoutController
         }
 
         $order_id = (int) $order_result['order_id'];
+        update_post_meta($order_id, '_store_order_dropship_enabled', !empty($dropship['enabled']) ? 1 : 0);
+        update_post_meta($order_id, '_store_order_dropship', $dropship);
         $order_number = (string) ($order_result['order_number'] ?? $order_id);
         $shipping_courier = $shipping_courier_req;
         $shipping_service = $shipping_service_req;
@@ -323,6 +329,7 @@ class CheckoutController
                 'postal_code' => sanitize_text_field((string) ($data['postal_code'] ?? '')),
                 'address' => sanitize_textarea_field((string) ($data['address'] ?? '')),
             ],
+            'dropship' => $dropship,
         ];
         $shipping_snapshot = apply_filters('wp_store_shipping_snapshot', $shipping_snapshot, $order_id, $data);
         $shipping_json = wp_json_encode($shipping_snapshot);
@@ -394,5 +401,18 @@ class CheckoutController
     private function normalize_coupon_type($type)
     {
         return trim((string) $type) === 'percent' ? 'percent' : 'nominal';
+    }
+
+    private function sanitize_dropship_payload(array $data)
+    {
+        $raw = isset($data['dropship']) && is_array($data['dropship']) ? $data['dropship'] : [];
+        $enabled = !empty($raw['enabled']);
+
+        return [
+            'enabled' => $enabled,
+            'store_name' => $enabled ? sanitize_text_field((string) ($raw['store_name'] ?? '')) : '',
+            'phone' => $enabled ? sanitize_text_field((string) ($raw['phone'] ?? '')) : '',
+            'address' => $enabled ? sanitize_textarea_field((string) ($raw['address'] ?? '')) : '',
+        ];
     }
 }

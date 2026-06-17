@@ -380,6 +380,32 @@ class CustomerProfile
                                 <label class="wps-label">No. Telepon</label>
                                 <input type="text" x-model="profile.phone" class="wps-input">
                             </div>
+                            <div class="wps-form-group" style="border-top:1px solid #e5e7eb; padding-top:18px; margin-top:18px;">
+                                <div class="wps-flex wps-items-center wps-gap-2 wps-mb-3">
+                                    <div class="wps-text-lg wps-font-medium wps-text-gray-900">Dropship</div>
+                                </div>
+                                <div class="wps-alert wps-alert-info" style="background:#cff4fc;border-color:#9eeaf9;color:#055160;margin-bottom:16px;">
+                                    Toko ini memberikan opsi dropship. Jika Anda mengaktifkan fitur ini, pesanan akan dikirim dengan nama toko dan alamat sesuai data dropship Anda.
+                                </div>
+                                <label class="wps-flex wps-items-center wps-gap-2 wps-mb-3">
+                                    <input type="checkbox" x-model="profile.dropship.enabled" class="wps-checkbox">
+                                    <span class="wps-text-sm wps-text-gray-900">Aktifkan Dropship</span>
+                                </label>
+                                <div class="wps-grid wps-gap-4" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));display:grid;gap:1rem;">
+                                    <div class="wps-form-group">
+                                        <label class="wps-label">Nama Toko</label>
+                                        <input type="text" x-model="profile.dropship.store_name" class="wps-input" :required="profile.dropship.enabled">
+                                    </div>
+                                    <div class="wps-form-group">
+                                        <label class="wps-label">No HP</label>
+                                        <input type="text" x-model="profile.dropship.phone" class="wps-input" :required="profile.dropship.enabled">
+                                    </div>
+                                </div>
+                                <div class="wps-form-group">
+                                    <label class="wps-label">Alamat Toko</label>
+                                    <textarea x-model="profile.dropship.address" class="wps-textarea" rows="3" :required="profile.dropship.enabled"></textarea>
+                                </div>
+                            </div>
                             <div class="wps-flex flex-column flex-sm-row justify-content-sm-between gap-2" style="justify-content: flex-end; margin-top: 1rem;">
                                 <button type="submit" class="wps-btn wps-btn-primary order-sm-2" :disabled="loading">
                                     <template x-if="loading">
@@ -762,7 +788,13 @@ class CustomerProfile
                         last_name: '',
                         email: '',
                         phone: '',
-                        avatar_url: ''
+                        avatar_url: '',
+                        dropship: {
+                            enabled: false,
+                            store_name: '',
+                            phone: '',
+                            address: ''
+                        }
                     },
                     addresses: [],
                     addressesLoading: false,
@@ -975,7 +1007,9 @@ class CustomerProfile
                                 }
                             });
                             const data = await res.json();
-                            this.profile = data;
+                            this.profile = Object.assign({}, this.profile, data, {
+                                dropship: Object.assign({}, this.profile.dropship || {}, data.dropship || {})
+                            });
                         } catch (err) {
                             console.error(err);
                         }

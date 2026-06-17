@@ -43,7 +43,13 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 first_name: '',
                 last_name: '',
                 email: '',
-                phone: ''
+                phone: '',
+                dropship: {
+                    enabled: false,
+                    store_name: '',
+                    phone: '',
+                    address: ''
+                }
             },
             addresses: [],
             selectedAddressId: '',
@@ -321,7 +327,10 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                         }
                     });
                     if (!res.ok) return;
-                    this.profile = await res.json();
+                    const data = await res.json();
+                    this.profile = Object.assign({}, this.profile, data, {
+                        dropship: Object.assign({}, this.profile.dropship || {}, data.dropship || {})
+                    });
                 } catch (e) {}
             },
             async fetchAddresses() {
@@ -539,6 +548,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
                             payment_method: this.paymentMethod || 'bank_transfer',
                             coupon_code: this.couponCode || '',
+                            dropship: this.profile && this.profile.dropship ? this.profile.dropship : {},
                             captcha: this.collectCaptcha(),
                             items: this.cart.filter(i => i.selected !== false).map(i => ({
                                 id: i.id,
@@ -761,7 +771,24 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             </div>
                         </div>
                     </div>
-                    <div class="wps-card" x-show="!shouldHideShipping()">
+                    <?php if (is_user_logged_in()) : ?>
+                        <div class="wps-card wps-mb-4" x-show="profile && profile.dropship && profile.dropship.enabled" style="display:none;">
+                            <div class="wps-p-4">
+                                <div class="wps-flex wps-justify-between wps-items-start wps-gap-3">
+                                    <div>
+                                        <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mb-2">Dropship Aktif</div>
+                                        <div class="wps-text-sm wps-text-gray-700">
+                                            <div class="wps-font-medium" x-text="profile.dropship.store_name || '-'"></div>
+                                            <div x-text="profile.dropship.phone || '-'"></div>
+                                            <div x-text="profile.dropship.address || '-'"></div>
+                                        </div>
+                                    </div>
+                                    <a href="<?php echo esc_url(site_url('/profil-saya/?tab=profile')); ?>" class="wps-btn wps-btn-sm wps-btn-secondary">Ubah di Profil</a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <div class="wps-card wps-mb-4" x-show="!shouldHideShipping()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Alamat Penerima</div>
                             <div class="wps-form-group" x-show="addresses && addresses.length">

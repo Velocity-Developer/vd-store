@@ -324,6 +324,8 @@ class OrderMetaBoxes
         $grand_total = (float) get_post_meta($order_id, '_store_order_total', true);
         $payment_method = (string) get_post_meta($order_id, '_store_order_payment_method', true);
         $payment_url = (string) get_post_meta($order_id, '_store_order_payment_url', true);
+        $dropship = get_post_meta($order_id, '_store_order_dropship', true);
+        $dropship = is_array($dropship) ? $dropship : [];
         $items = get_post_meta($order_id, '_store_order_items', true);
         $items = is_array($items) ? $items : [];
         $product_total = 0;
@@ -341,6 +343,14 @@ class OrderMetaBoxes
         echo '<tr><td>Email</td><td>' . esc_html($email) . '</td></tr>';
         echo '<tr><td>Telepon</td><td>' . esc_html($phone) . '</td></tr>';
         echo '</tbody></table>';
+        if (!empty($dropship['enabled'])) {
+            echo '<h2 style="margin:20px 0 10px; font-size:16px;">Dropship</h2>';
+            echo '<table class="widefat striped" style="margin-bottom:12px;"><tbody>';
+            echo '<tr><td style="width:200px;">Nama Toko</td><td>' . esc_html((string) ($dropship['store_name'] ?? '')) . '</td></tr>';
+            echo '<tr><td>No HP</td><td>' . esc_html((string) ($dropship['phone'] ?? '')) . '</td></tr>';
+            echo '<tr><td>Alamat Toko</td><td>' . nl2br(esc_html((string) ($dropship['address'] ?? ''))) . '</td></tr>';
+            echo '</tbody></table>';
+        }
         echo '<h2 style="margin:20px 0 10px; font-size:16px;">Alamat Pengiriman</h2>';
         echo '<table class="widefat striped" style="margin-bottom:12px;"><tbody>';
         echo '<tr><td style="width:200px;">Alamat</td><td>' . nl2br(esc_html($address)) . '</td></tr>';

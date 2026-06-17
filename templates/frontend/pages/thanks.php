@@ -14,6 +14,8 @@ $city_name = $order_exists ? get_post_meta($order_id, '_store_order_city_name', 
 $subdistrict_name = $order_exists ? get_post_meta($order_id, '_store_order_subdistrict_name', true) : '';
 $postal_code = $order_exists ? get_post_meta($order_id, '_store_order_postal_code', true) : '';
 $payment_method = $order_exists ? get_post_meta($order_id, '_store_order_payment_method', true) : '';
+$dropship = $order_exists ? get_post_meta($order_id, '_store_order_dropship', true) : [];
+$dropship = is_array($dropship) ? $dropship : [];
 $shop_archive = function_exists('get_post_type_archive_link') ? get_post_type_archive_link('store_product') : '';
 $shop_url = $shop_archive ?: site_url('/produk/');
 $settings = get_option('wp_store_settings', []);
@@ -167,6 +169,14 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                         <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
                             <div><?php echo esc_html($address); ?></div>
                             <div><?php echo esc_html($subdistrict_name); ?>, <?php echo esc_html($city_name); ?>, <?php echo esc_html($province_name); ?> <?php echo esc_html($postal_code); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($dropship['enabled'])) : ?>
+                        <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-4">Dropship</div>
+                        <div class="wps-mt-2 wps-text-sm wps-text-gray-700">
+                            <div><?php echo esc_html((string) ($dropship['store_name'] ?? '')); ?></div>
+                            <div><?php echo esc_html((string) ($dropship['phone'] ?? '')); ?></div>
+                            <div><?php echo nl2br(esc_html((string) ($dropship['address'] ?? ''))); ?></div>
                         </div>
                     <?php endif; ?>
                 </div>

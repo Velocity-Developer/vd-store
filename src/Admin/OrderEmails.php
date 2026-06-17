@@ -111,6 +111,16 @@ class OrderEmails
         $tracking_id = isset($settings['page_tracking']) ? (int) $settings['page_tracking'] : 0;
         $tracking_url = $tracking_id ? get_permalink($tracking_id) : site_url('/tracking-order/');
         $headers = ['Content-Type: text/html; charset=UTF-8'];
+        $dropship = get_post_meta($order_id, '_store_order_dropship', true);
+        $dropship = is_array($dropship) ? $dropship : [];
+        $dropship_details = '';
+        if (!empty($dropship['enabled'])) {
+            $dropship_details = '<p><strong>Dropship:</strong><br>'
+                . esc_html((string) ($dropship['store_name'] ?? '')) . '<br>'
+                . esc_html((string) ($dropship['phone'] ?? '')) . '<br>'
+                . nl2br(esc_html((string) ($dropship['address'] ?? '')))
+                . '</p>';
+        }
 
         $vars = [
             'store_name' => $store_name,
@@ -118,6 +128,7 @@ class OrderEmails
             'status_label' => get_post_meta($order_id, '_store_order_status', true) ?: '',
             'tracking_url' => esc_url(add_query_arg(['order' => $order_number], $tracking_url)),
             'total' => (string) $order_total,
+            'dropship_details' => $dropship_details,
         ];
         $email = get_post_meta($order_id, '_store_order_email', true);
         if (is_string($email) && is_email($email)) {
@@ -155,6 +166,7 @@ class OrderEmails
                 $admin_tmpl = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#111;">'
                     . '<p>Order baru #{{order_number}}.</p>'
                     . '<p>Total: {{total}}</p>'
+                    . '{{dropship_details}}'
                     . '<p>Tracking: <a href="{{tracking_url}}" target="_blank" rel="noopener">{{tracking_url}}</a></p>'
                     . '</div>';
             }
