@@ -52,12 +52,38 @@ class ProductMeta
 
     public static function label($product_id)
     {
+        $product_id = (int) $product_id;
+        if (!self::is_product($product_id)) {
+            return '';
+        }
+
+        $candidates = [
+            self::get($product_id, 'label', ''),
+            get_post_meta($product_id, '_store_product_label', true),
+            get_post_meta($product_id, 'label', true),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!is_scalar($candidate)) {
+                continue;
+            }
+
+            $label = self::canonical_label((string) $candidate);
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
         return '';
     }
 
     public static function canonical_label($label)
     {
-        return '';
+        if (!function_exists('wps_product_label_key')) {
+            return sanitize_key(str_replace([' ', '_'], '-', (string) $label));
+        }
+
+        return \wps_product_label_key($label);
     }
 
     public static function canonical_key($key)
@@ -81,6 +107,7 @@ class ProductMeta
             'review_count' => '_store_review_count',
             'rating_average' => '_store_rating_average',
             'gallery_ids' => '_store_gallery_ids',
+            'label' => '_store_label',
             'variant_name' => '_store_option_name',
             'variant_options' => '_store_options',
             'price_adjustment_name' => '_store_option2_name',

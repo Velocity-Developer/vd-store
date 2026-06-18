@@ -23,7 +23,7 @@ class ProductFilterRequest
 
         $filters['labels'] = self::key_list($source['labels'] ?? $source['product_labels'] ?? []);
         if (empty($filters['labels']) && !empty($filters['label'])) {
-            $filters['labels'] = [sanitize_key((string) $filters['label'])];
+            $filters['labels'] = [ProductMeta::canonical_label((string) $filters['label'])];
         }
 
         $filters['page'] = self::current_page($source);
@@ -82,7 +82,7 @@ class ProductFilterRequest
         $raw = is_array($value) ? $value : [$value];
         $items = [];
         foreach ($raw as $candidate) {
-            $key = sanitize_key((string) $candidate);
+            $key = ProductMeta::canonical_label((string) $candidate);
             if ($key !== '') {
                 $items[] = $key;
             }

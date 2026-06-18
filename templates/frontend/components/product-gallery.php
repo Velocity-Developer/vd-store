@@ -19,6 +19,7 @@ $is_digital_single = ($ptype_single === 'digital') || (bool) get_post_meta((int)
                 </div>
             <?php endforeach; ?>
         </div>
+        <?php echo wps_label_badge_html((int) $id); ?>
         <?php if ($is_digital_single) : ?>
             <span class="wps-digital-badge wps-text-xs wps-text-white">
                 <?php echo wps_icon(['name' => 'cloud-download', 'size' => 12, 'stroke_color' => '#ffffff']); ?>
@@ -38,6 +39,7 @@ $is_digital_single = ($ptype_single === 'digital') || (bool) get_post_meta((int)
         <button type="button" class="wps-product-gallery-open" data-gallery-open data-gallery-index="0" aria-label="<?php echo esc_attr__('Lihat gambar produk', 'wp-store'); ?>">
             <img class="wps-w-full wps-rounded wps-img-320" src="<?php echo esc_url($image_src); ?>" alt="<?php echo esc_attr($title); ?>">
         </button>
+        <?php echo wps_label_badge_html((int) $id); ?>
         <?php if ($is_digital_single) : ?>
             <span class="wps-text-xs wps-text-white" style="position:absolute;top:8px;left:8px;display:flex;align-items:center;background:#111827cc;color:#fff;border-radius:9999px;padding:2px 6px;backdrop-filter:saturate(180%) blur(4px);">
                 <?php echo wps_icon(['name' => 'cloud-download', 'size' => 12, 'stroke_color' => '#ffffff']); ?>

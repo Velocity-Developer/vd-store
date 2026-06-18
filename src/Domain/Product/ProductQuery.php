@@ -8,7 +8,8 @@ class ProductQuery
 {
     public static function label_options()
     {
-        return [];
+        $options = function_exists('wps_product_label_options') ? \wps_product_label_options() : [];
+        return is_array($options) ? $options : [];
     }
 
     public static function sort_options()
@@ -57,7 +58,7 @@ class ProductQuery
         $raw_labels = $source['labels'] ?? $source['product_labels'] ?? [];
         $raw_labels = is_array($raw_labels) ? $raw_labels : [$raw_labels];
         foreach ($raw_labels as $candidate) {
-            $label = sanitize_key((string) $candidate);
+            $label = ProductMeta::canonical_label((string) $candidate);
             if ($label !== '') {
                 $labels[] = $label;
             }
@@ -69,7 +70,7 @@ class ProductQuery
             'cat' => (int) ($source['product_cat'] ?? $source['cat'] ?? 0),
             'cats' => array_values(array_unique($cats)),
             'author' => (int) ($source['author'] ?? 0),
-            'label' => sanitize_key((string) ($source['product_label'] ?? $source['label'] ?? '')),
+            'label' => ProductMeta::canonical_label((string) ($source['product_label'] ?? $source['label'] ?? '')),
             'labels' => array_values(array_unique($labels)),
             'min_price' => self::normalize_numeric_filter($source['min_price'] ?? ''),
             'max_price' => self::normalize_numeric_filter($source['max_price'] ?? ''),
@@ -144,6 +145,22 @@ class ProductQuery
         }
 
         $meta_query = [];
+
+        if ($filters['label'] !== '') {
+            $meta_query[] = [
+                'key' => ProductMeta::canonical_key('label'),
+                'value' => $filters['label'],
+                'compare' => '=',
+            ];
+        }
+
+        if (!empty($filters['labels'])) {
+            $meta_query[] = [
+                'key' => ProductMeta::canonical_key('label'),
+                'value' => array_values(array_filter(array_map('sanitize_key', (array) $filters['labels']))),
+                'compare' => 'IN',
+            ];
+        }
 
         if ($filters['min_price'] !== '') {
             $meta_query[] = [

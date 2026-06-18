@@ -949,14 +949,19 @@ button.wps-btn-dark {
   right: 8px;
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   color: var(--white);
   border-radius: 9999px;
   padding: 2px 6px;
+  font-size: 10px;
+  line-height: 12px;
+  white-space: nowrap;
+  z-index: 2;
 }
 .wps-label-badge .txt {
-  color: var(--white);
-  font-size: 10px;
-  margin-left: 4px;
+  color: inherit;
+  font-size: inherit;
+  margin-left: 0;
 }
 .wps-label-badge.label-best {
   background: var(--amber-500);
@@ -964,8 +969,20 @@ button.wps-btn-dark {
 .wps-label-badge.label-limited {
   background: var(--red-500);
 }
+.wps-label-badge.label-pre-order {
+  background: #8b5cf6;
+}
+.wps-label-badge.label-ready-stock {
+  background: #059669;
+}
 .wps-label-badge.label-new {
   background: var(--green-500);
+}
+.wps-label-badge.label-recommended {
+  background: #2563eb;
+}
+.wps-label-badge.label-sale {
+  background: #ef4444;
 }
 .wps-mb-2 {
   margin-bottom: 0.5rem;

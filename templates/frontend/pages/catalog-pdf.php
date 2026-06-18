@@ -157,13 +157,7 @@ $currency = isset($currency) ? (string) $currency : 'Rp';
         echo '<div class="card">';
         echo '<div class="frame-img">';
         echo '<img class="img" src="' . esc_url($src) . '" alt="' . esc_attr($alt) . '">';
-        if (!empty($item['label'])) {
-          $lbl = (string) $item['label'];
-          $txt = $lbl === 'label-best' ? 'Best Seller' : ($lbl === 'label-limited' ? 'Limited' : ($lbl === 'label-new' ? 'New' : ''));
-          if ($txt !== '') {
-            echo '<span class="badge">' . esc_html($txt) . '</span>';
-          }
-        }
+        echo wps_label_badge_html((int) $item['id']);
         if (!empty($item['sale_active']) && !empty($item['discount_percent']) && (int) $item['discount_percent'] > 0) {
           echo '<span class="badge-discount">' . esc_html((int) $item['discount_percent']) . '%</span>';
         }

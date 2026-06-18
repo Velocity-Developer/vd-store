@@ -46,6 +46,14 @@ class ProductSchema
                         'default' => 'physical',
                     ],
                     [
+                        'name' => 'Label Produk',
+                        'id' => '_store_label',
+                        'type' => 'select',
+                        'options' => ProductQuery::label_options(),
+                        'default' => '',
+                        'contexts' => ['frontend', 'admin'],
+                    ],
+                    [
                         'name' => 'SKU',
                         'id' => '_store_sku',
                         'type' => 'text',

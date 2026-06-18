@@ -28,7 +28,7 @@ class ProductData
             'stock' => $stock !== '' ? (int) $stock : null,
             'image' => $image ? $image : null,
             'link' => get_permalink($post_id),
-            'label' => '',
+            'label' => ProductMeta::label($post_id),
             'sku' => (string) ProductMeta::get($post_id, 'sku', ''),
             'min_order' => (int) ProductMeta::get_number($post_id, 'min_order', 1),
             'weight_kg' => (float) ProductMeta::get_number($post_id, 'weight', 0),

@@ -179,9 +179,179 @@ function wps_icon($args = [])
     }
     return \WpStore\Frontend\Template::render('components/icons', $data);
 }
+function wps_product_label_key($label)
+{
+    $key = sanitize_key(str_replace([' ', '_'], '-', (string) $label));
+    return $key === '' ? '' : $key;
+}
+
+function wps_product_label_defaults()
+{
+    return [
+        'best-seller' => [
+            'label' => 'Best Seller',
+            'class' => 'label-best',
+            'bg' => '#f59e0b',
+            'color' => '#ffffff',
+        ],
+        'limited' => [
+            'label' => 'Limited',
+            'class' => 'label-limited',
+            'bg' => '#ef4444',
+            'color' => '#ffffff',
+        ],
+        'pre-order' => [
+            'label' => 'Pre Order',
+            'class' => 'label-pre-order',
+            'bg' => '#8b5cf6',
+            'color' => '#ffffff',
+        ],
+        'ready-stock' => [
+            'label' => 'Ready Stock',
+            'class' => 'label-ready-stock',
+            'bg' => '#059669',
+            'color' => '#ffffff',
+        ],
+        'new' => [
+            'label' => 'New',
+            'class' => 'label-new',
+            'bg' => '#10b981',
+            'color' => '#ffffff',
+        ],
+        'recommended' => [
+            'label' => 'Recommended',
+            'class' => 'label-recommended',
+            'bg' => '#2563eb',
+            'color' => '#ffffff',
+        ],
+        'sale' => [
+            'label' => 'Sale',
+            'class' => 'label-sale',
+            'bg' => '#ef4444',
+            'color' => '#ffffff',
+        ],
+    ];
+}
+
+function wps_product_label_registry()
+{
+    $labels = apply_filters('wp_store_product_labels', wps_product_label_defaults());
+    if (!is_array($labels)) {
+        $labels = [];
+    }
+
+    $registry = [];
+    foreach ($labels as $key => $definition) {
+        $key = wps_product_label_key($key);
+        if ($key === '') {
+            continue;
+        }
+
+        if (is_string($definition)) {
+            $definition = ['label' => $definition];
+        } elseif (!is_array($definition)) {
+            continue;
+        }
+
+        $label = isset($definition['label']) ? trim((string) $definition['label']) : '';
+        if ($label === '') {
+            $label = ucwords(str_replace('-', ' ', $key));
+        }
+
+        $class_tokens = [];
+        $class_value = isset($definition['class']) ? trim((string) $definition['class']) : '';
+        if ($class_value !== '') {
+            foreach (preg_split('/\s+/', $class_value) as $token) {
+                $token = sanitize_html_class($token);
+                if ($token !== '') {
+                    $class_tokens[] = $token;
+                }
+            }
+        }
+
+        $registry[$key] = [
+            'key' => $key,
+            'label' => $label,
+            'class' => trim(implode(' ', array_unique(array_merge(['wps-label-badge'], $class_tokens)))),
+            'bg' => isset($definition['bg']) ? trim((string) $definition['bg']) : '',
+            'color' => isset($definition['color']) ? trim((string) $definition['color']) : '',
+        ];
+    }
+
+    $registry = apply_filters('wp_store_product_labels_registry', $registry);
+
+    return is_array($registry) ? $registry : [];
+}
+
+function wps_product_label_options()
+{
+    $options = [
+        '' => __('Tanpa Label', 'wp-store'),
+    ];
+
+    foreach (wps_product_label_registry() as $key => $definition) {
+        $options[$key] = isset($definition['label']) ? (string) $definition['label'] : ucwords(str_replace('-', ' ', $key));
+    }
+
+    return apply_filters('wp_store_product_label_options', $options);
+}
+
+function wps_product_label_badge_html($product_id)
+{
+    $product_id = (int) $product_id;
+    if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
+        return '';
+    }
+
+    $label_key = \WpStore\Domain\Product\ProductMeta::label($product_id);
+    if ($label_key === '') {
+        return '';
+    }
+
+    $registry = wps_product_label_registry();
+    if (!isset($registry[$label_key])) {
+        return '';
+    }
+
+    $definition = $registry[$label_key];
+    $classes = isset($definition['class']) && is_string($definition['class']) ? trim($definition['class']) : 'wps-label-badge';
+    if ($classes === '') {
+        $classes = 'wps-label-badge';
+    }
+
+    $styles = [
+        'position:absolute',
+        'top:8px',
+        'right:8px',
+        'display:inline-flex',
+        'align-items:center',
+        'gap:4px',
+        'padding:2px 6px',
+        'border-radius:9999px',
+        'font-size:10px',
+        'line-height:12px',
+        'white-space:nowrap',
+        'z-index:2',
+    ];
+    if (!empty($definition['bg'])) {
+        $styles[] = 'background:' . trim((string) $definition['bg']);
+    }
+    if (!empty($definition['color'])) {
+        $styles[] = 'color:' . trim((string) $definition['color']);
+    }
+
+    $html = '<span class="' . esc_attr($classes) . '" style="' . esc_attr(implode(';', $styles)) . '">';
+    $html .= '<span class="txt">' . esc_html((string) ($definition['label'] ?? '')) . '</span>';
+    $html .= '</span>';
+
+    $html = apply_filters('wp_store_product_label_badge_html', $html, $product_id, $label_key, $definition);
+
+    return is_string($html) ? $html : '';
+}
+
 function wps_label_badge_html($product_id)
 {
-    return '';
+    return wps_product_label_badge_html($product_id);
 }
 function wps_discount_badge_html($product_id)
 {

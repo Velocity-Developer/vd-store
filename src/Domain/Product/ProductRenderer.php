@@ -37,6 +37,7 @@ class ProductRenderer
             'title' => (string) $product['title'],
             'link' => (string) $product['link'],
             'image' => (string) ($product['image'] ?? ''),
+            'label' => (string) ($product['label'] ?? ''),
             'price' => $product['price'] ?? null,
             'regular_price' => $product['regular_price'] ?? null,
             'sale_price' => $product['sale_price'] ?? null,

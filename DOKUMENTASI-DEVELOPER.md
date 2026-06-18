@@ -38,6 +38,14 @@ Isi dan fungsi:
   - `wps_discount_badge_html()`
   - `wps_product_price_html()`
   - `wp_store_add_to_cart_button()`
+  - `wps_product_label_options()`
+  - `wps_product_label_badge_html()`
+
+Hook label yang tersedia:
+- `wp_store_product_labels`
+- `wp_store_product_labels_registry`
+- `wp_store_product_label_options`
+- `wp_store_product_label_badge_html`
 
 ### `Plugin.php`
 Isi dan fungsi:
@@ -131,6 +139,7 @@ Fungsi:
 - proses checkout
 - validasi checkout
 - simpan order
+- simpan ringkasan dropship jika data itu dikirim frontend
 
 #### `CouponController.php`
 Fungsi:
@@ -142,6 +151,7 @@ Fungsi:
 - data customer profile
 - data order customer
 - submit review produk dari pesanan
+- membaca data dropship yang tersimpan di profil customer
 
 #### `RajaOngkirController.php`
 Fungsi:
@@ -178,6 +188,7 @@ Fungsi:
 - menentukan field apa saja yang ada
 - menentukan field wajib atau tidak
 - menentukan field hanya tampil untuk jenis produk tertentu
+- menyediakan field label manual `_store_label`
 
 Kalau mau tambah field produk baru, biasanya mulai dari file ini.
 
@@ -189,12 +200,15 @@ Fungsi:
 ##### `ProductMeta.php`
 Fungsi:
 - helper baca dan tulis meta produk
+- normalisasi key label produk
+- baca label manual dari meta `_store_label`
 
 ##### `ProductData.php`
 Fungsi:
 - memetakan data produk menjadi payload siap pakai
 - menghitung harga efektif
 - menghitung harga reguler, promo, dan harga dengan opsi tambahan
+- membawa label produk ke payload frontend/API
 
 Kalau ada bug harga, biasanya file ini yang harus dicek dulu.
 
@@ -203,6 +217,7 @@ Fungsi:
 - query produk
 - normalisasi filter query
 - apply filter ke `WP_Query`
+- menyediakan opsi label manual untuk admin/filter
 
 ##### `RelatedProducts.php`
 Fungsi:
@@ -279,6 +294,7 @@ Fungsi:
 Fungsi:
 - halaman profil customer
 - tab profil, wishlist, pesanan, alamat, dan review
+- ringkasan dropship customer jika fitur aktif
 
 #### `OrderPublicActions.php`
 Fungsi:
@@ -547,6 +563,11 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 Mulai dari:
 - `ProductSchema.php`
 - `ProductFields.php`
+
+Kalau yang diubah khusus label manual:
+- `vd-store.php`
+- `ProductMeta.php`
+- `ProductQuery.php`
 
 Kalau field tampil di admin:
 - `ProductMetaBoxes.php`

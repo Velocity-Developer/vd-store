@@ -40,6 +40,8 @@ Pakai `VD Store` jika ingin membuat:
 - Kupon produk dan kupon ongkir
 - Profil customer
 - Ulasan produk dari halaman pesanan
+- Label manual produk
+- Dukungan dropship di checkout dan profil customer
 - Integrasi ongkir
 - Integrasi pembayaran manual dan gateway
 
@@ -70,6 +72,31 @@ Pakai `VD Store` jika ingin membuat:
 - tidak wajib isi berat
 - wajib isi file digital atau URL file digital
 - jika cart hanya berisi produk digital, checkout tidak memaksa ongkir
+
+## Label produk
+
+`VD Store` menyediakan label manual bawaan untuk merchandising produk:
+- Best Seller
+- Limited
+- Pre Order
+- Ready Stock
+- New
+- Recommended
+- Sale
+
+Label ini disimpan di meta `_store_label` dan dipakai oleh:
+- thumbnail produk
+- galeri produk
+- katalog
+- katalog print/PDF
+
+Addon plugin bisa menambah atau mengubah daftar label lewat filter:
+- `wp_store_product_labels`
+- `wp_store_product_labels_registry`
+- `wp_store_product_label_options`
+- `wp_store_product_label_badge_html`
+
+Kalau ingin menyesuaikan tampilan badge, gunakan filter `wp_store_product_label_badge_html` agar core tetap bersih.
 
 ## Alur customer
 
@@ -108,6 +135,7 @@ Customer bisa:
 - pilih metode pembayaran
 - pakai kupon
 - upload bukti transfer jika perlu
+- melihat ringkasan dropship jika fitur diaktifkan di profil customer
 
 Setelah checkout selesai, customer diarahkan ke halaman tracking order.
 
