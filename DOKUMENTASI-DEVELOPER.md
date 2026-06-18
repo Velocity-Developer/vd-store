@@ -35,6 +35,8 @@ Isi dan fungsi:
 - memanggil class utama plugin
 - menyediakan helper global seperti:
   - `wps_icon()`
+  - `wps_icon_registry()`
+  - `wps_icon_render_registered()`
   - `wps_discount_badge_html()`
   - `wps_product_price_html()`
   - `wp_store_add_to_cart_button()`
@@ -46,6 +48,11 @@ Hook label yang tersedia:
 - `wp_store_product_labels_registry`
 - `wp_store_product_label_options`
 - `wp_store_product_label_badge_html`
+
+Hook icon yang tersedia:
+- `wp_store_icons`
+- `wp_store_icon_registry`
+- `wp_store_icon_html`
 
 ### `Plugin.php`
 Isi dan fungsi:
@@ -303,6 +310,10 @@ Fungsi:
 #### `Template.php`
 Fungsi:
 - helper render template frontend
+
+#### `components/icons.php`
+Fungsi:
+- fallback render icon bawaan jika registry addon tidak menyediakan icon tersebut
 
 #### `LoginBranding.php`
 Fungsi:
@@ -658,6 +669,15 @@ Mulai dari:
 - `Assets.php`
 - `style.css`
 - `store.js`
+
+### Mau tambah atau ubah icon
+Mulai dari:
+- `vd-store.php`
+  - helper `wps_icon()`
+  - registry filter `wp_store_icons`
+  - filter hasil akhir `wp_store_icon_html`
+- `templates/frontend/components/icons.php`
+  - fallback icon bawaan
 
 ## 8. Method penting di `Shortcode.php`
 

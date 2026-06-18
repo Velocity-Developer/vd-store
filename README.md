@@ -98,6 +98,21 @@ Addon plugin bisa menambah atau mengubah daftar label lewat filter:
 
 Kalau ingin menyesuaikan tampilan badge, gunakan filter `wp_store_product_label_badge_html` agar core tetap bersih.
 
+## Icon
+
+`VD Store` memakai helper `wps_icon()` untuk semua icon UI.
+
+Addon bisa menambah atau override icon lewat filter:
+- `wp_store_icons`
+- `wp_store_icon_registry`
+- `wp_store_icon_html`
+
+Format yang didukung:
+- `html` untuk SVG final
+- `render` untuk callback yang menerima data icon
+
+Kalau icon baru tidak ada di registry addon, core tetap jatuh ke icon bawaan di template `components/icons.php`.
+
 ## Alur customer
 
 ### Katalog

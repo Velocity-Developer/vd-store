@@ -134,6 +134,71 @@ register_activation_hook(__FILE__, function () {
     flush_rewrite_rules();
 });
 
+function wps_icon_registry()
+{
+    $icons = apply_filters('wp_store_icons', []);
+    if (!is_array($icons)) {
+        return [];
+    }
+
+    $registry = [];
+    foreach ($icons as $name => $definition) {
+        $key = sanitize_key((string) $name);
+        if ($key === '') {
+            continue;
+        }
+
+        if (is_string($definition)) {
+            $definition = ['html' => $definition];
+        } elseif (!is_array($definition)) {
+            continue;
+        }
+
+        $html = isset($definition['html']) ? (string) $definition['html'] : '';
+        $render = isset($definition['render']) && is_callable($definition['render']) ? $definition['render'] : null;
+        if ($html === '' && $render === null) {
+            continue;
+        }
+
+        $registry[$key] = [
+            'html' => $html,
+            'render' => $render,
+            'label' => isset($definition['label']) ? (string) $definition['label'] : '',
+        ];
+    }
+
+    $registry = apply_filters('wp_store_icon_registry', $registry);
+
+    return is_array($registry) ? $registry : [];
+}
+
+function wps_icon_render_registered($args = [])
+{
+    $args = is_array($args) ? $args : [];
+    $name = isset($args['name']) ? sanitize_key((string) $args['name']) : '';
+    if ($name === '') {
+        return '';
+    }
+
+    $registry = wps_icon_registry();
+    if (!isset($registry[$name])) {
+        return '';
+    }
+
+    $definition = $registry[$name];
+    if (!empty($definition['render']) && is_callable($definition['render'])) {
+        $html = call_user_func($definition['render'], $args, $definition);
+    } else {
+        $html = (string) ($definition['html'] ?? '');
+    }
+
+    if (!is_string($html) || trim($html) === '') {
+        return '';
+    }
+
+    return (string) apply_filters('wp_store_icon_html', $html, $name, $args, $definition);
+}
+
 function wps_icon($args = [])
 {
     if (is_string($args)) {
@@ -177,6 +242,12 @@ function wps_icon($args = [])
     } elseif (isset($args['fill']) && is_string($args['fill'])) {
         $data['fill_color'] = $args['fill'];
     }
+
+    $registered = wps_icon_render_registered($data);
+    if ($registered !== '') {
+        return $registered;
+    }
+
     return \WpStore\Frontend\Template::render('components/icons', $data);
 }
 function wps_product_label_key($label)
