@@ -26,6 +26,11 @@ class ProductFilterRequest
             $filters['labels'] = [ProductMeta::canonical_label((string) $filters['label'])];
         }
 
+        $filters['brands'] = self::int_list($source['brands'] ?? $source['product_brands'] ?? []);
+        if (empty($filters['brands']) && (int) ($filters['brand'] ?? 0) > 0) {
+            $filters['brands'] = [(int) $filters['brand']];
+        }
+
         $filters['page'] = self::current_page($source);
         $filters['per_page'] = max(1, min(100, (int) ($source['per_page'] ?? 12)));
 

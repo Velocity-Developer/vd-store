@@ -64,6 +64,16 @@ class ProductQuery
             }
         }
 
+        $brands = [];
+        $raw_brands = $source['brands'] ?? $source['product_brands'] ?? [];
+        $raw_brands = is_array($raw_brands) ? $raw_brands : [$raw_brands];
+        foreach ($raw_brands as $candidate) {
+            $id = absint($candidate);
+            if ($id > 0) {
+                $brands[] = $id;
+            }
+        }
+
         return [
             'search' => sanitize_text_field((string) ($source['search'] ?? $source['s'] ?? $source['serach'] ?? '')),
             'sort' => $sort,
@@ -72,6 +82,8 @@ class ProductQuery
             'author' => (int) ($source['author'] ?? 0),
             'label' => ProductMeta::canonical_label((string) ($source['product_label'] ?? $source['label'] ?? '')),
             'labels' => array_values(array_unique($labels)),
+            'brand' => (int) ($source['product_brand'] ?? $source['brand'] ?? 0),
+            'brands' => array_values(array_unique($brands)),
             'min_price' => self::normalize_numeric_filter($source['min_price'] ?? ''),
             'max_price' => self::normalize_numeric_filter($source['max_price'] ?? ''),
         ];
@@ -136,6 +148,24 @@ class ProductQuery
                     'taxonomy' => 'store_product_cat',
                     'field' => 'term_id',
                     'terms' => $cats,
+                ],
+            ]);
+        }
+
+        $brands = [];
+        if (!empty($filters['brands']) && is_array($filters['brands'])) {
+            $brands = array_values(array_filter(array_map('absint', $filters['brands'])));
+        }
+        if (empty($brands) && !empty($filters['brand'])) {
+            $brands = [(int) $filters['brand']];
+        }
+
+        if (!empty($brands)) {
+            $args = self::append_tax_query($args, [
+                [
+                    'taxonomy' => 'brand',
+                    'field' => 'term_id',
+                    'terms' => $brands,
                 ],
             ]);
         }

@@ -42,6 +42,28 @@ class PostTypes
             'show_in_rest' => true,
         ]);
 
+        $labels_brand = [
+            'name' => 'Brand',
+            'singular_name' => 'Brand',
+            'search_items' => 'Cari Brand',
+            'all_items' => 'Semua Brand',
+            'edit_item' => 'Edit Brand',
+            'update_item' => 'Update Brand',
+            'add_new_item' => 'Tambah Brand Baru',
+            'new_item_name' => 'Nama Brand Baru',
+            'menu_name' => 'Brand',
+        ];
+
+        register_taxonomy('brand', ['store_product'], [
+            'hierarchical' => false,
+            'labels' => $labels_brand,
+            'show_ui' => true,
+            'show_admin_column' => true,
+            'query_var' => true,
+            'rewrite' => ['slug' => 'brand'],
+            'show_in_rest' => true,
+        ]);
+
         $labels = [
             'name' => 'Produk',
             'singular_name' => 'Produk',

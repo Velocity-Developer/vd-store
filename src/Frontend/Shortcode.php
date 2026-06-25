@@ -526,7 +526,7 @@ class Shortcode
             } else {
                 echo '<div class="wps-font-normal wps-text-lg wps-mb-1">' . esc_html($bank_name) . '</div>';
             }
-            echo '<div class="wps-text-sm wps-font-normal wps-mb-1">' . esc_html($acc['bank_account']) ;
+            echo '<div class="wps-text-sm wps-font-normal wps-mb-1">' . esc_html($acc['bank_account']);
             if (!empty($acc['bank_holder']) && !empty($acc['bank_account'])) {
                 echo '<span class="wps-text-gray-700"> a/n </span>' . esc_html($acc['bank_holder']);
             }
@@ -953,12 +953,28 @@ class Shortcode
                 ];
             }
         }
+
+        $brand_terms = get_terms([
+            'taxonomy' => 'brand',
+            'hide_empty' => false,
+        ]);
+        $brands = [];
+        if (!is_wp_error($brand_terms) && is_array($brand_terms)) {
+            foreach ($brand_terms as $t) {
+                $brands[] = [
+                    'id' => (int) $t->term_id,
+                    'name' => (string) $t->name,
+                ];
+            }
+        }
+
         $request = ProductFilterRequest::from_globals();
         $current = [
             'sort' => (string) ($request['sort'] ?? ''),
             'min_price' => $request['min_price'] ?? '',
             'max_price' => $request['max_price'] ?? '',
             'cats' => isset($request['cats']) && is_array($request['cats']) ? $request['cats'] : [],
+            'brands' => isset($request['brands']) && is_array($request['brands']) ? $request['brands'] : [],
         ];
         if (empty($current['cats']) && is_tax('store_product_cat')) {
             $term = get_queried_object();
@@ -1021,6 +1037,7 @@ class Shortcode
         $avg_price_global = round((float) ($price_stats['avg'] ?? 0));
         return Template::render('components/filters', [
             'categories' => $categories,
+            'brands' => $brands,
             'current' => $current,
             'reset_url' => $reset_url,
             'price_min_global' => $min_price_global,
@@ -1047,34 +1064,36 @@ class Shortcode
         }
         ob_start();
 ?>
-        <div x-data="{ openFilters:false, isMobile: window.matchMedia('(max-width: 768px)').matches } ?? {}" x-init="(() => {
+<div x-data="{ openFilters:false, isMobile: window.matchMedia('(max-width: 768px)').matches } ?? {}" x-init="(() => {
               const mq = window.matchMedia('(max-width: 768px)');
               const update = () => { isMobile = mq.matches };
               if (mq.addEventListener) { mq.addEventListener('change', update); } else if (mq.addListener) { mq.addListener(update); }
               update();
             })()">
-            <div class="wps-flex wps-justify-end wps-mb-2" x-show="isMobile" x-cloak>
-                <button class="wps-btn wps-btn-secondary" @click="openFilters = true"><?php echo esc_html__('Filter', 'wp-store'); ?></button>
-            </div>
-            <div class="wps-flex wps-gap-4">
-                <div x-show="!isMobile" x-cloak style="width:260px;flex:0 0 260px;"><?php echo $filters; ?></div>
-                <div style="flex:1 1 auto;"><?php echo $shop; ?></div>
-            </div>
-            <template x-if="openFilters">
-                <div>
-                    <div class="wps-offcanvas-backdrop" @click="openFilters=false"></div>
-                    <div class="wps-offcanvas">
-                        <div class="wps-offcanvas-header">
-                            <div><?php echo esc_html__('Filter', 'wp-store'); ?></div>
-                            <button class="wps-btn wps-btn-secondary" @click="openFilters=false"><?php echo esc_html__('Tutup', 'wp-store'); ?></button>
-                        </div>
-                        <div class="wps-offcanvas-body">
-                            <?php echo $filters; ?>
-                        </div>
-                    </div>
+    <div class="wps-flex wps-justify-end wps-mb-2" x-show="isMobile" x-cloak>
+        <button class="wps-btn wps-btn-secondary"
+            @click="openFilters = true"><?php echo esc_html__('Filter', 'wp-store'); ?></button>
+    </div>
+    <div class="wps-flex wps-gap-4">
+        <div x-show="!isMobile" x-cloak style="width:260px;flex:0 0 260px;"><?php echo $filters; ?></div>
+        <div style="flex:1 1 auto;"><?php echo $shop; ?></div>
+    </div>
+    <template x-if="openFilters">
+        <div>
+            <div class="wps-offcanvas-backdrop" @click="openFilters=false"></div>
+            <div class="wps-offcanvas">
+                <div class="wps-offcanvas-header">
+                    <div><?php echo esc_html__('Filter', 'wp-store'); ?></div>
+                    <button class="wps-btn wps-btn-secondary"
+                        @click="openFilters=false"><?php echo esc_html__('Tutup', 'wp-store'); ?></button>
                 </div>
-            </template>
+                <div class="wps-offcanvas-body">
+                    <?php echo $filters; ?>
+                </div>
+            </div>
         </div>
+    </template>
+</div>
 <?php
         return ob_get_clean();
     }
