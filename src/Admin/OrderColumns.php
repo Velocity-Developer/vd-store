@@ -48,15 +48,7 @@ class OrderColumns
         }
         if ($column === 'order_status') {
             $status = get_post_meta($post_id, '_store_order_status', true);
-            $labels = [
-                'pending' => 'Pending',
-                'awaiting_payment' => 'Menunggu Pembayaran',
-                'paid' => 'Sudah Dibayar',
-                'processing' => 'Sedang Diproses',
-                'shipped' => 'Dikirim',
-                'completed' => 'Selesai',
-                'cancelled' => 'Dibatalkan',
-            ];
+            $labels = function_exists('wp_store_order_status_labels') ? wp_store_order_status_labels() : [];
             $nonce = wp_create_nonce('wp_store_update_order_status');
             echo '<select class="wps-order-status-select" data-order-id="' . esc_attr($post_id) . '" data-nonce="' . esc_attr($nonce) . '">';
             foreach ($labels as $key => $label) {

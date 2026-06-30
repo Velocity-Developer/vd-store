@@ -699,3 +699,24 @@ function wp_store_bank_logo($bank_name)
 
     return WP_STORE_URL . 'assets/frontend/img/bank/' . $file;
 }
+
+function wp_store_order_status_labels()
+{
+    return [
+        'pending' => 'Pending',
+        'awaiting_payment' => 'Menunggu Pembayaran',
+        'paid' => 'Sudah Dibayar',
+        'processing' => 'Sedang Diproses',
+        'shipped' => 'Dikirim',
+        'completed' => 'Selesai',
+        'cancelled' => 'Dibatalkan',
+        'refunded' => 'Dikembalikan',
+    ];
+}
+
+function wp_store_order_statuses()
+{
+    return function_exists('wp_store_order_status_labels')
+        ? array_keys(wp_store_order_status_labels())
+        : '';
+}

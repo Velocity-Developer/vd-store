@@ -195,15 +195,7 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                     <?php
                     $status = get_post_meta($order_id, '_store_order_status', true);
                     $status = is_string($status) && $status !== '' ? $status : 'pending';
-                    $status_labels = [
-                        'pending' => 'Pending',
-                        'awaiting_payment' => 'Menunggu Pembayaran',
-                        'paid' => 'Sudah Dibayar',
-                        'processing' => 'Sedang Diproses',
-                        'shipped' => 'Dikirim',
-                        'completed' => 'Selesai',
-                        'cancelled' => 'Dibatalkan',
-                    ];
+                    $status_labels = function_exists('wp_store_order_status_labels') ? wp_store_order_status_labels() : [];
                     $status_label = isset($status_labels[$status]) ? $status_labels[$status] : ucfirst($status);
                     $tracking_number = get_post_meta($order_id, '_store_order_tracking_number', true);
                     $payment_method = get_post_meta($order_id, '_store_order_payment_method', true);

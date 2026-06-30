@@ -23,7 +23,7 @@ class OrderActions
         if ($order_id <= 0 || get_post_type($order_id) !== 'store_order') {
             wp_send_json_error(['message' => 'Order invalid'], 400);
         }
-        $valid = ['pending', 'awaiting_payment', 'paid', 'processing', 'shipped', 'completed', 'cancelled'];
+        $valid = function_exists('wp_store_order_statuses') ? wp_store_order_statuses() : ['pending', 'awaiting_payment', 'paid', 'processing', 'shipped', 'completed', 'cancelled'];
         if (!in_array($status, $valid, true)) {
             wp_send_json_error(['message' => 'Status invalid'], 400);
         }

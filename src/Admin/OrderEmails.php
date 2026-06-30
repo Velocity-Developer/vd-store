@@ -26,15 +26,7 @@ class OrderEmails
         $store_name = isset($settings['store_name']) && is_string($settings['store_name']) && $settings['store_name'] !== '' ? $settings['store_name'] : get_bloginfo('name');
         $order_number = get_post_meta($post_id, '_store_order_number', true);
         $order_number = $order_number ? $order_number : $post_id;
-        $labels = [
-            'pending' => 'Pending',
-            'awaiting_payment' => 'Menunggu Pembayaran',
-            'paid' => 'Sudah Dibayar',
-            'processing' => 'Sedang Diproses',
-            'shipped' => 'Dikirim',
-            'completed' => 'Selesai',
-            'cancelled' => 'Dibatalkan',
-        ];
+        $labels = function_exists('wp_store_order_status_labels') ? wp_store_order_status_labels() : [];
         $status_label = isset($labels[$meta_value]) ? $labels[$meta_value] : $meta_value;
         $tracking_id = isset($settings['page_tracking']) ? (int) $settings['page_tracking'] : 0;
         $tracking_url = $tracking_id ? get_permalink($tracking_id) : site_url('/tracking-order/');
