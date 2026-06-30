@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.3.0`
+Versi plugin: `1.4.0`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -40,6 +40,15 @@ Isi dan fungsi:
   - `wps_discount_badge_html()`
   - `wps_product_price_html()`
   - `wp_store_add_to_cart_button()`
+  - `wp_store_render_product_card()`
+  - `wp_store_render_product_component()`
+  - `wp_store_render_product_info()`
+  - `wp_store_product_filter_args()`
+  - `wp_store_courier_labels()`
+  - `wp_store_bank_labels()`
+  - `wp_store_bank_logo()`
+  - `wp_store_order_status_labels()`
+  - `wp_store_order_statuses()`
   - `wps_product_label_options()`
   - `wps_product_label_badge_html()`
 
@@ -65,6 +74,7 @@ Isi dan fungsi:
 - register post type `store_order`
 - register post type `store_coupon`
 - register taxonomy `store_product_cat`
+- register taxonomy `brand`
 
 ## 3. Struktur folder dan fungsi masing-masing
 

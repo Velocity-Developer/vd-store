@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.3.0`
+Versi: `1.4.0`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -258,13 +258,13 @@ Catatan:
 | `[wp_store_link_profile]` | Link atau icon ke halaman profil customer. Atribut: `size` untuk ukuran foto profil. |
 | `[wp_store_filters]` | Sidebar filter shop. |
 | `[wp_store_shipping_checker]` | Cek ongkir di halaman publik. |
+| `[wp_store_couriers]` | Render daftar / logo kurir aktif dari pengaturan toko. |
+| `[wp_store_captcha]` | Komponen captcha. Memakai Velocity Addons jika aktif, fallback ke captcha bawaan VD Store jika tidak. |
+| `[wp-store-captcha]` | Alias dari `[wp_store_captcha]`. |
 | `[wp_store_categories]` | Daftar kategori produk. |
 | `[wp_store_sosmed]` | Daftar sosial media. |
 | `[wp_store_contact]` | Informasi kontak toko. |
 | `[wp_store_bank_accounts]` | Daftar rekening toko. |
-| `[wp_store_couriers]` | Logo kurir aktif. |
-| `[wp_store_captcha]` | Komponen captcha. Memakai Velocity Addons jika aktif, fallback ke captcha bawaan VD Store jika tidak. |
-| `[wp-store-captcha]` | Alias dari `[wp_store_captcha]`. |
 
 ## Shortcode yang sering dipakai
 
