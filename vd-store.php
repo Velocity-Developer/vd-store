@@ -620,3 +620,20 @@ function wp_store_product_filter_args($base_args = [], $source = null)
 
     return \WpStore\Domain\Product\ProductQuery::apply_to_args(is_array($base_args) ? $base_args : [], $request);
 }
+
+function wp_store_courier_labels()
+{
+    return [
+        'jne' => 'JNE',
+        'pos' => 'POS Indonesia',
+        'tiki' => 'TIKI',
+        'sicepat' => 'SiCepat',
+        'jnt' => 'J&T',
+        'ninja' => 'Ninja Xpress',
+        'wahana' => 'Wahana',
+        'lion' => 'Lion Parcel',
+        'sap' => 'SAP Express',
+        'rex' => 'REX',
+        'ide' => 'IDExpress',
+    ];
+}
