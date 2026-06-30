@@ -62,7 +62,7 @@ class RajaOngkirController
         $settings = get_option('wp_store_settings', []);
         $base_url = isset($settings['rajaongkir_base_url']) ? esc_url_raw(trim((string) $settings['rajaongkir_base_url'])) : '';
         if ($base_url === '') {
-            $base_url = 'https://ongkir.velocitydeveloper.id/api/v3';
+            $base_url = 'https://ongkir.velocitydeveloper.co/api/v3';
         }
         return untrailingslashit($base_url);
     }

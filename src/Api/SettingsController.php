@@ -141,7 +141,7 @@ class SettingsController
         if (isset($params['rajaongkir_api_key'])) $settings['rajaongkir_api_key'] = sanitize_text_field($params['rajaongkir_api_key']);
         if (isset($params['rajaongkir_base_url'])) {
             $base_url = esc_url_raw(trim((string) $params['rajaongkir_base_url']));
-            $settings['rajaongkir_base_url'] = $base_url !== '' ? untrailingslashit($base_url) : 'https://ongkir.velocitydeveloper.id/api/v3';
+            $settings['rajaongkir_base_url'] = $base_url !== '' ? untrailingslashit($base_url) : 'https://ongkir.velocitydeveloper.co/api/v3';
         }
 
         if (isset($params['shipping_origin_province'])) $settings['shipping_origin_province'] = sanitize_text_field($params['shipping_origin_province']);
@@ -383,7 +383,7 @@ class SettingsController
         if ($base_url === '') {
             $base_url = \WpStore\Api\RajaOngkirController::get_rajaongkir_base_url();
         }
-        $base_url = $base_url !== '' ? untrailingslashit($base_url) : 'https://ongkir.velocitydeveloper.id/api/v3';
+        $base_url = $base_url !== '' ? untrailingslashit($base_url) : 'https://ongkir.velocitydeveloper.co/api/v3';
 
         if ($api_key === '') {
             return new WP_REST_Response([

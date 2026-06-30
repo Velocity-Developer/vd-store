@@ -542,8 +542,8 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                             </div>
                             <div>
                                 <label class="wp-store-label" for="rajaongkir_base_url">Base URL API</label>
-                                <input name="rajaongkir_base_url" type="url" id="rajaongkir_base_url" x-ref="rajaongkirBaseUrlInput" value="<?php echo esc_attr($settings['rajaongkir_base_url'] ?? 'https://ongkir.velocitydeveloper.id/api/v3'); ?>" class="wp-store-input" placeholder="https://ongkir.velocitydeveloper.id/api/v3">
-                                <p class="wp-store-helper">Default: https://ongkir.velocitydeveloper.id/api/v3</p>
+                                <input name="rajaongkir_base_url" type="url" id="rajaongkir_base_url" x-ref="rajaongkirBaseUrlInput" value="<?php echo esc_attr($settings['rajaongkir_base_url'] ?? 'https://ongkir.velocitydeveloper.co/api/v3'); ?>" class="wp-store-input" placeholder="https://ongkir.velocitydeveloper.co/api/v3">
+                                <p class="wp-store-helper">Default: https://ongkir.velocitydeveloper.co/api/v3</p>
                             </div>
                             <div class="wp-store-flex wp-store-gap-2 wp-store-items-center">
                                 <button type="button" class="wp-store-btn wp-store-btn-primary" @click="saveApiKey" :disabled="isSavingApi">
