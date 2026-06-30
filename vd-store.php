@@ -635,5 +635,6 @@ function wp_store_courier_labels()
         'sap' => 'SAP Express',
         'rex' => 'REX',
         'ide' => 'IDExpress',
+        'sentral' => 'Sentral Cargo',
     ];
 }

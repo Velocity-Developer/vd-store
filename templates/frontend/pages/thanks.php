@@ -138,20 +138,7 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                                 <?php endif; ?>
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
                                     <?php
-                                    $courier_labels = [
-                                        'jne' => 'JNE',
-                                        'sicepat' => 'SiCepat',
-                                        'ide' => 'IDExpress',
-                                        'sap' => 'SAP Express',
-                                        'ninja' => 'Ninja',
-                                        'jnt' => 'J&T Express',
-                                        'tiki' => 'TIKI',
-                                        'wahana' => 'Wahana Express',
-                                        'pos' => 'POS Indonesia',
-                                        'sentral' => 'Sentral Cargo',
-                                        'lion' => 'Lion Parcel',
-                                        'rex' => 'Royal Express Asia',
-                                    ];
+                                    $courier_labels = function_exists('wp_store_courier_labels') ? wp_store_courier_labels() : [];
                                     $courier_label = isset($courier_labels[$shipping_courier]) ? $courier_labels[$shipping_courier] : strtoupper((string)$shipping_courier);
                                     ?>
                                     <div class="wps-text-sm wps-text-gray-500">Ongkir (<?php echo esc_html($courier_label . ' ' . $shipping_service); ?>)</div>
