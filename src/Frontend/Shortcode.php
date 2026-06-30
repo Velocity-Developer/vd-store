@@ -469,41 +469,6 @@ class Shortcode
             return '';
         }
 
-        $bank_logos = [
-            'Bank Mandiri' => 'b-mandiri.gif',
-            'BRI' => 'b-bri.gif',
-            'BCA' => 'b-bca.gif',
-            'BNI' => 'b-bni.gif',
-            'BTN' => 'b-btn.gif',
-            'BSI' => 'b-bsi.gif',
-            'CIMB Niaga' => 'b-cimb.gif',
-            'OCBC NISP' => 'b-ocbc-nisp.gif',
-            'Bank Permata' => 'b-permata.gif',
-            'Bank Danamon' => 'b-danamon.gif',
-            'Panin Bank' => 'b-panin.gif',
-            'Maybank Indonesia' => 'b-maybank.gif',
-            'Bank Mega' => 'b-mega.gif',
-            'Bank Muamalat' => 'b-muamalat.gif',
-            'Bank Sinarmas' => 'b-sinarmas.gif',
-            'BSN' => 'b-bsn.gif',
-            'Bank Mega Syariah' => 'b-mega-syariah.gif',
-            'Bank Commonwealth' => 'b-commonwealth.gif',
-            'Bank UOB Indonesia' => 'b-uob.gif',
-            'Bank DBS Indonesia' => 'b-dbs.gif',
-            'Bank Woori Saudara' => 'b-bws.gif',
-            'Bank Hana Indonesia' => 'b-hana.gif',
-            'Bank Resona Perdania' => 'b-resona.gif',
-            'Bank J Trust Indonesia' => 'b-j-trust.gif',
-            'Bank Ina Perdana' => 'b-ina.gif',
-            'Bank Artha Graha' => 'b-artha.gif',
-            'Bank Index Selindo' => 'b-index.gif',
-            'Bank Ganesha' => 'b-ganesha.gif',
-            'Bank Maspion' => 'b-maspion.gif',
-            'Bank Bumi Arta' => 'b-bumi-arta.gif',
-            'Bank Victoria' => 'b-victoria.gif',
-            'Lainnya' => '',
-        ];
-
         ob_start();
         echo '<div class="wps-bank-accounts wps-text-center wps-mt-6">';
         foreach ($accounts as $index => $acc) {
@@ -513,12 +478,7 @@ class Shortcode
             if ($bank_name === 'Bank BTN Syariah') {
                 $bank_name = 'BSN';
             }
-            $logo_file = isset($bank_logos[$bank_name]) ? (string) $bank_logos[$bank_name] : '';
-            $logo_url = '';
-
-            if ($logo_file && file_exists(WP_STORE_PATH . 'assets/frontend/img/bank/' . $logo_file)) {
-                $logo_url = WP_STORE_URL . 'assets/frontend/img/bank/' . $logo_file;
-            }
+            $logo_url = function_exists('wp_store_bank_logo') ? wp_store_bank_logo($bank_name) : '';
 
             echo '<div class="wps-bank-item wps-mb-2">';
             if ($logo_url) {

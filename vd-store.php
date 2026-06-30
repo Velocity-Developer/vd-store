@@ -638,3 +638,64 @@ function wp_store_courier_labels()
         'sentral' => 'Sentral Cargo',
     ];
 }
+
+function wp_store_bank_labels()
+{
+    return [
+        'mandiri' => 'Bank Mandiri',
+        'bri' => 'BRI',
+        'bca' => 'BCA',
+        'bni' => 'BNI',
+        'btn' => 'BTN',
+        'bsi' => 'BSI',
+        'cimb_niaga' => 'CIMB Niaga',
+        'ocbc_nisp' => 'OCBC NISP',
+        'permata' => 'Bank Permata',
+        'danamon' => 'Bank Danamon',
+        'panin' => 'Panin Bank',
+        'maybank' => 'Maybank Indonesia',
+        'mega' => 'Bank Mega',
+        'muamalat' => 'Bank Muamalat',
+        'sinarmas' => 'Bank Sinarmas',
+        'bsn' => 'BSN',
+        'mega_syariah' => 'Bank Mega Syariah',
+        'commonwealth' => 'Bank Commonwealth',
+        'uob' => 'Bank UOB Indonesia',
+        'dbs' => 'Bank DBS Indonesia',
+        'bws' => 'Bank Woori Saudara',
+        'hana' => 'Bank Hana Indonesia',
+        'resona' => 'Bank Resona Perdania',
+        'j_trust' => 'Bank J Trust Indonesia',
+        'ina' => 'Bank Ina Perdana',
+        'artha' => 'Bank Artha Graha',
+        'index' => 'Bank Index Selindo',
+        'ganesha' => 'Bank Ganesha',
+        'maspion' => 'Bank Maspion',
+        'bumi_arta' => 'Bank Bumi Arta',
+        'victoria' => 'Bank Victoria',
+        'jago' => 'Bank Jago',
+        'smbc' => 'Bank SMBC Indonesia',
+        'seabank' => 'SeaBank',
+        'neocommerce' => 'Bank Neo Commerce',
+        'hsbc' => 'HSBC Indonesia',
+        'lainnya' => 'Lainnya',
+    ];
+}
+
+function wp_store_bank_logo($bank_name)
+{
+    $bank_name = (string) $bank_name;
+    $labels = function_exists('wp_store_bank_labels') ? wp_store_bank_labels() : [];
+    $key = array_search($bank_name, $labels, true);
+    if ($key === false || $key === 'lainnya') {
+        return '';
+    }
+
+    $file = $key . '.gif';
+
+    if (!file_exists(WP_STORE_PATH . 'assets/frontend/img/bank/' . $file)) {
+        return '';
+    }
+
+    return WP_STORE_URL . 'assets/frontend/img/bank/' . $file;
+}

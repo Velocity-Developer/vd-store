@@ -869,16 +869,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             rateSubdistricts: [],
             isLoadingRateLocations: false,
 
-            indonesianBanks: [
-                'Bank Mandiri', 'BRI', 'BCA', 'BNI', 'BTN', 'BSI', 'CIMB Niaga',
-                'OCBC NISP', 'Bank Permata', 'Bank Danamon', 'Panin Bank',
-                'Maybank Indonesia', 'Bank Mega', 'Bank Muamalat', 'Bank Sinarmas', 'BSN',
-                'Bank Mega Syariah', 'Bank Commonwealth', 'Bank UOB Indonesia',
-                'Bank DBS Indonesia', 'Bank Woori Saudara', 'Bank Hana Indonesia',
-                'Bank Resona Perdania', 'Bank J Trust Indonesia', 'Bank Ina Perdana',
-                'Bank Artha Graha', 'Bank Index Selindo', 'Bank Ganesha',
-                'Bank Maspion', 'Bank Bumi Arta', 'Bank Victoria', 'Lainnya'
-            ],
+            indonesianBanks: <?php echo json_encode(array_values(function_exists('wp_store_bank_labels') ? wp_store_bank_labels() : ['Bank Mandiri', 'BRI', 'BCA', 'BNI', 'BTN', 'BSI', 'CIMB Niaga', 'OCBC NISP', 'Bank Permata', 'Bank Danamon', 'Panin Bank', 'Maybank Indonesia', 'Bank Mega', 'Bank Muamalat', 'Bank Sinarmas', 'BSN', 'Bank Mega Syariah', 'Bank Commonwealth', 'Bank UOB Indonesia', 'Bank DBS Indonesia', 'Bank Woori Saudara', 'Bank Hana Indonesia', 'Bank Resona Perdania', 'Bank J Trust Indonesia', 'Bank Ina Perdana', 'Bank Artha Graha', 'Bank Index Selindo', 'Bank Ganesha', 'Bank Maspion', 'Bank Bumi Arta', 'Bank Victoria', 'Bank Jago', 'Jenius / BTPN', 'SeaBank', 'Bank Neo Commerce', 'HSBC Indonesia', 'Lainnya'])); ?>,
 
             provinces: [],
             cities: [],
