@@ -56,8 +56,8 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                 $tracking_id = isset($settings['page_tracking']) ? absint($settings['page_tracking']) : 0;
                 $tracking_url = $tracking_id ? get_permalink($tracking_id) : site_url('/tracking-order/');
                 ?>
-                <div class="wps-mt-4" style="max-width:420px; margin:0 auto;">
-                    <form id="wps-find-order" class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
+                <div class="wps-tracking-search-wrap wps-mt-4">
+                    <form id="wps-find-order" class="wps-tracking-search-form wps-mb-2">
                         <input type="text" id="wps-order-id" class="wps-input" placeholder="<?php echo esc_attr($tracking_input_placeholder); ?>" value="<?php echo esc_attr($tracking_query_value); ?>" aria-label="<?php echo esc_attr($tracking_input_label); ?>">
                         <button type="submit" class="wps-btn wps-btn-primary"><?php echo esc_html($tracking_submit_label); ?></button>
                     </form>
