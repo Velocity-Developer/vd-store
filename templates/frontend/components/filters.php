@@ -5,6 +5,8 @@ $current = isset($current) && is_array($current) ? $current : ['sort' => '', 'mi
 $reset_url = isset($reset_url) ? (string) $reset_url : '';
 $mode = isset($mode) ? sanitize_key((string) $mode) : 'auto';
 $use_js = $mode !== 'off';
+$locked_cats = isset($locked_cats) && is_array($locked_cats) ? array_values($locked_cats) : [];
+$locked_brands = isset($locked_brands) && is_array($locked_brands) ? array_values($locked_brands) : [];
 ?>
 <form
     <?php echo $use_js ? 'x-data="typeof wpStoreFilters === \'function\' ? wpStoreFilters() : {}" x-init="init && typeof init === \'function\' ? init() : null"' : ''; ?>
@@ -84,7 +86,7 @@ $use_js = $mode !== 'off';
                 <label class="wps-checkbox-label wps-display-block">
                     <input type="checkbox" class="wps-checkbox" name="brands[]"
                         value="<?php echo esc_attr($brand['id']); ?>"
-                        <?php echo $use_js ? ':value="' . esc_attr($brand['id']) . '" x-model="brands" @change="update"' : ''; ?>
+                        <?php echo $use_js ? ':value="' . esc_attr($brand['id']) . '" x-model="brands" @change="update" :disabled="isBrandLocked(' . esc_attr($brand['id']) . ')"' : ''; ?>
                         <?php echo in_array($brand['id'], $current['brands'], true) ? 'checked' : ''; ?>>
                     <span class="wps-text-sm wps-text-gray-900"><?php echo esc_html($brand['name']); ?></span>
                 </label>
@@ -119,13 +121,16 @@ document.addEventListener('alpine:init', () => {
         reset_url: <?php echo wp_json_encode($reset_url); ?>,
         cats: <?php echo wp_json_encode(array_values($current['cats'] ?? [])); ?>,
         brands: <?php echo wp_json_encode(array_values($current['brands'] ?? [])); ?>,
-        locked_cats: <?php echo wp_json_encode(isset($locked_cats) ? array_values($locked_cats) : []); ?>,
+        locked_cats: <?php echo wp_json_encode($locked_cats); ?>,
+        locked_brands: <?php echo wp_json_encode($locked_brands); ?>,
         updating: false,
         _updateTimer: null,
         initializing: true,
         init() {
             this.parseQueryIntoState();
             this.enforceLockedCats();
+            this.enforceLockedBrands();
+            this.removeLockedFiltersFromUrl();
             if (this.min_price_input === '') this.active_min_price = this.price_min_bound;
             if (this.max_price_input === '') this.active_max_price = this.price_max_bound;
             this.clampPrices();
@@ -134,10 +139,14 @@ document.addEventListener('alpine:init', () => {
                 this.enforceLockedCats();
                 this.update();
             });
-            this.$watch('brands', () => this.update());
+            this.$watch('brands', () => {
+                this.enforceLockedBrands();
+                this.update();
+            });
             this.initializing = false;
             window.addEventListener('popstate', () => {
                 this.parseQueryIntoState();
+                this.removeLockedFiltersFromUrl();
                 this.refreshShop();
             });
             const shop = document.querySelector('#wps-shop');
@@ -225,6 +234,46 @@ document.addEventListener('alpine:init', () => {
             return Array.isArray(this.locked_cats) && this.locked_cats.map((m) => parseInt(m, 10))
                 .includes(n);
         },
+        enforceLockedBrands() {
+            const base = Array.isArray(this.brands) ? this.brands.map((n) => parseInt(n, 10)).filter((
+                n) => Number.isFinite(n)) : [];
+            const lock = Array.isArray(this.locked_brands) ? this.locked_brands.map((n) => parseInt(n,
+                10)).filter((n) => Number.isFinite(n)) : [];
+            const set = new Set(base.concat(lock));
+            const next = Array.from(set).sort((a, b) => a - b);
+            const cur = base.slice().sort((a, b) => a - b);
+            const equal = next.length === cur.length && next.every((v, i) => v === cur[i]);
+            if (!equal) {
+                this.brands = next;
+            }
+        },
+        isBrandLocked(id) {
+            const n = parseInt(id, 10);
+            if (!Number.isFinite(n)) return false;
+            return Array.isArray(this.locked_brands) && this.locked_brands.map((m) => parseInt(m, 10))
+                .includes(n);
+        },
+        removeLockedFiltersFromUrl() {
+            try {
+                const url = new URL(window.location.href);
+                let changed = false;
+                const stripLocked = (key, locked) => {
+                    const lock = new Set((Array.isArray(locked) ? locked : [])
+                        .map((n) => parseInt(n, 10)).filter((n) => Number.isFinite(n)));
+                    const values = url.searchParams.getAll(key);
+                    const keep = values.filter((value) => !lock.has(parseInt(value, 10)));
+                    if (keep.length === values.length) return;
+                    url.searchParams.delete(key);
+                    keep.forEach((value) => url.searchParams.append(key, value));
+                    changed = true;
+                };
+                stripLocked('cats[]', this.locked_cats);
+                stripLocked('brands[]', this.locked_brands);
+                if (changed) {
+                    history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+                }
+            } catch (e) {}
+        },
         formatCurrency(v) {
             const n = parseFloat(v);
             if (!Number.isFinite(n)) return 'Rp 0';
@@ -237,13 +286,17 @@ document.addEventListener('alpine:init', () => {
             const maxRaw = String(this.max_price_input || '').trim();
             if (minRaw !== '') p.set('min_price', minRaw);
             if (maxRaw !== '') p.set('max_price', maxRaw);
+            const lockedCats = new Set((Array.isArray(this.locked_cats) ? this.locked_cats : [])
+                .map((n) => parseInt(n, 10)).filter((n) => Number.isFinite(n)));
+            const lockedBrands = new Set((Array.isArray(this.locked_brands) ? this.locked_brands : [])
+                .map((n) => parseInt(n, 10)).filter((n) => Number.isFinite(n)));
             (Array.isArray(this.cats) ? this.cats : []).forEach((c) => {
                 const n = parseInt(c, 10);
-                if (Number.isFinite(n) && n > 0) p.append('cats[]', String(n));
+                if (Number.isFinite(n) && n > 0 && !lockedCats.has(n)) p.append('cats[]', String(n));
             });
             (Array.isArray(this.brands) ? this.brands : []).forEach((b) => {
                 const n = parseInt(b, 10);
-                if (Number.isFinite(n) && n > 0) p.append('brands[]', String(n));
+                if (Number.isFinite(n) && n > 0 && !lockedBrands.has(n)) p.append('brands[]', String(n));
             });
             return p.toString();
         },
@@ -265,6 +318,7 @@ document.addEventListener('alpine:init', () => {
                 this.brands = brands;
                 this.syncFromInputs();
                 this.enforceLockedCats();
+                this.enforceLockedBrands();
             } catch (e) {}
         },
         refreshShop() {
@@ -327,8 +381,9 @@ document.addEventListener('alpine:init', () => {
             this.active_min_price = this.price_min_bound;
             this.active_max_price = this.price_max_bound;
             this.cats = Array.isArray(this.locked_cats) ? this.locked_cats.slice() : [];
-            this.brands = [];
+            this.brands = Array.isArray(this.locked_brands) ? this.locked_brands.slice() : [];
             this.enforceLockedCats();
+            this.enforceLockedBrands();
             const next = this.reset_url || window.location.pathname.replace(/\/page\/\d+\/?$/, '/');
             history.pushState({}, '', next);
             this.refreshShop();

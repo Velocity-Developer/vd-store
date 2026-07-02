@@ -346,6 +346,11 @@ Fungsi:
 Fungsi:
 - template kategori produk
 
+##### `taxonomy-brand.php`
+Fungsi:
+- template arsip brand dengan layout shop dan filter yang sama seperti kategori produk
+- brand tetap taxonomy non-hierarkis; perbedaannya hanya pada model term, bukan layout frontend
+
 #### Template halaman
 
 ##### `shop.php`
@@ -405,6 +410,9 @@ Fungsi:
 ##### `filters.php`
 Fungsi:
 - sidebar filter produk
+- term taxonomy aktif dikunci di state filter tetapi tidak ditulis ulang sebagai parameter URL
+- kategori/brand tambahan, harga, sort, dan pagination tetap disimpan di query string
+- URL filter pada archive produk memakai canonical ke path archive tanpa query string
 
 ##### `add-to-cart.php`
 Fungsi:

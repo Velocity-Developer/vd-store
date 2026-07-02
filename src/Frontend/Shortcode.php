@@ -60,6 +60,7 @@ class Shortcode
         add_filter('the_content', [$this, 'filter_cart_page_content']);
         add_filter('template_include', [$this, 'override_archive_template']);
         add_action('pre_get_posts', [$this, 'adjust_archive_query']);
+        add_action('wp_head', [$this, 'output_product_archive_canonical'], 1);
         add_filter('fl_builder_loop_query_args', [$this, 'filter_beaver_builder_query_args']);
         add_action('template_redirect', [$this, 'redirect_page_conflict']);
     }
@@ -258,10 +259,22 @@ class Shortcode
         }
 
         $request_filters = ProductFilterRequest::from_globals();
-        if (empty($request_filters['cats']) && is_tax('store_product_cat')) {
+        if (is_tax('store_product_cat')) {
             $term = get_queried_object();
             if ($term && isset($term->term_id)) {
-                $request_filters['cats'] = [(int) $term->term_id];
+                $request_filters['cats'] = array_values(array_unique(array_merge(
+                    [(int) $term->term_id],
+                    (array) ($request_filters['cats'] ?? [])
+                )));
+            }
+        }
+        if (is_tax('brand')) {
+            $term = get_queried_object();
+            if ($term && isset($term->term_id)) {
+                $request_filters['brands'] = array_values(array_unique(array_merge(
+                    [(int) $term->term_id],
+                    (array) ($request_filters['brands'] ?? [])
+                )));
             }
         }
 
@@ -936,16 +949,26 @@ class Shortcode
             'cats' => isset($request['cats']) && is_array($request['cats']) ? $request['cats'] : [],
             'brands' => isset($request['brands']) && is_array($request['brands']) ? $request['brands'] : [],
         ];
-        if (empty($current['cats']) && is_tax('store_product_cat')) {
+        if (is_tax('store_product_cat')) {
             $term = get_queried_object();
             if ($term && isset($term->term_id)) {
                 $tid = (int) $term->term_id;
-                if ($tid > 0) {
+                if ($tid > 0 && !in_array($tid, $current['cats'], true)) {
                     $current['cats'][] = $tid;
                 }
             }
         }
+        if (is_tax('brand')) {
+            $term = get_queried_object();
+            if ($term && isset($term->term_id)) {
+                $tid = (int) $term->term_id;
+                if ($tid > 0 && !in_array($tid, $current['brands'], true)) {
+                    $current['brands'][] = $tid;
+                }
+            }
+        }
         $locked_cats = [];
+        $locked_brands = [];
         if (is_tax('store_product_cat')) {
             $term = get_queried_object();
             if ($term && isset($term->term_id)) {
@@ -955,7 +978,16 @@ class Shortcode
                 }
             }
         }
-        if (is_tax('store_product_cat')) {
+        if (is_tax('brand')) {
+            $term = get_queried_object();
+            if ($term && isset($term->term_id)) {
+                $tid = (int) $term->term_id;
+                if ($tid > 0) {
+                    $locked_brands[] = $tid;
+                }
+            }
+        }
+        if (is_tax(['store_product_cat', 'brand'])) {
             $term = get_queried_object();
             $reset_url = ($term && !is_wp_error($term)) ? get_term_link($term) : get_post_type_archive_link('store_product');
         } elseif (is_post_type_archive('store_product') || (get_query_var('post_type') === 'store_product' && !is_singular())) {
@@ -984,6 +1016,11 @@ class Shortcode
         } elseif (!empty($locked_cats)) {
             $stats_filters['cats'] = $locked_cats;
         }
+        if (!empty($current['brands'])) {
+            $stats_filters['brands'] = $current['brands'];
+        } elseif (!empty($locked_brands)) {
+            $stats_filters['brands'] = $locked_brands;
+        }
         $price_stats_query = new \WP_Query(ProductQuery::build_query_args($stats_filters, [
             'post_type' => 'store_product',
             'post_status' => 'publish',
@@ -1004,6 +1041,7 @@ class Shortcode
             'price_max_global' => $max_price_global,
             'price_avg_global' => $avg_price_global,
             'locked_cats' => $locked_cats,
+            'locked_brands' => $locked_brands,
             'mode' => sanitize_key((string) $atts['mode']),
         ]);
     }
@@ -1497,14 +1535,20 @@ class Shortcode
                 return $tpl;
             }
         }
-        if (is_post_type_archive('store_product') || (get_query_var('post_type') === 'store_product' && !is_singular())) {
-            $tpl = Template::locate('archive-store_product');
+        if (is_tax('store_product_cat')) {
+            $tpl = Template::locate('taxonomy-store_product_cat');
             if ($tpl !== '') {
                 return $tpl;
             }
         }
-        if (is_tax('store_product_cat')) {
-            $tpl = Template::locate('taxonomy-store_product_cat');
+        if (is_tax('brand')) {
+            $tpl = Template::locate('taxonomy-brand');
+            if ($tpl !== '') {
+                return $tpl;
+            }
+        }
+        if (is_post_type_archive('store_product') || (get_query_var('post_type') === 'store_product' && !is_singular() && !is_tax())) {
+            $tpl = Template::locate('archive-store_product');
             if ($tpl !== '') {
                 return $tpl;
             }
@@ -1516,12 +1560,24 @@ class Shortcode
     {
         if (is_admin()) return;
         if (!$query->is_main_query()) return;
-        if ($query->is_post_type_archive('store_product') || $query->is_tax('store_product_cat') || ($query->get('post_type') === 'store_product' && !$query->is_singular())) {
+        if ($query->is_post_type_archive('store_product') || $query->is_tax(['store_product_cat', 'brand']) || ($query->get('post_type') === 'store_product' && !$query->is_singular() && !$query->is_tax())) {
             $filters = ProductFilterRequest::from_globals();
-            if (empty($filters['cats']) && $query->is_tax('store_product_cat')) {
+            if ($query->is_tax('store_product_cat')) {
                 $term = get_queried_object();
                 if ($term && isset($term->term_id)) {
-                    $filters['cats'] = [(int) $term->term_id];
+                    $filters['cats'] = array_values(array_unique(array_merge(
+                        [(int) $term->term_id],
+                        (array) ($filters['cats'] ?? [])
+                    )));
+                }
+            }
+            if ($query->is_tax('brand')) {
+                $term = get_queried_object();
+                if ($term && isset($term->term_id)) {
+                    $filters['brands'] = array_values(array_unique(array_merge(
+                        [(int) $term->term_id],
+                        (array) ($filters['brands'] ?? [])
+                    )));
                 }
             }
 
@@ -1531,6 +1587,30 @@ class Shortcode
                 'ignore_sticky_posts' => true,
             ]);
         }
+    }
+
+    public function output_product_archive_canonical()
+    {
+        if (!is_post_type_archive('store_product') && !is_tax(['store_product_cat', 'brand'])) {
+            return;
+        }
+
+        if (defined('WPSEO_VERSION') || defined('RANK_MATH_VERSION') || defined('AIOSEO_VERSION')) {
+            return;
+        }
+
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? (string) wp_unslash($_SERVER['REQUEST_URI']) : '';
+        $path = (string) wp_parse_url($request_uri, PHP_URL_PATH);
+        $home_path = (string) wp_parse_url(home_url('/'), PHP_URL_PATH);
+        if ($home_path !== '' && $home_path !== '/' && strpos($path, $home_path) === 0) {
+            $path = substr($path, strlen($home_path));
+        }
+        $canonical = $path !== '' ? home_url('/' . ltrim($path, '/')) : '';
+        if ($canonical === '') {
+            return;
+        }
+
+        echo '<link rel="canonical" href="' . esc_url($canonical) . '">' . "\n";
     }
 
     public function filter_beaver_builder_query_args($args)

@@ -120,8 +120,10 @@ Customer bisa:
 - melihat daftar produk
 - mencari produk
 - filter kategori
+- filter brand
 - filter harga
 - mengurutkan produk
+- membuka landing archive kategori dan brand dengan URL bersih; parameter filter tambahan tetap didukung
 - print katalog lewat halaman print browser
 
 ### Single produk
