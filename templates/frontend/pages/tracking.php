@@ -42,6 +42,14 @@ if (!empty($items)) {
     }
 }
 $hide_recipient = ($disable_shipping_for_digital && $all_digital);
+$digital_downloads = [];
+if ($order_exists) {
+    if (function_exists('wp_store_get_order_digital_downloads')) {
+        $digital_downloads = wp_store_get_order_digital_downloads($order_id, $items);
+    } elseif (class_exists('\VelocityMarketplace\Modules\Order\OrderData') && method_exists('\VelocityMarketplace\Modules\Order\OrderData', 'digital_downloads')) {
+        $digital_downloads = \VelocityMarketplace\Modules\Order\OrderData::digital_downloads($order_id, $items);
+    }
+}
 ?>
 <div class="wps-container">
     <div class="wps-card wps-p-6">
@@ -174,6 +182,35 @@ $hide_recipient = ($disable_shipping_for_digital && $all_digital);
                             </div>
                         <?php endif; ?>
                     </div>
+                    <?php if (!empty($digital_downloads)) : ?>
+                        <div class="wps-mt-4 wps-p-4" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;">
+                            <div class="wps-text-lg wps-font-medium wps-text-blue-900">Link File Digital</div>
+                            <div class="wps-text-sm wps-text-blue-800 wps-mt-1">Klik tautan di bawah untuk mengunduh file digital pesanan Anda.</div>
+                            <div class="wps-mt-3" style="display:grid; gap:12px;">
+                                <?php foreach ($digital_downloads as $download) :
+                                    if (!is_array($download)) {
+                                        continue;
+                                    }
+                                    $download_title = isset($download['title']) ? (string) $download['title'] : '';
+                                    $download_qty = isset($download['qty']) ? max(1, (int) $download['qty']) : 1;
+                                    $download_url = isset($download['url']) ? esc_url((string) $download['url']) : '';
+                                    if ($download_url === '') {
+                                        continue;
+                                    }
+                                ?>
+                                    <div class="wps-p-3" style="border:1px solid #bfdbfe; background:#ffffff; border-radius:10px;">
+                                        <div class="wps-text-sm wps-font-medium wps-text-blue-900"><?php echo esc_html($download_title); ?></div>
+                                        <?php if ($download_qty > 1) : ?>
+                                            <div class="wps-text-xs wps-text-blue-700">Jumlah: <?php echo esc_html((string) $download_qty); ?></div>
+                                        <?php endif; ?>
+                                        <div class="wps-mt-2">
+                                            <a class="wps-btn wps-btn-primary" href="<?php echo $download_url; ?>" target="_blank" rel="noopener noreferrer">Unduh File</a>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div>
                     <?php if (!$hide_recipient) : ?>

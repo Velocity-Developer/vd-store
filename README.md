@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.1`
+Versi: `1.4.2`
 
 `VD Store` adalah plugin inti untuk toko online.
 

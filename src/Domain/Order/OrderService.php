@@ -3,6 +3,7 @@
 namespace WpStore\Domain\Order;
 
 use WpStore\Domain\Payment\PaymentService;
+use WpStore\Domain\Product\ProductMeta;
 use WpStore\Domain\Product\ProductData;
 
 class OrderService
@@ -34,6 +35,7 @@ class OrderService
                 ? (float) $item['price']
                 : $this->resolve_price_with_options($product_id, $opts);
             $subtotal = $price * $qty;
+            $is_digital = ProductData::is_digital($product_id);
 
             $line = is_array($item) ? $item : [];
             $line['product_id'] = $product_id;
@@ -42,6 +44,14 @@ class OrderService
             $line['price'] = $price;
             $line['subtotal'] = $subtotal;
             $line['options'] = $opts;
+            $line['is_digital'] = $is_digital ? 1 : 0;
+
+            if ($is_digital) {
+                $digital_file = $this->resolve_digital_file_url($product_id);
+                if ($digital_file !== '') {
+                    $line['digital_file'] = $digital_file;
+                }
+            }
 
             $lines[] = $line;
         }
@@ -94,6 +104,10 @@ class OrderService
     {
         $data = is_array($data) ? $data : [];
         $lines = isset($data['items']) && is_array($data['items']) ? array_values($data['items']) : [];
+        if (empty($lines)) {
+            return new \WP_Error('empty_order_items', 'Item pesanan kosong.');
+        }
+        $lines = $this->build_lines($lines, true);
         if (empty($lines)) {
             return new \WP_Error('empty_order_items', 'Item pesanan kosong.');
         }
@@ -264,6 +278,26 @@ class OrderService
         ksort($normalized);
 
         return $normalized;
+    }
+
+    private function resolve_digital_file_url($product_id)
+    {
+        $product_id = (int) $product_id;
+        if ($product_id <= 0) {
+            return '';
+        }
+
+        $file = ProductMeta::get($product_id, 'digital_file', '');
+        if (is_numeric($file)) {
+            $file = wp_get_attachment_url((int) $file);
+        }
+
+        $file = is_string($file) ? trim($file) : '';
+        if ($file === '') {
+            return '';
+        }
+
+        return esc_url_raw($file);
     }
 
     public function normalize_payment_method($method)

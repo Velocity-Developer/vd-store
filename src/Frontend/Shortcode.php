@@ -923,6 +923,7 @@ class Shortcode
                 $categories[] = [
                     'id' => (int) $t->term_id,
                     'name' => (string) $t->name,
+                    'parent' => (int) ($t->parent ?? 0),
                 ];
             }
         }

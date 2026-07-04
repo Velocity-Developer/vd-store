@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.4.1`
+Versi plugin: `1.4.2`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -922,7 +922,7 @@ add_action('wp_enqueue_scripts', function () {
         'vd-store-client-a',
         plugin_dir_url(__FILE__) . 'assets/client-a.css',
         [],
-        '1.0.0'
+        WP_STORE_VERSION
     );
 });
 ```

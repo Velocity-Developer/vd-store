@@ -7,6 +7,69 @@ $mode = isset($mode) ? sanitize_key((string) $mode) : 'auto';
 $use_js = $mode !== 'off';
 $locked_cats = isset($locked_cats) && is_array($locked_cats) ? array_values($locked_cats) : [];
 $locked_brands = isset($locked_brands) && is_array($locked_brands) ? array_values($locked_brands) : [];
+$category_tree = [];
+foreach ($categories as $cat) {
+    if (!is_array($cat) || empty($cat['id'])) {
+        continue;
+    }
+
+    $parent_id = isset($cat['parent']) ? (int) $cat['parent'] : 0;
+    if (!isset($category_tree[$parent_id])) {
+        $category_tree[$parent_id] = [];
+    }
+    $category_tree[$parent_id][] = $cat;
+}
+$sort_terms = static function (&$terms) {
+    if (!is_array($terms)) {
+        $terms = [];
+        return;
+    }
+
+    usort($terms, static function ($a, $b) {
+        $a_name = is_array($a) ? (string) ($a['name'] ?? '') : '';
+        $b_name = is_array($b) ? (string) ($b['name'] ?? '') : '';
+        return strcasecmp($a_name, $b_name);
+    });
+};
+$render_category_rows = static function ($parent_id = 0, $depth = 0) use (&$render_category_rows, &$category_tree, $sort_terms, $use_js, $current) {
+    $html = '';
+    $parent_id = (int) $parent_id;
+    $depth = max(0, (int) $depth);
+
+    if (empty($category_tree[$parent_id])) {
+        return $html;
+    }
+
+    $terms = $category_tree[$parent_id];
+    $sort_terms($terms);
+
+    foreach ($terms as $cat) {
+        if (!is_array($cat) || empty($cat['id'])) {
+            continue;
+        }
+
+        $cat_id = (int) $cat['id'];
+        $cat_name = (string) ($cat['name'] ?? '');
+        $is_checked = in_array($cat_id, (array) ($current['cats'] ?? []), true);
+        $label_class = 'wps-checkbox-label';
+        if ($depth > 0) {
+            $label_class .= ' wps-text-gray-700';
+        }
+        $input_attrs = $use_js
+            ? ':value="' . esc_attr($cat_id) . '" x-model="cats" @change="update" :disabled="isCatLocked(' . esc_attr($cat_id) . ')"'
+            : '';
+
+        $html .= '<div style="' . ($depth > 0 ? 'padding-left:' . (20 * $depth) . 'px;' : '') . '">';
+        $html .= '<label class="' . esc_attr($label_class) . '" style="display:flex;align-items:center;gap:5px;line-height:1.15;min-height:24px;">';
+        $html .= '<input type="checkbox" class="wps-checkbox" name="cats[]" value="' . esc_attr($cat_id) . '" style="margin:0;flex:0 0 auto;display:block;" ' . $input_attrs . ' ' . checked($is_checked, true, false) . '>';
+        $html .= '<span class="wps-text-sm' . ($depth > 0 ? ' wps-text-gray-600' : ' wps-text-gray-900') . '" style="display:block;line-height:1.15;padding-top:1px;">' . esc_html($cat_name) . '</span>';
+        $html .= '</label>';
+        $html .= '</div>';
+        $html .= $render_category_rows($cat_id, $depth + 1);
+    }
+
+    return $html;
+};
 ?>
 <form
     <?php echo $use_js ? 'x-data="typeof wpStoreFilters === \'function\' ? wpStoreFilters() : {}" x-init="init && typeof init === \'function\' ? init() : null"' : ''; ?>
@@ -66,16 +129,8 @@ $locked_brands = isset($locked_brands) && is_array($locked_brands) ? array_value
         </div>
         <div class="wps-mt-3">
             <div class="wps-label">Kategori</div>
-            <div class="" style="gap:8px;">
-                <?php foreach ($categories as $cat): ?>
-                <label class="wps-checkbox-label wps-display-block">
-                    <input type="checkbox" class="wps-checkbox" name="cats[]"
-                        value="<?php echo esc_attr($cat['id']); ?>"
-                        <?php echo $use_js ? ':value="' . esc_attr($cat['id']) . '" x-model="cats" @change="update" :disabled="isCatLocked(' . esc_attr($cat['id']) . ')"' : ''; ?>
-                        <?php echo in_array($cat['id'], $current['cats'], true) ? 'checked' : ''; ?>>
-                    <span class="wps-text-sm wps-text-gray-900"><?php echo esc_html($cat['name']); ?></span>
-                </label>
-                <?php endforeach; ?>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <?php echo $render_category_rows(0, 0); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
             </div>
         </div>
         <?php if (!empty($brands)) : ?>
@@ -83,12 +138,13 @@ $locked_brands = isset($locked_brands) && is_array($locked_brands) ? array_value
             <div class="wps-label">Brand</div>
             <div class="" style="gap:8px;">
                 <?php foreach ($brands as $brand): ?>
-                <label class="wps-checkbox-label wps-display-block">
+                <label class="wps-checkbox-label" style="display:flex;align-items:center;gap:5px;line-height:1.15;min-height:24px;">
                     <input type="checkbox" class="wps-checkbox" name="brands[]"
+                        style="margin:0;flex:0 0 auto;display:block;"
                         value="<?php echo esc_attr($brand['id']); ?>"
                         <?php echo $use_js ? ':value="' . esc_attr($brand['id']) . '" x-model="brands" @change="update" :disabled="isBrandLocked(' . esc_attr($brand['id']) . ')"' : ''; ?>
                         <?php echo in_array($brand['id'], $current['brands'], true) ? 'checked' : ''; ?>>
-                    <span class="wps-text-sm wps-text-gray-900"><?php echo esc_html($brand['name']); ?></span>
+                    <span class="wps-text-sm wps-text-gray-900" style="display:block;line-height:1.15;padding-top:1px;"><?php echo esc_html($brand['name']); ?></span>
                 </label>
                 <?php endforeach; ?>
             </div>

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js
- * Version:     1.4.1
+ * Version:     1.4.2
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.1');
+define('WP_STORE_VERSION', '1.4.2');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -44,7 +44,7 @@ spl_autoload_register(function ($class) {
 
 function wp_store_init()
 {
-    $should_migrate = get_option('wp_store_db_version') !== '1.4.1';
+    $should_migrate = get_option('wp_store_db_version') !== '1.4.2';
     global $wpdb;
     $table_name = $wpdb->prefix . 'store_carts';
     $exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
@@ -65,7 +65,7 @@ function wp_store_init()
             UNIQUE KEY uniq_guest (guest_key)
         ) {$charset_collate};";
         dbDelta($sql);
-        update_option('wp_store_db_version', '1.4.1');
+        update_option('wp_store_db_version', '1.4.2');
     }
 
     // Create wishlist table
@@ -590,6 +590,139 @@ function wp_store_add_to_cart_button($product_id, $args = [])
     }
 
     return do_shortcode('[wp_store_add_to_cart' . $attr_html . ']');
+}
+
+function wp_store_resolve_digital_file_url($product_id)
+{
+    $product_id = (int) $product_id;
+    if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
+        return '';
+    }
+
+    $file = get_post_meta($product_id, '_store_digital_file', true);
+    if (is_numeric($file)) {
+        $file = wp_get_attachment_url((int) $file);
+    }
+
+    $file = is_string($file) ? trim($file) : '';
+    if ($file === '') {
+        return '';
+    }
+
+    return esc_url_raw($file);
+}
+
+function wp_store_get_order_digital_downloads($order_id, $items = null)
+{
+    $order_id = (int) $order_id;
+    if ($order_id <= 0 || get_post_type($order_id) !== 'store_order') {
+        return [];
+    }
+
+    if (!is_array($items)) {
+        $items = get_post_meta($order_id, '_store_order_items', true);
+    }
+    $items = is_array($items) ? $items : [];
+
+    $downloads = [];
+    $seen = [];
+
+    foreach ($items as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $product_id = isset($item['product_id']) ? (int) $item['product_id'] : 0;
+        if ($product_id <= 0 || get_post_type($product_id) !== 'store_product') {
+            continue;
+        }
+
+        $is_digital = array_key_exists('is_digital', $item)
+            ? !empty($item['is_digital'])
+            : (sanitize_key((string) get_post_meta($product_id, '_store_product_type', true)) === 'digital'
+                || !empty(get_post_meta($product_id, '_store_is_digital', true))
+                || (class_exists('\WpStore\Domain\Product\ProductData') && \WpStore\Domain\Product\ProductData::is_digital($product_id)));
+
+        if (!$is_digital) {
+            continue;
+        }
+
+        $url = '';
+        if (!empty($item['digital_file'])) {
+            $url = is_numeric($item['digital_file'])
+                ? wp_get_attachment_url((int) $item['digital_file'])
+                : (string) $item['digital_file'];
+        } elseif (!empty($item['download_url'])) {
+            $url = (string) $item['download_url'];
+        }
+        if ($url === '') {
+            $url = wp_store_resolve_digital_file_url($product_id);
+        }
+        $url = esc_url_raw(trim((string) $url));
+        if ($url === '') {
+            continue;
+        }
+
+        $title = isset($item['title']) && $item['title'] !== ''
+            ? sanitize_text_field((string) $item['title'])
+            : get_the_title($product_id);
+        $qty = isset($item['qty']) ? max(1, (int) $item['qty']) : 1;
+        $key = $product_id . '|' . md5($url);
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $downloads[] = [
+            'product_id' => $product_id,
+            'title' => $title,
+            'qty' => $qty,
+            'url' => $url,
+        ];
+    }
+
+    return $downloads;
+}
+
+function wp_store_render_order_digital_downloads($order_id, $items = null, $args = [])
+{
+    $downloads = wp_store_get_order_digital_downloads($order_id, $items);
+    if (empty($downloads)) {
+        return '';
+    }
+
+    $args = wp_parse_args(is_array($args) ? $args : [], [
+        'title' => __('Link File Digital', 'vd-store'),
+        'intro' => __('Klik tautan di bawah untuk mengunduh file digital milik pesanan Anda.', 'vd-store'),
+    ]);
+
+    $html = '<div class="wps-card wps-p-4 wps-mt-4" style="border:1px solid #dbeafe;background:#eff6ff;">';
+    $html .= '<div class="wps-text-base wps-font-semibold wps-text-blue-900">' . esc_html((string) $args['title']) . '</div>';
+    if (!empty($args['intro'])) {
+        $html .= '<div class="wps-text-sm wps-text-blue-800 wps-mt-1">' . esc_html((string) $args['intro']) . '</div>';
+    }
+    $html .= '<div class="wps-mt-3" style="display:grid;gap:12px;">';
+    foreach ($downloads as $download) {
+        $title = esc_html((string) ($download['title'] ?? ''));
+        $qty = max(1, (int) ($download['qty'] ?? 1));
+        $url = esc_url((string) ($download['url'] ?? ''));
+        if ($url === '') {
+            continue;
+        }
+
+        $html .= '<div class="wps-flex wps-items-center wps-justify-between wps-gap-3 wps-p-3" style="border:1px solid #bfdbfe;background:#fff;border-radius:10px;">';
+        $html .= '<div>';
+        $html .= '<div class="wps-text-sm wps-font-medium wps-text-blue-900">' . $title . '</div>';
+        if ($qty > 1) {
+            $html .= '<div class="wps-text-xs wps-text-blue-700">' . esc_html(sprintf(__('Jumlah: %d', 'vd-store'), $qty)) . '</div>';
+        }
+        $html .= '</div>';
+        $html .= '<a class="wps-btn wps-btn-primary" href="' . $url . '" target="_blank" rel="noopener noreferrer">' . esc_html__('Unduh File', 'vd-store') . '</a>';
+        $html .= '</div>';
+    }
+    $html .= '</div></div>';
+
+    return $html;
 }
 
 function wp_store_render_product_card($product_id, $args = [])
