@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.4.2`
+Versi plugin: `1.4.3`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -173,10 +173,18 @@ Fungsi:
 #### `RajaOngkirController.php`
 Fungsi:
 - endpoint ongkir dan wilayah
+- mode `shipping_mode`:
+  - `normal` = ongkir dihitung biasa
+  - `free` = ongkir tetap tampil, tetapi biaya dipaksa `0`
+  - `off` = kalkulasi ongkir dimatikan
+- mode `off` tetap kompatibel dengan `disable_shipping` lama
+- `free` cocok untuk tampilan checkout dengan layanan Rp0
 
 #### `SettingsController.php`
 Fungsi:
 - endpoint pengaturan toko
+- simpan pengaturan shipping baru: `shipping_mode`, `collect_address`, `allow_cod`
+- `disable_shipping` dipertahankan sebagai alias lama untuk mode `off`
 
 #### `CaptchaController.php`
 Fungsi:
@@ -459,6 +467,8 @@ Meta canonical produk:
 - `_store_stock`
 - `_store_min_order`
 - `_store_weight_kg` boleh kosong. Produk fisik tanpa berat tidak bisa dibeli karena ongkir tidak dapat dihitung.
+- mode `free` tetap memakai ongkir, tetapi nilai layanan menjadi `0`
+- mode `off` tidak menghitung ongkir, namun alamat, provinsi, kota, dan kecamatan masih dikumpulkan jika `collect_address` aktif
 - `_store_gallery_ids`
 - `_store_option_name`
 - `_store_options`
@@ -487,7 +497,7 @@ Meta order yang sering dipakai:
 - `_store_order_status`
 - `_store_order_shipping_courier`
 - `_store_order_shipping_service`
-- `_store_order_shipping_cost`
+- `_store_order_shipping_cost` bisa `0` saat mode `free` atau order tanpa ongkir
 - `_store_order_receipt_no`
 - `_store_order_admin_note`
 - `_store_order_coupon_code`
@@ -504,6 +514,15 @@ Meta order yang sering dipakai:
 - berat tidak wajib
 - file digital wajib
 - cart digital-only tidak boleh memaksa shipping
+- alamat dan dropdown lokasi bisa tetap dikumpulkan jika setting `collect_address` aktif, tetapi bukan syarat ongkir
+
+### Aturan shipping
+- `shipping_mode = normal` menghitung ongkir normal
+- `shipping_mode = free` tetap menampilkan layanan kirim dengan biaya `0`
+- `shipping_mode = off` mematikan kalkulasi ongkir
+- `collect_address` hanya berpengaruh pada mode `free` dan `off`; mode `normal` selalu meminta alamat untuk produk fisik
+- `collect_address` dan `allow_cod` default aktif jika belum ada nilai tersimpan
+- `allow_cod` mengontrol COD, dan otomatis false saat mode `off`
 
 ### Opsi harga tambahan
 - harga akhir item = harga dasar + tambahan opsi
@@ -560,7 +579,7 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 | `[wp_store_gallery]` | `render_gallery()` | `product-gallery.php` | Galeri produk. |
 | `[wp_store_thumbnail]` | `render_thumbnail()` | method langsung | Thumbnail produk. |
 | `[wp_store_price]` | `render_price()` | helper `wps_product_price_html()` | Harga produk. |
-| `[wp_store_add_to_cart]` | `render_add_to_cart()` | `add-to-cart.php` | Tombol add to cart. Untuk file PHP theme/template bisa memakai `wp_store_add_to_cart_button()`. |
+| `[wp_store_add_to_cart]` | `render_add_to_cart()` | `add-to-cart.php` | Tombol add to cart. Atribut teks tombol memakai `text`. Untuk file PHP theme/template bisa memakai `wp_store_add_to_cart_button()`. |
 | `[wp_store_buy_button]` | `render_add_to_cart()` | `add-to-cart.php` | Alias tombol beli/add to cart. |
 | `[wp_store_detail]` | `render_detail()` | method langsung | Link detail produk. |
 | `[wp_store_add_to_wishlist]` | `render_add_to_wishlist()` | `add-to-wishlist.php` | Tombol wishlist. |
@@ -585,6 +604,47 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 | `[wp_store_couriers]` | `render_couriers()` | method langsung | Logo kurir aktif. |
 | `[wp_store_captcha]` | `render_captcha()` | `captcha.php` | Captcha. |
 | `[wp-store-captcha]` | `render_captcha()` | `captcha.php` | Alias captcha. |
+
+### Contoh atribut shortcode
+
+Default di bawah mengikuti `shortcode_atts()` di `Shortcode.php`. Nilai `id="123"` bisa dikosongkan pada konteks loop produk karena sistem akan mencoba membaca produk aktif.
+
+| Shortcode | Contoh atribut utama | Catatan |
+| --- | --- | --- |
+| `[wp_store_shop]` | `[wp_store_shop per_page="12"]` | `per_page` dibatasi maksimal 50. |
+| `[wp_store_catalog]` | `[wp_store_catalog]` | Tidak punya atribut shortcode khusus. |
+| `[wp_store_shop_with_filters]` | `[wp_store_shop_with_filters per_page="12" filter_mode="auto"]` | `filter_mode`: `auto`, `off`, atau mode lanjutan seperti `ajax` jika dikembangkan. |
+| `[wp_store_filters]` | `[wp_store_filters mode="auto"]` | `mode` mengikuti mode filter. |
+| `[wp_store_single]` | `[wp_store_single id="123" hide="rating,related"]` | `hide` berisi section single produk yang ingin disembunyikan. |
+| `[wp_store_cart_page]` | `[wp_store_cart_page]` | Alias: `[store_cart]`. |
+| `[wp_store_checkout]` | `[wp_store_checkout]` | Alias: `[store_checkout]`. |
+| `[wp_store_thanks]` | `[wp_store_thanks]` | Alias: `[store_thanks]`, order dibaca dari query `?order=...`. |
+| `[wp_store_tracking]` | `[wp_store_tracking]` | Alias: `[store_tracking]`, label form bisa diubah lewat filter PHP. |
+| `[wp_store_wishlist]` | `[wp_store_wishlist]` | Tidak punya atribut shortcode khusus. |
+| `[wp_store_product_card]` | `[wp_store_product_card id="123" context="shortcode" variant="default" image_size="medium" width="300" height="300" crop="true" class="custom-card"]` | Render card produk reusable. |
+| `[wp_store_component]` | `[wp_store_component id="123" name="price" component=""]` | Pakai `name` atau `component`; contoh: `price`, `rating`, `gallery`. |
+| `[wp_store_product_info]` | `[wp_store_product_info id="123"]` | Alias: `[wp_store_info]` dan `[wp_store_product_meta]`. |
+| `[wp_store_related]` | `[wp_store_related id="123" per_page="4"]` | `per_page` dibatasi maksimal 12. |
+| `[wp_store_gallery]` | `[wp_store_gallery id="123"]` | Galeri membaca featured image dan gallery meta produk. |
+| `[wp_store_thumbnail]` | `[wp_store_thumbnail id="123" width="300" height="300" crop="true" upscale="true" alt="" hover="change" label="true"]` | `hover="change"` memakai gambar galeri pertama sebagai hover. |
+| `[wp_store_price]` | `[wp_store_price id="123" countdown="false" wrapper="" tag="" class=""]` | `wrapper=""` bisa dipakai untuk output tanpa wrapper luar. |
+| `[wp_store_add_to_cart]` | `[wp_store_add_to_cart id="123" text="Beli" label="+" class="wps-btn wps-btn-primary" qty="0"]` | `text` mengatur teks tombol; `text=""` membuat tombol icon-only; alias: `[wp_store_buy_button]`. |
+| `[wp_store_detail]` | `[wp_store_detail id="123" text="Detail" size="" class="wps-btn wps-btn-secondary wps-w-full"]` | `size="sm"` memakai tombol kecil. |
+| `[wp_store_add_to_wishlist]` | `[wp_store_add_to_wishlist id="123" size="" label_add="Wishlist" label_remove="Hapus" icon_only="0"]` | `icon_only="1"` menyembunyikan teks. |
+| `[wp_store_rating]` | `[wp_store_rating id="123" size="16" show_value="true" show_count="true" class="" count_text="ulasan"]` | Mengambil ringkasan review produk. |
+| `[wp_store_review_count]` | `[wp_store_review_count id="123" class="" suffix="ulasan"]` | Output jumlah review. |
+| `[wp_store_product_reviews]` | `[wp_store_product_reviews id="123" limit="20"]` | `limit` dibatasi 1 sampai 100. |
+| `[wp_store_recently_viewed]` | `[wp_store_recently_viewed limit="4" exclude_current="true" title="Produk yang Baru Dilihat"]` | Menampilkan produk yang pernah dilihat customer. |
+| `[wp_store_products_carousel]` | `[wp_store_products_carousel label="" per_page="10" per_row="1" img_width="200" img_height="300" crop="true" autoplay="0" pause_on_hover="true" wrap_around="true" page_dots="false" prev_next_buttons="true" lazy_load="0" cell_align="center" draggable="true" contain="true"]` | `per_page` dibatasi maksimal 20. |
+| `[wp_store_cart]` | `[wp_store_cart size="16"]` | `size` mengatur ukuran icon cart. |
+| `[wp_store_link_profile]` | `[wp_store_link_profile size="32"]` | `size` dibatasi 16 sampai 160 px. |
+| `[wp_store_shipping_checker]` | `[wp_store_shipping_checker]` | Tidak punya atribut shortcode khusus; konfigurasi ongkir dari setting toko. |
+| `[wp_store_categories]` | `[wp_store_categories hide_empty="0" orderby="name" order="ASC"]` | Membaca taxonomy `store_product_cat`. |
+| `[wp_store_sosmed]` | `[wp_store_sosmed facebook="https://facebook.com/..." instagram="https://instagram.com/..." twitter="https://x.com/..." youtube="https://youtube.com/..." caption-facebook="Find us on"]` | Atribut URL sosial media opsional; caption per platform memakai prefix `caption-`. |
+| `[wp_store_contact]` | `[wp_store_contact style="true"]` | `style="false"` memakai gaya link sederhana. |
+| `[wp_store_bank_accounts]` | `[wp_store_bank_accounts]` | Membaca daftar rekening dari pengaturan toko. |
+| `[wp_store_couriers]` | `[wp_store_couriers height="30" gap="10" class=""]` | Menampilkan logo kurir aktif dari pengaturan pengiriman. |
+| `[wp_store_captcha]` | `[wp_store_captcha target-button="#submit-order" target_button=""]` | Alias shortcode: `[wp-store-captcha]`; `target-button` dan `target_button` sama-sama didukung. |
 
 ## 7. Kalau mau edit fitur tertentu, mulai dari file ini
 
@@ -757,6 +817,8 @@ Kalau mengubah area ini, tes ulang end-to-end:
 - cart digital-only
 - cart campuran fisik + digital
 - pilih ongkir
+- mode `free` menampilkan opsi kirim dengan biaya `Rp0`
+- mode `off` menyembunyikan kalkulasi ongkir tetapi tetap bisa menyimpan alamat dan dropdown lokasi jika `collect_address` aktif
 - checkout selesai
 
 ### Kupon
@@ -978,6 +1040,14 @@ Dampaknya:
 - Shortcode `[wp_store_product_card]` ikut berubah.
 
 Jadi developer cukup ubah satu file product card.
+
+Untuk mengubah teks tombol add to cart, gunakan atribut `text`:
+
+```text
+[wp_store_add_to_cart id="123" text="Beli Sekarang"]
+```
+
+Prioritas label tombol: `text` jika atribut dikirim, lalu `label` lama. Jika `text=""`, tombol menjadi icon-only.
 
 ### Contoh memanggil product card dari PHP
 

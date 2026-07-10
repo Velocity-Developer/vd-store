@@ -164,6 +164,23 @@ class Assets
                     }
                     return esc_url_raw(site_url('/checkout/'));
                 })(),
+                'shippingMode' => function_exists('wp_store_shipping_mode')
+                    ? wp_store_shipping_mode()
+                    : (!empty(get_option('wp_store_settings', [])['disable_shipping']) ? 'off' : 'normal'),
+                'shippingCollectAddress' => function_exists('wp_store_shipping_collect_address')
+                    ? wp_store_shipping_collect_address()
+                    : (!isset(get_option('wp_store_settings', [])['collect_address']) || (string) get_option('wp_store_settings', [])['collect_address'] !== '0'),
+                'shippingAllowCod' => function_exists('wp_store_shipping_allow_cod')
+                    ? wp_store_shipping_allow_cod()
+                    : (!isset(get_option('wp_store_settings', [])['allow_cod']) || (string) get_option('wp_store_settings', [])['allow_cod'] !== '0'),
+                'shippingDisabled' => (function () {
+                    $settings = get_option('wp_store_settings', []);
+                    if (function_exists('wp_store_shipping_disabled')) {
+                        return wp_store_shipping_disabled();
+                    }
+
+                    return !empty($settings['disable_shipping']);
+                })(),
             ]
         );
         wp_enqueue_style('wp-store-flickity');

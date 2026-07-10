@@ -3,15 +3,19 @@ $settings = get_option('wp_store_settings', []);
 $currency = isset($currency) ? (string) $currency : ($settings['currency_symbol'] ?? 'Rp');
 $origin_subdistrict = isset($origin_subdistrict) ? (string) $origin_subdistrict : (isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '');
 $active_couriers = isset($active_couriers) && is_array($active_couriers) ? $active_couriers : ($settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide']);
+$shipping_disabled = isset($shipping_disabled) ? (bool) $shipping_disabled : (function_exists('wp_store_shipping_disabled') ? wp_store_shipping_disabled() : !empty($settings['disable_shipping']));
 $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
 ?>
 <script>
   window.wpStoreSettings = window.wpStoreSettings || {
     restUrl: '<?php echo esc_url_raw(rest_url('wp-store/v1/')); ?>',
-    nonce: '<?php echo esc_js($nonce); ?>'
+    nonce: '<?php echo esc_js($nonce); ?>',
+    shippingDisabled: <?php echo $shipping_disabled ? 'true' : 'false'; ?>
   };
+  window.wpStoreSettings.shippingDisabled = <?php echo $shipping_disabled ? 'true' : 'false'; ?>;
   window.wpStoreShippingChecker = function() {
     return {
+      shippingDisabled: <?php echo $shipping_disabled ? 'true' : 'false'; ?>,
       provinces: [],
       cities: [],
       subdistricts: [],
@@ -117,6 +121,10 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
         }
       },
       async checkShipping() {
+        if (this.shippingDisabled) {
+          this.errorMessage = 'Ongkos kirim dinonaktifkan oleh toko.';
+          return;
+        }
         if (this.captchaRequired && !this.isCaptchaReady()) {
           return;
         }
@@ -162,6 +170,11 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
         this.loading = false;
       },
       init() {
+        if (this.shippingDisabled) {
+          this.errorMessage = 'Ongkos kirim dinonaktifkan oleh toko.';
+          this.recomputeAllow();
+          return;
+        }
         this.loadProvinces();
         this.recomputeAllow();
       }
@@ -170,7 +183,10 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
 </script>
 <div class="wps-container wps-mx-auto wps-my-8" x-data="wpStoreShippingChecker()">
   <div class="wps-card wps-p-4 wps-mb-4">
-    <div class="wps-grid wps-grid-cols-2 wps-gap-4">
+    <div class="wps-callout wps-mb-4" x-show="shippingDisabled">
+      <div class="wps-text-sm" x-text="errorMessage || 'Ongkos kirim dinonaktifkan oleh toko.'"></div>
+    </div>
+    <div class="wps-grid wps-grid-cols-2 wps-gap-4" x-show="!shippingDisabled">
       <div>
         <label class="wps-label">Provinsi</label>
         <select class="wps-input" x-model="selectedProvince" @change="loadCities()">
@@ -212,7 +228,7 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
         <?php echo \WpStore\Frontend\Captcha::render(['context' => 'shipping_checker']); ?>
       </div>
       <div class="wps-mt-4">
-        <button type="button" class="wps-btn wps-btn-primary" @click="checkShipping()" :disabled="loading || !selectedSubdistrict || couriers.length === 0 || (captchaRequired && !captchaVerified)">
+        <button type="button" class="wps-btn wps-btn-primary" @click="checkShipping()" :disabled="shippingDisabled || loading || !selectedSubdistrict || couriers.length === 0 || (captchaRequired && !captchaVerified)">
           <span x-show="!loading">Cek Ongkir</span>
           <span x-show="loading">Menghitung...</span>
         </button>

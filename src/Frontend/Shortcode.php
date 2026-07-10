@@ -340,11 +340,23 @@ class Shortcode
         $currency = ($settings['currency_symbol'] ?? 'Rp');
         $origin_subdistrict = isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '';
         $active_couriers = $settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide'];
+        $shipping_mode = function_exists('wp_store_shipping_mode')
+            ? wp_store_shipping_mode()
+            : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
+        $collect_address = function_exists('wp_store_shipping_collect_address')
+            ? wp_store_shipping_collect_address()
+            : (!isset($settings['collect_address']) || (string) $settings['collect_address'] !== '0');
+        $allow_cod = function_exists('wp_store_shipping_allow_cod')
+            ? wp_store_shipping_allow_cod()
+            : (!isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0');
         $nonce = wp_create_nonce('wp_rest');
         return Template::render('pages/checkout', [
             'currency' => $currency,
             'origin_subdistrict' => $origin_subdistrict,
             'active_couriers' => $active_couriers,
+            'shipping_mode' => $shipping_mode,
+            'collect_address' => $collect_address,
+            'allow_cod' => $allow_cod,
             'nonce' => $nonce
         ]);
     }
@@ -357,11 +369,15 @@ class Shortcode
         $currency = ($settings['currency_symbol'] ?? 'Rp');
         $origin_subdistrict = isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '';
         $active_couriers = $settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide'];
+        $shipping_mode = function_exists('wp_store_shipping_mode')
+            ? wp_store_shipping_mode()
+            : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
         $nonce = wp_create_nonce('wp_rest');
         return Template::render('pages/shipping-checker', [
             'currency' => $currency,
             'origin_subdistrict' => $origin_subdistrict,
             'active_couriers' => $active_couriers,
+            'shipping_mode' => $shipping_mode,
             'nonce' => $nonce
         ]);
     }

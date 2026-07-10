@@ -2,8 +2,8 @@
 
 /**
  * Plugin Name: VD Store
- * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js
- * Version:     1.4.2
+ * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js dengan pengaturan checkout, ongkir, dan pembayaran fleksibel.
+ * Version:     1.4.3
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.2');
+define('WP_STORE_VERSION', '1.4.3');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -44,7 +44,7 @@ spl_autoload_register(function ($class) {
 
 function wp_store_init()
 {
-    $should_migrate = get_option('wp_store_db_version') !== '1.4.2';
+    $should_migrate = get_option('wp_store_db_version') !== '1.4.3';
     global $wpdb;
     $table_name = $wpdb->prefix . 'store_carts';
     $exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
@@ -65,7 +65,7 @@ function wp_store_init()
             UNIQUE KEY uniq_guest (guest_key)
         ) {$charset_collate};";
         dbDelta($sql);
-        update_option('wp_store_db_version', '1.4.2');
+        update_option('wp_store_db_version', '1.4.3');
     }
 
     // Create wishlist table
@@ -770,6 +770,48 @@ function wp_store_courier_labels()
         'ide' => 'IDExpress',
         'sentral' => 'Sentral Cargo',
     ];
+}
+
+function wp_store_shipping_disabled()
+{
+    $settings = get_option('wp_store_settings', []);
+    $mode = isset($settings['shipping_mode']) ? sanitize_key((string) $settings['shipping_mode']) : '';
+    if ($mode === '') {
+        $mode = !empty($settings['disable_shipping']) ? 'off' : 'normal';
+    }
+    $disabled = $mode === 'off';
+
+    return (bool) apply_filters('wp_store_shipping_disabled', $disabled, is_array($settings) ? $settings : []);
+}
+
+function wp_store_shipping_mode()
+{
+    $settings = get_option('wp_store_settings', []);
+    $mode = isset($settings['shipping_mode']) ? sanitize_key((string) $settings['shipping_mode']) : '';
+    if (!in_array($mode, ['normal', 'free', 'off'], true)) {
+        $mode = !empty($settings['disable_shipping']) ? 'off' : 'normal';
+    }
+
+    return (string) apply_filters('wp_store_shipping_mode', $mode, is_array($settings) ? $settings : []);
+}
+
+function wp_store_shipping_collect_address()
+{
+    $settings = get_option('wp_store_settings', []);
+    $collect = !isset($settings['collect_address']) || (string) $settings['collect_address'] !== '0';
+
+    return (bool) apply_filters('wp_store_shipping_collect_address', $collect, is_array($settings) ? $settings : []);
+}
+
+function wp_store_shipping_allow_cod()
+{
+    $settings = get_option('wp_store_settings', []);
+    $allow = !isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0';
+    if (wp_store_shipping_mode() === 'off') {
+        $allow = false;
+    }
+
+    return (bool) apply_filters('wp_store_shipping_allow_cod', $allow, is_array($settings) ? $settings : []);
 }
 
 function wp_store_bank_labels()

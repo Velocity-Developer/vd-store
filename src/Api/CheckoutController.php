@@ -44,12 +44,23 @@ class CheckoutController
         $data = apply_filters('wp_store_before_create_order', $data, $request);
         $settings = get_option('wp_store_settings', []);
         $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
+        $shipping_mode = function_exists('wp_store_shipping_mode')
+            ? wp_store_shipping_mode()
+            : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
+        $shipping_disabled = $shipping_mode === 'off';
+        $collect_address = function_exists('wp_store_shipping_collect_address')
+            ? wp_store_shipping_collect_address()
+            : (!isset($settings['collect_address']) || (string) $settings['collect_address'] !== '0');
+        $allow_cod = function_exists('wp_store_shipping_allow_cod')
+            ? wp_store_shipping_allow_cod()
+            : (!isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0');
 
         $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
         $email = isset($data['email']) ? sanitize_email($data['email']) : '';
         $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
         $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
         $dropship = $this->sanitize_dropship_payload($data);
+        $payment_method_req = isset($data['payment_method']) ? sanitize_key($data['payment_method']) : 'bank_transfer';
 
         if ($name === '' || empty($items)) {
             return new WP_REST_Response(['message' => 'Data tidak lengkap'], 400);
@@ -57,7 +68,7 @@ class CheckoutController
         if (!is_email($email)) {
             return new WP_REST_RESPONSE(['message' => 'Email tidak valid'], 400);
         }
-        $address_required = isset($data['address']) ? sanitize_textarea_field($data['address']) : '';
+        $address_value = isset($data['address']) ? sanitize_textarea_field($data['address']) : '';
         if ($phone === '') {
             return new WP_REST_RESPONSE(['message' => 'Telepon wajib diisi'], 400);
         }
@@ -67,6 +78,12 @@ class CheckoutController
         $shipping_courier_req = isset($data['shipping_courier']) ? sanitize_text_field($data['shipping_courier']) : '';
         $shipping_service_req = isset($data['shipping_service']) ? sanitize_text_field($data['shipping_service']) : '';
         $shipping_cost_req = isset($data['shipping_cost']) ? floatval($data['shipping_cost']) : 0;
+        $province_id_req = isset($data['province_id']) ? sanitize_text_field($data['province_id']) : '';
+        $city_id_req = isset($data['city_id']) ? sanitize_text_field($data['city_id']) : '';
+        $subdistrict_id_req = isset($data['subdistrict_id']) ? sanitize_text_field($data['subdistrict_id']) : '';
+        if ($shipping_mode === 'free' || $shipping_disabled) {
+            $shipping_cost_req = 0;
+        }
         $all_digital = true;
         foreach ($items as $it) {
             $pid = isset($it['id']) ? (int) $it['id'] : 0;
@@ -78,17 +95,32 @@ class CheckoutController
                 }
             }
         }
-        if (!$disable_shipping_for_digital || !$all_digital) {
-            if ($address_required === '') {
+        $shipping_required = !$shipping_disabled && (!$disable_shipping_for_digital || !$all_digital);
+        $address_required = !$all_digital && ($shipping_required || $collect_address);
+
+        if ($payment_method_req === 'cod' && (!$allow_cod || !$shipping_required)) {
+            return new WP_REST_RESPONSE(['message' => 'COD tidak tersedia tanpa ongkos kirim.'], 400);
+        }
+        if ($shipping_required) {
+            if ($address_required && $address_value === '') {
                 return new WP_REST_RESPONSE(['message' => 'Alamat wajib diisi'], 400);
             }
-            if ($shipping_courier_req === '' || $shipping_service_req === '' || $shipping_cost_req <= 0) {
+            if ($province_id_req === '' || $city_id_req === '' || $subdistrict_id_req === '') {
+                return new WP_REST_RESPONSE(['message' => 'Provinsi, kota, dan kecamatan wajib dipilih'], 400);
+            }
+            if ($shipping_courier_req === '' || $shipping_service_req === '') {
                 return new WP_REST_RESPONSE(['message' => 'Ongkir belum dipilih atau tidak valid'], 400);
             }
         } else {
+            if ($address_required && ($province_id_req === '' || $city_id_req === '' || $subdistrict_id_req === '')) {
+                return new WP_REST_RESPONSE(['message' => 'Provinsi, kota, dan kecamatan wajib dipilih'], 400);
+            }
             $shipping_courier_req = '';
             $shipping_service_req = '';
             $shipping_cost_req = 0;
+            if (!$address_required) {
+                $address_value = '';
+            }
         }
 
         if (!is_user_logged_in()) {
@@ -240,7 +272,7 @@ class CheckoutController
             'email' => $email,
             'phone' => $phone,
             'user_id' => is_user_logged_in() ? get_current_user_id() : 0,
-            'address' => isset($data['address']) ? sanitize_textarea_field($data['address']) : '',
+            'address' => $address_value,
             'province_id' => isset($data['province_id']) ? sanitize_text_field($data['province_id']) : '',
             'province_name' => isset($data['province_name']) ? sanitize_text_field($data['province_name']) : '',
             'city_id' => isset($data['city_id']) ? sanitize_text_field($data['city_id']) : '',

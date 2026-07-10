@@ -148,12 +148,34 @@ class SettingsController
         if (isset($params['shipping_origin_city'])) $settings['shipping_origin_city'] = sanitize_text_field($params['shipping_origin_city']);
         if (isset($params['shipping_origin_subdistrict'])) $settings['shipping_origin_subdistrict'] = sanitize_text_field($params['shipping_origin_subdistrict']);
 
+        if (isset($params['shipping_mode'])) {
+            $mode = sanitize_key((string) $params['shipping_mode']);
+            if (!in_array($mode, ['normal', 'free', 'off'], true)) {
+                $mode = !empty($params['disable_shipping']) && (string) $params['disable_shipping'] === '1' ? 'off' : 'normal';
+            }
+            $settings['shipping_mode'] = $mode;
+            $settings['disable_shipping'] = $mode === 'off' ? 1 : 0;
+        } elseif (isset($params['disable_shipping'])) {
+            $settings['disable_shipping'] = ((string) $params['disable_shipping'] === '1') ? 1 : 0;
+            $settings['shipping_mode'] = !empty($settings['disable_shipping']) ? 'off' : (isset($settings['shipping_mode']) && in_array($settings['shipping_mode'], ['normal', 'free', 'off'], true) ? $settings['shipping_mode'] : 'normal');
+        }
+
+        if (isset($params['collect_address'])) {
+            $settings['collect_address'] = ((string) $params['collect_address'] === '1') ? 1 : 0;
+        }
+        if (isset($params['allow_cod'])) {
+            $settings['allow_cod'] = ((string) $params['allow_cod'] === '1') ? 1 : 0;
+        }
+
         if (isset($params['shipping_couriers']) && is_array($params['shipping_couriers'])) {
             $settings['shipping_couriers'] = array_map('sanitize_text_field', $params['shipping_couriers']);
         }
 
         if (isset($params['disable_shipping_for_digital'])) {
             $settings['disable_shipping_for_digital'] = ((string) $params['disable_shipping_for_digital'] === '1') ? 1 : 0;
+        }
+        if (isset($params['disable_shipping'])) {
+            $settings['disable_shipping'] = ((string) $params['disable_shipping'] === '1') ? 1 : 0;
         }
 
         if (isset($params['custom_shipping_rates']) && is_array($params['custom_shipping_rates'])) {
@@ -827,12 +849,20 @@ class SettingsController
     {
         $settings = get_option('wp_store_settings', []);
         $payment_methods = $settings['payment_methods'] ?? [];
+        $allow_cod = function_exists('wp_store_shipping_allow_cod')
+            ? wp_store_shipping_allow_cod()
+            : (!isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0');
 
         $payment_methods = array_map(function ($method) {
             $nama = str_replace('_', ' ', $method);
             $nama = ucwords($nama);
             return ['id' => $method, 'name' => $nama];
         }, $payment_methods);
+        if (!$allow_cod) {
+            $payment_methods = array_values(array_filter($payment_methods, function ($method) {
+                return (string) ($method['id'] ?? '') !== 'cod';
+            }));
+        }
         return new WP_REST_Response([
             'success' => true,
             'data' => $payment_methods

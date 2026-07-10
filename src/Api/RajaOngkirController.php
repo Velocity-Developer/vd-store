@@ -110,6 +110,23 @@ class RajaOngkirController
     {
         $settings = get_option('wp_store_settings', []);
         $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
+        $shipping_mode = function_exists('wp_store_shipping_mode')
+            ? wp_store_shipping_mode()
+            : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
+        $shipping_disabled = $shipping_mode === 'off';
+        if ($shipping_disabled) {
+            return new WP_REST_Response([
+                'success' => true,
+                'data' => [
+                    'meta' => [
+                        'message' => 'Ongkos kirim dinonaktifkan.',
+                        'code' => 200,
+                        'status' => 'success'
+                    ],
+                    'data' => []
+                ]
+            ], 200);
+        }
         $api_key = $settings['rajaongkir_api_key'] ?? '';
         $origin_subdistrict = isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '';
         $params = $request->get_json_params();
@@ -152,6 +169,59 @@ class RajaOngkirController
                     ]
                 ], 200);
             }
+        }
+        if ($shipping_mode === 'free') {
+            $destination_subdistrict = isset($params['destination_subdistrict']) ? sanitize_text_field($params['destination_subdistrict']) : '';
+            $destination_city = isset($params['destination_city']) ? sanitize_text_field($params['destination_city']) : '';
+            $destination_province = isset($params['destination_province']) ? sanitize_text_field($params['destination_province']) : '';
+            $custom_services = [];
+            $custom_rates = isset($settings['custom_shipping_rates']) && is_array($settings['custom_shipping_rates']) ? $settings['custom_shipping_rates'] : [];
+            foreach ($custom_rates as $rate) {
+                $type = $rate['type'] ?? '';
+                $id = $rate['id'] ?? '';
+                $match = false;
+                if ($type === 'subdistrict' && (string) $id === (string) $destination_subdistrict) {
+                    $match = true;
+                } elseif ($type === 'city' && (string) $id === (string) $destination_city) {
+                    $match = true;
+                } elseif ($type === 'province' && (string) $id === (string) $destination_province) {
+                    $match = true;
+                }
+
+                if ($match) {
+                    $custom_services[] = [
+                        'name' => 'Custom Rate',
+                        'code' => 'custom',
+                        'service' => isset($rate['label']) && $rate['label'] ? $rate['label'] : 'FREE',
+                        'description' => isset($rate['name']) && $rate['name'] ? $rate['name'] : 'Gratis ongkir',
+                        'cost' => 0,
+                        'etd' => ''
+                    ];
+                }
+            }
+
+            if (empty($custom_services)) {
+                $custom_services[] = [
+                    'name' => 'Free Shipping',
+                    'code' => 'free',
+                    'service' => 'FREE',
+                    'description' => 'Gratis ongkir',
+                    'cost' => 0,
+                    'etd' => '',
+                ];
+            }
+
+            return new WP_REST_Response([
+                'success' => true,
+                'data' => [
+                    'meta' => [
+                        'message' => 'Success Calculate Cost',
+                        'code' => 200,
+                        'status' => 'success'
+                    ],
+                    'data' => $custom_services
+                ]
+            ], 200);
         }
         $destination_subdistrict = isset($params['destination_subdistrict']) ? sanitize_text_field($params['destination_subdistrict']) : '';
         $destination_city = isset($params['destination_city']) ? sanitize_text_field($params['destination_city']) : '';

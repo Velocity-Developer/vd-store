@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.2`
+Versi: `1.4.3`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -42,8 +42,16 @@ Pakai `VD Store` jika ingin membuat:
 - Ulasan produk dari halaman pesanan
 - Label manual produk
 - Dukungan dropship di checkout dan profil customer
-- Integrasi ongkir
+- Integrasi ongkir dengan mode normal, gratis ongkir, dan nonaktif
+- Pengaturan checkout untuk tetap mengumpulkan alamat saat ongkir gratis/nonaktif
 - Integrasi pembayaran manual dan gateway
+
+## Ringkasan update 1.4.3
+
+- Menambahkan mode pengiriman `normal`, `free`, dan `off`.
+- Menambahkan pengaturan data checkout `collect_address` dan `allow_cod`.
+- Memperjelas dokumentasi shortcode, termasuk atribut tombol add to cart `text`.
+- Menjaga kompatibilitas dengan addon `VD Marketplace`.
 
 ## Instalasi singkat
 
@@ -282,6 +290,12 @@ Catatan:
 [wp_store_add_to_cart id="123"]
 ```
 
+Dengan teks tombol khusus:
+
+```text
+[wp_store_add_to_cart id="123" text="Beli Sekarang"]
+```
+
 Dengan tombol icon saja:
 
 ```text
@@ -292,7 +306,7 @@ Kalau dipakai di file PHP theme atau template:
 
 ```php
 echo wp_store_add_to_cart_button(123, [
-    'text' => '',
+    'text' => 'Beli Sekarang',
     'class' => 'btn btn-primary btn-sm',
 ]);
 ```

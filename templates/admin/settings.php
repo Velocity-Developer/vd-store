@@ -311,7 +311,41 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                     <p class="wp-store-helper">Konfigurasi API VD Ongkir dan metode pengiriman.</p>
 
                     <div class="wp-store-box-gray wp-store-mt-4">
-                        <h4 class="wp-store-subtitle-small">Opsi Pengiriman</h4>
+                        <h4 class="wp-store-subtitle-small">Ongkos Kirim</h4>
+                        <?php
+                        $shipping_mode = isset($settings['shipping_mode']) ? (string) $settings['shipping_mode'] : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
+                        if (!in_array($shipping_mode, ['normal', 'free', 'off'], true)) {
+                            $shipping_mode = !empty($settings['disable_shipping']) ? 'off' : 'normal';
+                        }
+                        $collect_address_checked = !isset($settings['collect_address']) || (string) $settings['collect_address'] !== '0';
+                        $allow_cod_checked = !isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0' || $shipping_mode === 'off';
+                        ?>
+                        <select name="shipping_mode" id="shipping_mode" class="wp-store-input">
+                            <option value="normal" <?php echo $shipping_mode === 'normal' ? 'selected' : ''; ?>>Normal</option>
+                            <option value="free" <?php echo $shipping_mode === 'free' ? 'selected' : ''; ?>>Gratis ongkir</option>
+                            <option value="off" <?php echo $shipping_mode === 'off' ? 'selected' : ''; ?>>Nonaktif</option>
+                        </select>
+                        <p class="wp-store-helper">Mode normal selalu meminta alamat untuk produk fisik. Mode gratis tetap menampilkan opsi ongkir dengan biaya Rp0. Mode nonaktif menyembunyikan kalkulasi ongkir.</p>
+                    </div>
+
+                    <div class="wp-store-box-gray wp-store-mt-4">
+                        <h4 class="wp-store-subtitle-small">Data Checkout</h4>
+                        <label class="wp-store-checkbox-label">
+                            <input type="hidden" name="collect_address" value="0">
+                            <input type="checkbox" name="collect_address" value="1" <?php echo $collect_address_checked ? 'checked' : ''; ?>>
+                            Tetap minta alamat pelanggan saat ongkir gratis/nonaktif
+                        </label>
+                        <p class="wp-store-helper">Tidak memengaruhi mode normal, karena mode normal selalu membutuhkan alamat dan lokasi tujuan untuk menghitung ongkir.</p>
+                        <label class="wp-store-checkbox-label wp-store-mt-2">
+                            <input type="hidden" name="allow_cod" value="0">
+                            <input type="checkbox" name="allow_cod" value="1" <?php echo $allow_cod_checked ? 'checked' : ''; ?>>
+                            Izinkan COD
+                        </label>
+                        <p class="wp-store-helper">COD tetap tersedia di mode normal dan gratis, tetapi otomatis disembunyikan saat pengiriman nonaktif.</p>
+                    </div>
+
+                    <div class="wp-store-box-gray wp-store-mt-4">
+                        <h4 class="wp-store-subtitle-small">Opsi Pengiriman Digital</h4>
                         <label class="wp-store-checkbox-label">
                             <input type="hidden" name="disable_shipping_for_digital" value="0">
                             <input type="checkbox" name="disable_shipping_for_digital" value="1" <?php echo !empty($settings['disable_shipping_for_digital']) ? 'checked' : ''; ?>>

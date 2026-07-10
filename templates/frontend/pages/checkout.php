@@ -1,11 +1,24 @@
 <?php $settings = get_option('wp_store_settings', []);
-$disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']); ?>
+$disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
+$shipping_mode = isset($shipping_mode) ? (string) $shipping_mode : (function_exists('wp_store_shipping_mode') ? wp_store_shipping_mode() : (!empty($settings['disable_shipping']) ? 'off' : 'normal'));
+$collect_address = isset($collect_address) ? (bool) $collect_address : (function_exists('wp_store_shipping_collect_address') ? wp_store_shipping_collect_address() : (!isset($settings['collect_address']) || (string) $settings['collect_address'] !== '0'));
+$allow_cod = isset($allow_cod) ? (bool) $allow_cod : (function_exists('wp_store_shipping_allow_cod') ? wp_store_shipping_allow_cod() : (!isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0'));
+$shipping_disabled = ($shipping_mode === 'off'); ?>
 <script>
     if (typeof window.wpStoreSettings === 'undefined') {
         window.wpStoreSettings = {
             restUrl: '<?php echo esc_url_raw(rest_url('wp-store/v1/')); ?>',
-            nonce: '<?php echo esc_js($nonce); ?>'
+            nonce: '<?php echo esc_js($nonce); ?>',
+            shippingMode: '<?php echo esc_js($shipping_mode); ?>',
+            shippingCollectAddress: <?php echo $collect_address ? 'true' : 'false'; ?>,
+            shippingAllowCod: <?php echo $allow_cod ? 'true' : 'false'; ?>,
+            shippingDisabled: <?php echo $shipping_disabled ? 'true' : 'false'; ?>
         };
+    } else {
+        window.wpStoreSettings.shippingMode = '<?php echo esc_js($shipping_mode); ?>';
+        window.wpStoreSettings.shippingCollectAddress = <?php echo $collect_address ? 'true' : 'false'; ?>;
+        window.wpStoreSettings.shippingAllowCod = <?php echo $allow_cod ? 'true' : 'false'; ?>;
+        window.wpStoreSettings.shippingDisabled = <?php echo $shipping_disabled ? 'true' : 'false'; ?>;
     }
 </script>
 <script>
@@ -33,6 +46,10 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 }, 0);
             },
             paymentMethods: [],
+            shippingMode: '<?php echo esc_js($shipping_mode); ?>',
+            collectAddress: <?php echo $collect_address ? 'true' : 'false'; ?>,
+            allowCod: <?php echo $allow_cod ? 'true' : 'false'; ?>,
+            disableShipping: <?php echo $shipping_disabled ? 'true' : 'false'; ?>,
             disableShippingForDigital: <?php echo $disable_shipping_for_digital ? 'true' : 'false'; ?>,
             paymentMethod: 'bank_transfer',
             name: '',
@@ -143,6 +160,9 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                     const data = await res.json();
                     if (res.ok && data && data.success && Array.isArray(data.data)) {
                         this.paymentMethods = data.data;
+                        if (!this.allowCod && this.isCodPayment()) {
+                            this.paymentMethod = this.paymentMethods[0] ? this.paymentMethods[0].id : 'bank_transfer';
+                        }
 
                     }
                 } catch (e) {
@@ -155,8 +175,40 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 if (selected.length === 0) return false;
                 return selected.every(i => !!i.is_digital);
             },
+            isShippingOff() {
+                return this.disableShipping || this.shippingMode === 'off';
+            },
+            isShippingFree() {
+                return this.shippingMode === 'free';
+            },
+            requiresShipping() {
+                return !this.isShippingOff() && Array.isArray(this.shippingGroups) && this.shippingGroups.length > 0;
+            },
+            shouldCollectAddress() {
+                return !this.allDigitalSelected() && (!this.shouldHideShipping() || this.collectAddress);
+            },
             shouldHideShipping() {
-                return this.disableShippingForDigital && this.allDigitalSelected();
+                return this.isShippingOff() || (this.disableShippingForDigital && this.allDigitalSelected());
+            },
+            shouldShowDestinationFields() {
+                return this.shouldCollectAddress() || !this.shouldHideShipping();
+            },
+            shouldShowShippingOptions() {
+                return !this.shouldHideShipping();
+            },
+            shouldShowAddressFields() {
+                return this.shouldCollectAddress();
+            },
+            shippingStatusMessage() {
+                if (this.isShippingOff()) {
+                    return this.shouldCollectAddress()
+                        ? 'Ongkos kirim dinonaktifkan oleh toko. Alamat tetap dikumpulkan sebagai data pesanan.'
+                        : 'Ongkos kirim dinonaktifkan oleh toko.';
+                }
+                if (this.disableShippingForDigital && this.allDigitalSelected()) {
+                    return 'Keranjang ini hanya berisi produk digital. Alamat dan ongkir tidak diperlukan.';
+                }
+                return '';
             },
             async calculateAllShipping() {
                 if (this.shouldHideShipping()) {
@@ -206,7 +258,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             courier: s.code || '',
                             service: s.service || '',
                             description: s.description || '',
-                            cost: s.cost || 0,
+                            cost: Math.max(0, Number(s.cost || 0)),
                             etd: s.etd || '',
                             name: s.name || ''
                         }));
@@ -215,12 +267,12 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 finally {
                     this.isLoadingShipping = false;
                 }
-                const first = this.shippingOptions.find(s => s.cost > 0) || this.shippingOptions[0] || null;
+                const first = this.shippingOptions[0] || null;
                 if (first) {
                     this.selectedShippingKey = first.courier + ':' + (first.service || '');
                     this.shippingCourier = first.courier || '';
                     this.shippingService = first.service || '';
-                    this.shippingCost = first.cost || 0;
+                    this.shippingCost = Math.max(0, Number(first.cost || 0));
                 }
                 this.recomputeAllow();
             },
@@ -232,7 +284,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 if (opt) {
                     this.shippingCourier = opt.courier || '';
                     this.shippingService = opt.service || '';
-                    this.shippingCost = opt.cost || 0;
+                    this.shippingCost = Math.max(0, Number(opt.cost || 0));
                 }
             },
             totalWithShipping() {
@@ -248,8 +300,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                     const c = parts[0] || '';
                     const svc = parts[1] || '';
                     const opt = this.shippingOptions.find(s => String(s.courier) === String(c) && String(s.service || '') === String(svc));
-                    const costNum = opt ? (typeof opt.cost === 'number' ? opt.cost : parseFloat(opt.cost || 0)) : 0;
-                    if (!opt || isNaN(costNum) || costNum <= 0) return 'Wajib pilih ongkir.';
+                    if (!opt) return 'Wajib pilih ongkir.';
                 }
                 return '';
             },
@@ -261,6 +312,12 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                 if (!this.cart.find(i => i.selected !== false)) {
                     return ['Tidak ada produk yang dipilih.'];
                 }
+                if (this.shouldCollectAddress() && !String(this.address || '').trim()) {
+                    reasons.push('Alamat wajib diisi.');
+                }
+                if (this.shouldCollectAddress() && (!this.selectedProvince || !this.selectedCity || !this.selectedSubdistrict)) {
+                    reasons.push('Provinsi, kota, dan kecamatan wajib dipilih.');
+                }
                 if (!this.shouldHideShipping() && Array.isArray(this.shippingOptions) && this.shippingOptions.length > 0) {
                     if (!this.selectedShippingKey) {
                         reasons.push('Wajib pilih ongkir.');
@@ -269,8 +326,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                         const c = parts[0] || '';
                         const svc = parts[1] || '';
                         const opt = this.shippingOptions.find(s => String(s.courier) === String(c) && String(s.service || '') === String(svc));
-                        const costNum = opt ? (typeof opt.cost === 'number' ? opt.cost : parseFloat(opt.cost || 0)) : 0;
-                        if (!opt || isNaN(costNum) || costNum <= 0) reasons.push('Ongkir tidak valid.');
+                        if (!opt) reasons.push('Ongkir tidak valid.');
                     }
                 }
                 return reasons;
@@ -513,6 +569,12 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
             async submit() {
                 if (this._submitGuard) return;
                 this._submitGuard = true;
+                if (!this.allowCod && this.isCodPayment()) {
+                    this.form.payment_method = defaultPaymentMethod;
+                }
+                if (this.shouldHideShipping() && this.isCodPayment()) {
+                    this.form.payment_method = defaultPaymentMethod;
+                }
                 const err = this.getValidationError();
                 if (err) {
                     this.message = err;
@@ -534,14 +596,14 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             name: this.name,
                             email: this.email,
                             phone: this.phone,
-                            address: this.shouldHideShipping() ? '' : this.address,
-                            province_id: this.shouldHideShipping() ? '' : (this.selectedProvince || ''),
-                            province_name: this.shouldHideShipping() ? '' : ((this.provinces.find(p => String(p.province_id) === String(this.selectedProvince)) || {}).province || ''),
-                            city_id: this.shouldHideShipping() ? '' : (this.selectedCity || ''),
-                            city_name: this.shouldHideShipping() ? '' : ((this.cities.find(c => String(c.city_id) === String(this.selectedCity)) || {}).city_name || ''),
-                            subdistrict_id: this.shouldHideShipping() ? '' : (this.selectedSubdistrict || ''),
-                            subdistrict_name: this.shouldHideShipping() ? '' : ((this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || ''),
-                            postal_code: this.shouldHideShipping() ? '' : (this.postalCode || ''),
+                            address: this.shouldCollectAddress() ? this.address : '',
+                            province_id: this.shouldShowDestinationFields() ? (this.selectedProvince || '') : '',
+                            province_name: this.shouldShowDestinationFields() ? ((this.provinces.find(p => String(p.province_id) === String(this.selectedProvince)) || {}).province || '') : '',
+                            city_id: this.shouldShowDestinationFields() ? (this.selectedCity || '') : '',
+                            city_name: this.shouldShowDestinationFields() ? ((this.cities.find(c => String(c.city_id) === String(this.selectedCity)) || {}).city_name || '') : '',
+                            subdistrict_id: this.shouldShowDestinationFields() ? (this.selectedSubdistrict || '') : '',
+                            subdistrict_name: this.shouldShowDestinationFields() ? ((this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || '') : '',
+                            postal_code: this.shouldCollectAddress() ? (this.postalCode || '') : '',
                             notes: this.notes || '',
                             shipping_courier: this.shouldHideShipping() ? '' : (this.shippingCourier || String(this.selectedShippingKey || '').split(':')[0] || ''),
                             shipping_service: this.shouldHideShipping() ? '' : (this.shippingService || ''),
@@ -622,7 +684,9 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                         await this.fetchProfile();
                         await this.fetchAddresses();
                     }
-                    await this.loadProvinces();
+                    if (this.shouldShowDestinationFields()) {
+                        await this.loadProvinces();
+                    }
                 } catch (e) {
                     console.error(e);
                 } finally {
@@ -788,67 +852,76 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                             </div>
                         </div>
                     <?php endif; ?>
-                    <div class="wps-card wps-mb-4" x-show="!shouldHideShipping()">
+                    <div class="wps-card wps-mb-4" x-show="shouldHideShipping()">
+                        <div class="wps-p-4">
+                            <div class="wps-callout wps-mb-0 wps-text-sm" x-text="shippingStatusMessage()"></div>
+                        </div>
+                    </div>
+                    <div class="wps-card wps-mb-4" x-show="shouldShowAddressFields() || shouldShowDestinationFields()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Alamat Penerima</div>
-                            <div class="wps-form-group" x-show="addresses && addresses.length">
-                                <div class="wps-flex wps-flex-wrap" style="gap:8px;">
-                                    <template x-for="addr in addresses" :key="addr.id">
-                                        <button type="button"
-                                            @click="selectedAddressId = String(addr.id); useAddressById()"
-                                            class="wps-btn wps-btn-sm"
-                                            :disabled="String(importingAddresses) === String(addr.id)"
-                                            :class="String(selectedAddressId) === String(addr.id) ? 'wps-btn-dark' : 'wps-btn-primary'">
-                                            <span x-show="importingAddresses !== String(addr.id) ">
-                                                <?php echo wps_icon(['name' => 'map-pin', 'size' => 16, 'class' => 'wps-mr-2', 'border-color' => '#fff']); ?>
-                                            </span>
-                                            <span x-show="importingAddresses === String(addr.id) ">
-                                                <?php echo wps_icon(['name' => 'spinner', 'size' => 16, 'class' => 'wps-mr-2']); ?>
-                                            </span>
-                                            <span
-                                                :style="String(selectedAddressId) === String(addr.id) ? 'color:#fff;' : 'color:#1f2937;'"
-                                                x-text="(addr.label ? addr.label + ' - ' : '') + (addr.city_name || '')"></span>
-                                        </button>
-                                    </template>
+                            <div x-show="shouldShowAddressFields()">
+                                <div class="wps-form-group" x-show="addresses && addresses.length">
+                                    <div class="wps-flex wps-flex-wrap" style="gap:8px;">
+                                        <template x-for="addr in addresses" :key="addr.id">
+                                            <button type="button"
+                                                @click="selectedAddressId = String(addr.id); useAddressById()"
+                                                class="wps-btn wps-btn-sm"
+                                                :disabled="String(importingAddresses) === String(addr.id)"
+                                                :class="String(selectedAddressId) === String(addr.id) ? 'wps-btn-dark' : 'wps-btn-primary'">
+                                                <span x-show="importingAddresses !== String(addr.id) ">
+                                                    <?php echo wps_icon(['name' => 'map-pin', 'size' => 16, 'class' => 'wps-mr-2', 'border-color' => '#fff']); ?>
+                                                </span>
+                                                <span x-show="importingAddresses === String(addr.id) ">
+                                                    <?php echo wps_icon(['name' => 'spinner', 'size' => 16, 'class' => 'wps-mr-2']); ?>
+                                                </span>
+                                                <span
+                                                    :style="String(selectedAddressId) === String(addr.id) ? 'color:#fff;' : 'color:#1f2937;'"
+                                                    x-text="(addr.label ? addr.label + ' - ' : '') + (addr.city_name || '')"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="wps-form-group">
+                                    <label class="wps-label">Alamat Lengkap</label>
+                                    <textarea class="wps-textarea" rows="3" x-model="address" id="checkout-address" name="address"></textarea>
+                                </div>
+                                <div class="wps-form-group">
+                                    <label class="wps-label">Kode Pos</label>
+                                    <input class="wps-input" type="text" x-model="postalCode" placeholder="" id="checkout-postal-code" name="postal_code">
                                 </div>
                             </div>
-                            <div class="wps-form-group">
-                                <label class="wps-label">Provinsi</label>
-                                <select class="wps-select" x-model="selectedProvince" @change="selectedCity=''; selectedSubdistrict=''; postalCode=''; shippingOptions=[]; selectedShippingKey=''; loadCities()" :disabled="isLoadingProvinces" id="checkout-province" name="province_id">
-                                    <option value="">-- Pilih Provinsi --</option>
-                                    <template x-for="prov in provinces" :key="prov.province_id">
-                                        <option :value="prov.province_id" x-text="prov.province"></option>
-                                    </template>
-                                </select>
-                                <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingProvinces">Memuat provinsi...</div>
-                            </div>
-                            <div class="wps-form-group">
-                                <label class="wps-label">Kota/Kabupaten</label>
-                                <select class="wps-select" x-model="selectedCity" @change="selectedSubdistrict=''; shippingOptions=[]; selectedShippingKey=''; postalCode=(cities.find(c => String(c.city_id) === String(selectedCity)) || {}).postal_code || ''; loadSubdistricts()" :disabled="!selectedProvince || isLoadingCities" id="checkout-city" name="city_id">
-                                    <option value="">-- Pilih Kota/Kabupaten --</option>
-                                    <template x-for="c in cities" :key="c.city_id">
-                                        <option :value="c.city_id" x-text="c.city_name"></option>
-                                    </template>
-                                </select>
-                                <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingCities">Memuat kota...</div>
-                            </div>
-                            <div class="wps-form-group">
-                                <label class="wps-label">Kecamatan</label>
-                                <select class="wps-select" x-model="selectedSubdistrict" :disabled="!selectedCity || isLoadingSubdistricts || isLoadingShipping" @change="calculateAllShipping()" id="checkout-subdistrict" name="subdistrict_id">
-                                    <option value="">-- Pilih Kecamatan --</option>
-                                    <template x-for="s in subdistricts" :key="s.subdistrict_id">
-                                        <option :value="s.subdistrict_id" x-text="s.subdistrict_name"></option>
-                                    </template>
-                                </select>
-                                <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingSubdistricts">Memuat kecamatan...</div>
-                            </div>
-                            <div class="wps-form-group">
-                                <label class="wps-label">Alamat Lengkap</label>
-                                <textarea class="wps-textarea" rows="3" x-model="address" id="checkout-address" name="address"></textarea>
-                            </div>
-                            <div class="wps-form-group">
-                                <label class="wps-label">Kode Pos</label>
-                                <input class="wps-input" type="text" x-model="postalCode" placeholder="" id="checkout-postal-code" name="postal_code">
+                            <div x-show="shouldShowDestinationFields()">
+                                <div class="wps-form-group">
+                                    <label class="wps-label">Provinsi</label>
+                                    <select class="wps-select" x-model="selectedProvince" @change="selectedCity=''; selectedSubdistrict=''; postalCode=''; shippingOptions=[]; selectedShippingKey=''; loadCities()" :disabled="isLoadingProvinces" id="checkout-province" name="province_id">
+                                        <option value="">-- Pilih Provinsi --</option>
+                                        <template x-for="prov in provinces" :key="prov.province_id">
+                                            <option :value="prov.province_id" x-text="prov.province"></option>
+                                        </template>
+                                    </select>
+                                    <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingProvinces">Memuat provinsi...</div>
+                                </div>
+                                <div class="wps-form-group">
+                                    <label class="wps-label">Kota/Kabupaten</label>
+                                    <select class="wps-select" x-model="selectedCity" @change="selectedSubdistrict=''; shippingOptions=[]; selectedShippingKey=''; postalCode=(cities.find(c => String(c.city_id) === String(selectedCity)) || {}).postal_code || ''; loadSubdistricts()" :disabled="!selectedProvince || isLoadingCities" id="checkout-city" name="city_id">
+                                        <option value="">-- Pilih Kota/Kabupaten --</option>
+                                        <template x-for="c in cities" :key="c.city_id">
+                                            <option :value="c.city_id" x-text="c.city_name"></option>
+                                        </template>
+                                    </select>
+                                    <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingCities">Memuat kota...</div>
+                                </div>
+                                <div class="wps-form-group">
+                                    <label class="wps-label">Kecamatan</label>
+                                    <select class="wps-select" x-model="selectedSubdistrict" :disabled="!selectedCity || isLoadingSubdistricts || isLoadingShipping" @change="calculateAllShipping()" id="checkout-subdistrict" name="subdistrict_id">
+                                        <option value="">-- Pilih Kecamatan --</option>
+                                        <template x-for="s in subdistricts" :key="s.subdistrict_id">
+                                            <option :value="s.subdistrict_id" x-text="s.subdistrict_name"></option>
+                                        </template>
+                                    </select>
+                                    <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingSubdistricts">Memuat kecamatan...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -863,7 +936,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                     </div>
                 </div>
                 <div>
-                    <div class="wps-card wps-mb-4" x-show="!shouldHideShipping()">
+                    <div class="wps-card wps-mb-4" x-show="shouldShowShippingOptions()">
                         <div class="wps-p-4">
                             <div class="wps-text-lg wps-font-medium wps-mb-4 wps-text-bold">Metode Pengiriman</div>
                             <div class="wps-mb-2">
@@ -890,7 +963,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-2" x-show="!originSubdistrict">Asal pengiriman belum diatur di pengaturan.</div>
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="Array.isArray(shippingCouriers) && shippingCouriers.length === 0">Tidak ada kurir aktif di pengaturan.</div>
                                 <div class="wps-text-xxs wps-text-gray-500 wps-mt-1" x-show="!selectedSubdistrict">Lengkapi alamat pengiriman untuk menampilkan opsi pengiriman.</div>
-                                <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="selectedSubdistrict && !isLoadingShipping && shippingOptions.length === 0">Tidak ada layanan tersedia, ubah kurir atau kecamatan.</div>
+                                <div class="wps-text-xs wps-text-gray-500 wps-mt-1" x-show="selectedSubdistrict && !isLoadingShipping && shippingOptions.length === 0 && !isShippingFree()">Tidak ada layanan tersedia, ubah kurir atau kecamatan.</div>
                             </div>
                         </div>
                     </div>
@@ -939,7 +1012,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                         <span class="wps-text-sm wps-text-green-700" x-text="'- ' + formatPrice(discountAmount)"></span>
                                     </div>
                                 </template>
-                                <template x-if="shippingCost && !shouldHideShipping()">
+                                <template x-if="!shouldHideShipping()">
                                     <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
                                         <span class="wps-text-sm wps-text-gray-500">
                                             Ongkir (
@@ -949,7 +1022,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                             <span x-text="shippingService"></span>
                                             )
                                         </span>
-                                        <span class="wps-text-sm wps-text-gray-900" x-text="formatPrice(shippingCost)"></span>
+                                        <span class="wps-text-sm wps-text-gray-900" x-text="formatPrice(shippingCost || 0)"></span>
                                     </div>
                                 </template>
                                 <div class="wps-flex wps-justify-between wps-items-center wps-mt-2">
@@ -962,6 +1035,7 @@ $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']
                                 <div class="wps-flex wps-items-center wps-gap-2 wps-mb-2 wps-flex-wrap">
                                     <template x-for="method in paymentMethods" :key="method.id">
                                         <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm"
+                                            x-show="method.id !== 'cod' || (allowCod && !shouldHideShipping())"
                                             :style="paymentMethod === method.id ? 'border-left:4px solid #3b82f6;background:#f0f9ff;' : ''"
                                             @click="paymentMethod = method.id">
                                             <span x-show="'bank_transfer' === method.id">
