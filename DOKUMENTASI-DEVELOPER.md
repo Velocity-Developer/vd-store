@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.4.3`
+Versi plugin: `1.4.4`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -598,6 +598,7 @@ Semua shortcode di bawah didaftarkan di `Shortcode.php`.
 | `[wp_store_filters]` | `render_filters()` | `filters.php` | Sidebar filter shop. |
 | `[wp_store_shipping_checker]` | `render_shipping_checker()` | `shipping-checker.php` | Cek ongkir. |
 | `[wp_store_categories]` | `render_categories()` | `categories-list.php` | Daftar kategori. |
+| `[wp_store_taxonomies_carousel]` | `render_taxonomies_carousel()` | `taxonomy-carousel.php` | Carousel visual kategori atau brand dengan gambar taxonomy. |
 | `[wp_store_sosmed]` | `render_sosmed()` | method langsung | Sosial media toko. |
 | `[wp_store_contact]` | `render_contact()` | method langsung | Kontak toko. |
 | `[wp_store_bank_accounts]` | `render_bank_accounts()` | method langsung | Daftar rekening toko. |
@@ -640,11 +641,14 @@ Default di bawah mengikuti `shortcode_atts()` di `Shortcode.php`. Nilai `id="123
 | `[wp_store_link_profile]` | `[wp_store_link_profile size="32"]` | `size` dibatasi 16 sampai 160 px. |
 | `[wp_store_shipping_checker]` | `[wp_store_shipping_checker]` | Tidak punya atribut shortcode khusus; konfigurasi ongkir dari setting toko. |
 | `[wp_store_categories]` | `[wp_store_categories hide_empty="0" orderby="name" order="ASC"]` | Membaca taxonomy `store_product_cat`. |
+| `[wp_store_taxonomies_carousel]` | `[wp_store_taxonomies_carousel taxonomy="store_product_cat" title="Kategori Pilihan" columns="10" rows="2" limit="40" image_size="large" hide_empty="0" orderby="name" order="ASC"]` | `taxonomy` default `store_product_cat`; gunakan `taxonomy="brand"` untuk brand. `image_size` default `large` dan dapat memakai ukuran gambar WordPress lain, misalnya `medium`. Gambar diatur pada edit kategori/brand. `limit="0"` membaca semua term. |
 | `[wp_store_sosmed]` | `[wp_store_sosmed facebook="https://facebook.com/..." instagram="https://instagram.com/..." twitter="https://x.com/..." youtube="https://youtube.com/..." caption-facebook="Find us on"]` | Atribut URL sosial media opsional; caption per platform memakai prefix `caption-`. |
 | `[wp_store_contact]` | `[wp_store_contact style="true"]` | `style="false"` memakai gaya link sederhana. |
 | `[wp_store_bank_accounts]` | `[wp_store_bank_accounts]` | Membaca daftar rekening dari pengaturan toko. |
 | `[wp_store_couriers]` | `[wp_store_couriers height="30" gap="10" class=""]` | Menampilkan logo kurir aktif dari pengaturan pengiriman. |
 | `[wp_store_captcha]` | `[wp_store_captcha target-button="#submit-order" target_button=""]` | Alias shortcode: `[wp-store-captcha]`; `target-button` dan `target_button` sama-sama didukung. |
+
+Gambar kategori dan brand dikelola dari halaman taxonomy VD Store. Gambar dapat diubah melalui form tambah/edit maupun **Quick Edit**; term tanpa gambar memakai `assets/frontend/img/empty.png` pada kolom admin.
 
 ## 7. Kalau mau edit fitur tertentu, mulai dari file ini
 

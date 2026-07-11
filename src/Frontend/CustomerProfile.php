@@ -139,7 +139,7 @@ class CustomerProfile
 
         ob_start();
         ?>
-        <button @click="tab = '<?php echo esc_js($key); ?>'" :class="{ 'active': tab === '<?php echo esc_js($key); ?>' }" class="wps-tab wps-flex wps-align-items-center">
+        <button @click="tab = '<?php echo esc_js($key); ?>'; profileMenuOpen = false" :class="{ 'active': tab === '<?php echo esc_js($key); ?>' }" class="wps-tab wps-flex wps-align-items-center">
             <?php echo $icon_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
             <?php echo esc_html($label); ?>
             <?php if (!empty($tab['badge_binding'])) : ?>
@@ -294,49 +294,29 @@ class CustomerProfile
             }
         </script>
 
-        <div class="wps-profile-wrapper" x-data="storeCustomerProfile()" x-init="init()">
-            <div class="wps-card wps-p-4" style="margin-bottom: 1rem;">
-                <div id="wps-profile-tabs" class="wps-tabs">
+        <div class="wps-profile-wrapper" x-data="storeCustomerProfile()" x-init="init()" @keydown.escape.window="profileMenuOpen = false">
+            <div class="wps-profile-layout">
+                <aside class="wps-profile-sidebar" :class="{ 'is-open': profileMenuOpen }">
+                    <button type="button" class="wps-profile-sidebar__backdrop" @click="profileMenuOpen = false" aria-label="Tutup menu profil"></button>
+                    <div class="wps-profile-sidebar__panel">
+                        <div class="wps-profile-sidebar__mobile-header">
+                            <span>Menu Profil</span>
+                            <button type="button" class="wps-profile-sidebar__close" @click="profileMenuOpen = false" aria-label="Tutup menu">&times;</button>
+                        </div>
+                        <nav id="wps-profile-navigation" class="wps-profile-navigation" aria-label="Menu profil">
                     <?php foreach ($profile_tabs as $profile_tab) : ?>
                         <?php echo $this->render_tab_button($profile_tab); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                     <?php endforeach; ?>
                     <?php do_action('wp_store_profile_additional_tabs'); ?>
-                    <a href="<?php echo esc_url(wp_logout_url(site_url('/'))); ?>" class="wps-tab wps-ml-auto wps-flex wps-align-items-center"><?php echo wps_icon(['name' => 'logout', 'size' => 16, 'class' => 'wps-mr-2']); ?>Logout</a>
-                </div>
-                <script>
-                    (function() {
-                        var el = document.getElementById('wps-profile-tabs');
-                        if (!el) return;
-                        var down = false;
-                        var startX = 0;
-                        var startScroll = 0;
-                        el.addEventListener('mousedown', function(e) {
-                            if (e.button !== 0) return;
-                            down = true;
-                            startX = e.pageX;
-                            startScroll = el.scrollLeft;
-                            el.style.cursor = 'grabbing';
-                        });
-                        document.addEventListener('mousemove', function(e) {
-                            if (!down) return;
-                            var dx = e.pageX - startX;
-                            el.scrollLeft = startScroll - dx;
-                            e.preventDefault();
-                        });
-                        document.addEventListener('mouseup', function() {
-                            if (!down) return;
-                            down = false;
-                            el.style.cursor = 'grab';
-                        });
-                        el.addEventListener('mouseleave', function() {
-                            if (!down) return;
-                            down = false;
-                            el.style.cursor = 'grab';
-                        });
-                        el.style.cursor = 'grab';
-                    })();
-                </script>
-            </div>
+                            <a href="<?php echo esc_url(wp_logout_url(site_url('/'))); ?>" class="wps-tab wps-profile-navigation__logout wps-flex wps-align-items-center"><?php echo wps_icon(['name' => 'logout', 'size' => 16, 'class' => 'wps-mr-2']); ?>Logout</a>
+                        </nav>
+                    </div>
+                </aside>
+
+                <main class="wps-profile-content">
+                    <button type="button" class="wps-profile-mobile-toggle" @click="profileMenuOpen = true" :aria-expanded="profileMenuOpen.toString()" aria-controls="wps-profile-navigation" aria-label="Buka menu profil">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
 
             <!-- Notification -->
             <div x-show="message" x-transition class="wps-alert wps-alert-success" x-text="message"></div>
@@ -766,12 +746,15 @@ class CustomerProfile
                 <?php echo $this->render_profile_panel($profile_panel, ['user_id' => get_current_user_id()]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
             <?php endforeach; ?>
             <?php do_action('wp_store_profile_additional_panels'); ?>
+                </main>
+            </div>
         </div>
 
         <script>
             document.addEventListener('alpine:init', () => {
                 Alpine.data('storeCustomerProfile', () => ({
                     tab: 'profile',
+                    profileMenuOpen: false,
                     loading: false,
                     message: '',
                     toastShow: false,

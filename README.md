@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.3`
+Versi: `1.4.4`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -46,12 +46,12 @@ Pakai `VD Store` jika ingin membuat:
 - Pengaturan checkout untuk tetap mengumpulkan alamat saat ongkir gratis/nonaktif
 - Integrasi pembayaran manual dan gateway
 
-## Ringkasan update 1.4.3
+## Ringkasan update 1.4.4
 
-- Menambahkan mode pengiriman `normal`, `free`, dan `off`.
-- Menambahkan pengaturan data checkout `collect_address` dan `allow_cod`.
-- Memperjelas dokumentasi shortcode, termasuk atribut tombol add to cart `text`.
-- Menjaga kompatibilitas dengan addon `VD Marketplace`.
+- Menambahkan gambar taxonomy kategori dan brand, termasuk Quick Edit.
+- Menambahkan shortcode carousel taxonomy untuk kategori atau brand.
+- Mengubah profil customer menjadi sidebar desktop dan offcanvas mobile.
+- Menjaga navigasi seller `VD Marketplace` tetap kompatibel pada profil customer.
 
 ## Instalasi singkat
 
@@ -272,6 +272,7 @@ Catatan:
 | `[wp_store_captcha]` | Komponen captcha. Memakai Velocity Addons jika aktif, fallback ke captcha bawaan VD Store jika tidak. |
 | `[wp-store-captcha]` | Alias dari `[wp_store_captcha]`. |
 | `[wp_store_categories]` | Daftar kategori produk. |
+| `[wp_store_taxonomies_carousel]` | Carousel kategori atau brand dengan gambar taxonomy. |
 | `[wp_store_sosmed]` | Daftar sosial media. |
 | `[wp_store_contact]` | Informasi kontak toko. |
 | `[wp_store_bank_accounts]` | Daftar rekening toko. |

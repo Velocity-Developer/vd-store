@@ -62,6 +62,9 @@ class Plugin
 
         $coupon_columns = new \WpStore\Admin\CouponColumns();
         $coupon_columns->register();
+
+        $taxonomy_images = new \WpStore\Admin\TaxonomyImages();
+        $taxonomy_images->register();
     }
 
     private function load_api()

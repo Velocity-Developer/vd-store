@@ -48,6 +48,7 @@ class Shortcode
         add_shortcode('wp_store_shipping_checker', [$this, 'render_shipping_checker']);
         add_shortcode('wp_store_catalog', [$this, 'render_catalog']);
         add_shortcode('wp_store_categories', [$this, 'render_categories']);
+        add_shortcode('wp_store_taxonomies_carousel', [$this, 'render_taxonomies_carousel']);
         add_shortcode('wp_store_sosmed', [$this, 'render_sosmed']);
         add_shortcode('wp_store_contact', [$this, 'render_contact']);
         add_shortcode('wp_store_bank_accounts', [$this, 'render_bank_accounts']);
@@ -432,6 +433,88 @@ class Shortcode
 
         return Template::render('components/categories-list', [
             'categories' => $categories
+        ]);
+    }
+
+    public function render_taxonomies_carousel($atts = [], $content = null, $tag = '')
+    {
+        $atts = shortcode_atts([
+            'taxonomy' => 'store_product_cat',
+            'title' => '',
+            'hide_empty' => '0',
+            'orderby' => 'name',
+            'order' => 'ASC',
+            'columns' => 10,
+            'rows' => 2,
+            'limit' => 40,
+            'image_size' => 'large',
+        ], $atts, $tag);
+
+        $taxonomy_key = sanitize_key((string) $atts['taxonomy']);
+        $taxonomy = $taxonomy_key === 'brand' ? 'brand' : 'store_product_cat';
+        $default_title = $taxonomy === 'brand' ? 'Brand' : 'Kategori Produk';
+        $columns = min(10, max(2, (int) $atts['columns']));
+        $rows = min(4, max(1, (int) $atts['rows']));
+        $limit = max(0, (int) $atts['limit']);
+        $image_size = sanitize_key((string) $atts['image_size']);
+        if ($image_size === '') {
+            $image_size = 'large';
+        }
+        $orderby = sanitize_key((string) $atts['orderby']);
+        $allowed_orderby = ['name', 'slug', 'term_id', 'count'];
+        if (!in_array($orderby, $allowed_orderby, true)) {
+            $orderby = 'name';
+        }
+        $order = strtoupper(sanitize_key((string) $atts['order']));
+        if (!in_array($order, ['ASC', 'DESC'], true)) {
+            $order = 'ASC';
+        }
+
+        $query_args = [
+            'taxonomy' => $taxonomy,
+            'hide_empty' => in_array(strtolower((string) $atts['hide_empty']), ['1', 'true', 'yes'], true),
+            'orderby' => $orderby,
+            'order' => $order,
+        ];
+        if ($limit > 0) {
+            $query_args['number'] = $limit;
+        }
+
+        $terms = get_terms($query_args);
+        if (is_wp_error($terms) || empty($terms)) {
+            return '';
+        }
+
+        $items = [];
+        foreach ($terms as $term) {
+            $url = get_term_link($term);
+            if (is_wp_error($url)) {
+                continue;
+            }
+
+            $name = (string) $term->name;
+            $items[] = [
+                'name' => $name,
+                'url' => $url,
+                'image_id' => absint(get_term_meta($term->term_id, 'wp_store_term_image_id', true)),
+                'initial' => function_exists('mb_substr') ? mb_substr($name, 0, 1) : substr($name, 0, 1),
+            ];
+        }
+
+        if (empty($items)) {
+            return '';
+        }
+
+        wp_enqueue_style('wp-store-flickity');
+        wp_enqueue_script('wp-store-frontend');
+
+        $per_slide = $columns * $rows;
+        return Template::render('components/taxonomy-carousel', [
+            'title' => (string) $atts['title'] !== '' ? (string) $atts['title'] : $default_title,
+            'columns' => $columns,
+            'image_size' => $image_size,
+            'pages' => array_chunk($items, $per_slide),
+            'has_multiple_pages' => count($items) > $per_slide,
         ]);
     }
 
