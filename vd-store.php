@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js dengan pengaturan checkout, ongkir, dan pembayaran fleksibel.
- * Version:     1.4.4
+ * Version:     1.4.5
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.4');
+define('WP_STORE_VERSION', '1.4.5');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -44,7 +44,7 @@ spl_autoload_register(function ($class) {
 
 function wp_store_init()
 {
-    $should_migrate = get_option('wp_store_db_version') !== '1.4.4';
+    $should_migrate = get_option('wp_store_db_version') !== '1.4.5';
     global $wpdb;
     $table_name = $wpdb->prefix . 'store_carts';
     $exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
@@ -65,7 +65,7 @@ function wp_store_init()
             UNIQUE KEY uniq_guest (guest_key)
         ) {$charset_collate};";
         dbDelta($sql);
-        update_option('wp_store_db_version', '1.4.4');
+        update_option('wp_store_db_version', '1.4.5');
     }
 
     // Create wishlist table

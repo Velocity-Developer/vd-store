@@ -1,6 +1,6 @@
 # Dokumentasi Developer VD Store
 
-Versi plugin: `1.4.4`
+Versi plugin: `1.4.5`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -614,8 +614,8 @@ Default di bawah mengikuti `shortcode_atts()` di `Shortcode.php`. Nilai `id="123
 | --- | --- | --- |
 | `[wp_store_shop]` | `[wp_store_shop per_page="12"]` | `per_page` dibatasi maksimal 50. |
 | `[wp_store_catalog]` | `[wp_store_catalog]` | Tidak punya atribut shortcode khusus. |
-| `[wp_store_shop_with_filters]` | `[wp_store_shop_with_filters per_page="12" filter_mode="auto"]` | `filter_mode`: `auto`, `off`, atau mode lanjutan seperti `ajax` jika dikembangkan. |
-| `[wp_store_filters]` | `[wp_store_filters mode="auto"]` | `mode` mengikuti mode filter. |
+| `[wp_store_shop_with_filters]` | `[wp_store_shop_with_filters per_page="12"]` | Filter bekerja setelah tombol `Terapkan` diklik. Atribut `filter_mode` lama tetap kompatibel sebagai submit GET biasa. |
+| `[wp_store_filters]` | `[wp_store_filters]` | Filter bekerja setelah tombol `Terapkan` diklik. Atribut `mode` lama tetap kompatibel sebagai submit GET biasa. |
 | `[wp_store_single]` | `[wp_store_single id="123" hide="rating,related"]` | `hide` berisi section single produk yang ingin disembunyikan. |
 | `[wp_store_cart_page]` | `[wp_store_cart_page]` | Alias: `[store_cart]`. |
 | `[wp_store_checkout]` | `[wp_store_checkout]` | Alias: `[store_checkout]`. |
@@ -641,7 +641,7 @@ Default di bawah mengikuti `shortcode_atts()` di `Shortcode.php`. Nilai `id="123
 | `[wp_store_link_profile]` | `[wp_store_link_profile size="32"]` | `size` dibatasi 16 sampai 160 px. |
 | `[wp_store_shipping_checker]` | `[wp_store_shipping_checker]` | Tidak punya atribut shortcode khusus; konfigurasi ongkir dari setting toko. |
 | `[wp_store_categories]` | `[wp_store_categories hide_empty="0" orderby="name" order="ASC"]` | Membaca taxonomy `store_product_cat`. |
-| `[wp_store_taxonomies_carousel]` | `[wp_store_taxonomies_carousel taxonomy="store_product_cat" title="Kategori Pilihan" columns="10" rows="2" limit="40" image_size="large" hide_empty="0" orderby="name" order="ASC"]` | `taxonomy` default `store_product_cat`; gunakan `taxonomy="brand"` untuk brand. `image_size` default `large` dan dapat memakai ukuran gambar WordPress lain, misalnya `medium`. Gambar diatur pada edit kategori/brand. `limit="0"` membaca semua term. |
+| `[wp_store_taxonomies_carousel]` | `[wp_store_taxonomies_carousel taxonomy="store_product_cat" columns="10" rows="2" limit="40" image_size="large" parent="" hide_empty="0" orderby="name" order="ASC"]` | `taxonomy` default `store_product_cat`; gunakan `taxonomy="brand"` untuk brand. `image_size` default `large` dan dapat memakai ukuran gambar WordPress lain, misalnya `medium`. `parent` kosong menampilkan semua term, `parent="0"` hanya kategori tingkat atas, dan `parent="123"` hanya anak langsung term ID `123`. Gambar diatur pada edit kategori/brand. `limit="0"` membaca semua term. |
 | `[wp_store_sosmed]` | `[wp_store_sosmed facebook="https://facebook.com/..." instagram="https://instagram.com/..." twitter="https://x.com/..." youtube="https://youtube.com/..." caption-facebook="Find us on"]` | Atribut URL sosial media opsional; caption per platform memakai prefix `caption-`. |
 | `[wp_store_contact]` | `[wp_store_contact style="true"]` | `style="false"` memakai gaya link sederhana. |
 | `[wp_store_bank_accounts]` | `[wp_store_bank_accounts]` | Membaca daftar rekening dari pengaturan toko. |
@@ -1246,16 +1246,7 @@ Mode `off` berarti:
 - Tetap jalan tanpa JavaScript.
 - Cocok untuk halaman sederhana dan stabil.
 
-Mode `auto`:
-
-```text
-[wp_store_shop_with_filters filter_mode="auto" per_page="12"]
-```
-
-Mode `auto` berarti:
-- Tetap memakai query string.
-- Ada enhancement Alpine untuk pengalaman lebih halus.
-- Kalau JavaScript gagal, konsep dasarnya tetap GET.
+Filter selalu menggunakan submit GET setelah tombol `Terapkan` diklik. Atribut lama `mode="auto"` dan `filter_mode="auto"` tidak lagi melakukan reload saat input berubah, sehingga aman untuk archive custom dan Beaver Builder.
 
 ### Contoh query produk custom dari PHP
 

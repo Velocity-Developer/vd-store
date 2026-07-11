@@ -11,9 +11,6 @@
         data-draggable="<?php echo !empty($has_multiple_pages) ? 'true' : 'false'; ?>"
         data-group-cells="0"
         style="--wps-taxonomy-columns: <?php echo (int) $columns; ?>;">
-        <?php if (!empty($title)) : ?>
-            <h2 class="wps-taxonomy-carousel__title"><?php echo esc_html($title); ?></h2>
-        <?php endif; ?>
         <div class="main-carousel">
             <?php foreach ($pages as $page) : ?>
                 <div class="wps-taxonomy-carousel__page carousel-cell">

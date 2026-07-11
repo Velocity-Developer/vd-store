@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.4`
+Versi: `1.4.5`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -46,12 +46,12 @@ Pakai `VD Store` jika ingin membuat:
 - Pengaturan checkout untuk tetap mengumpulkan alamat saat ongkir gratis/nonaktif
 - Integrasi pembayaran manual dan gateway
 
-## Ringkasan update 1.4.4
+## Ringkasan update 1.4.5
 
+- Filter produk sekarang diterapkan hanya saat tombol `Terapkan` diklik, sehingga aman dipakai pada halaman Beaver Builder.
+- Pada archive kategori, kategori dari URL menjadi scope tetap dan filter kategori lain disembunyikan.
 - Menambahkan gambar taxonomy kategori dan brand, termasuk Quick Edit.
 - Menambahkan shortcode carousel taxonomy untuk kategori atau brand.
-- Mengubah profil customer menjadi sidebar desktop dan offcanvas mobile.
-- Menjaga navigasi seller `VD Marketplace` tetap kompatibel pada profil customer.
 
 ## Instalasi singkat
 

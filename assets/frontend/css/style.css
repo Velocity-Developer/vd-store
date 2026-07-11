@@ -1478,12 +1478,6 @@ body.wps-gallery-viewer-open {
   width: 100%;
   padding: 1px;
 }
-.wps-taxonomy-carousel__title {
-  margin: 0 0 1rem;
-  color: var(--gray-900, #111827);
-  font-size: 1.25rem;
-  line-height: 1.35;
-}
 .wps-taxonomy-carousel__page {
   width: 100%;
 }
@@ -1558,7 +1552,7 @@ body.wps-gallery-viewer-open {
 
 @media (max-width: 768px) {
   .wps-taxonomy-carousel__grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .wps-taxonomy-carousel__item {
     min-height: 148px;
@@ -1647,6 +1641,20 @@ body.wps-gallery-viewer-open {
   }
 }
 @media (max-width: 480px) {
+  .wps-taxonomy-carousel__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .wps-taxonomy-carousel__item {
+    min-height: 156px;
+    padding: .875rem .5rem;
+  }
+  .wps-taxonomy-carousel__image {
+    width: 68px;
+    height: 68px;
+  }
+  .wps-taxonomy-carousel__name {
+    font-size: .8125rem;
+  }
   .wps-img-320 {
     height: 200px;
   }

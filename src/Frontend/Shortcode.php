@@ -440,7 +440,6 @@ class Shortcode
     {
         $atts = shortcode_atts([
             'taxonomy' => 'store_product_cat',
-            'title' => '',
             'hide_empty' => '0',
             'orderby' => 'name',
             'order' => 'ASC',
@@ -448,11 +447,11 @@ class Shortcode
             'rows' => 2,
             'limit' => 40,
             'image_size' => 'large',
+            'parent' => '',
         ], $atts, $tag);
 
         $taxonomy_key = sanitize_key((string) $atts['taxonomy']);
         $taxonomy = $taxonomy_key === 'brand' ? 'brand' : 'store_product_cat';
-        $default_title = $taxonomy === 'brand' ? 'Brand' : 'Kategori Produk';
         $columns = min(10, max(2, (int) $atts['columns']));
         $rows = min(4, max(1, (int) $atts['rows']));
         $limit = max(0, (int) $atts['limit']);
@@ -476,6 +475,10 @@ class Shortcode
             'orderby' => $orderby,
             'order' => $order,
         ];
+        $parent = trim((string) $atts['parent']);
+        if ($parent !== '' && ctype_digit($parent)) {
+            $query_args['parent'] = (int) $parent;
+        }
         if ($limit > 0) {
             $query_args['number'] = $limit;
         }
@@ -510,7 +513,6 @@ class Shortcode
 
         $per_slide = $columns * $rows;
         return Template::render('components/taxonomy-carousel', [
-            'title' => (string) $atts['title'] !== '' ? (string) $atts['title'] : $default_title,
             'columns' => $columns,
             'image_size' => $image_size,
             'pages' => array_chunk($items, $per_slide),
@@ -1009,8 +1011,10 @@ class Shortcode
     public function render_filters($atts = [])
     {
         $atts = shortcode_atts([
-            'mode' => 'auto',
+            'mode' => 'off',
         ], $atts);
+        // Selalu submit saat tombol diterapkan agar tidak reload selama input berubah.
+        $atts['mode'] = 'off';
 
         $terms = get_terms([
             'taxonomy' => 'store_product_cat',
@@ -1134,6 +1138,8 @@ class Shortcode
         $avg_price_global = round((float) ($price_stats['avg'] ?? 0));
         return Template::render('components/filters', [
             'categories' => $categories,
+            // Archive kategori sudah menjadi scope produk yang tetap.
+            'show_category_filter' => !is_tax('store_product_cat'),
             'brands' => $brands,
             'current' => $current,
             'reset_url' => $reset_url,
@@ -1150,8 +1156,10 @@ class Shortcode
     {
         $atts = shortcode_atts([
             'per_page' => 12,
-            'filter_mode' => 'auto',
+            'filter_mode' => 'off',
         ], $atts);
+        // Nilai mode lama dipertahankan di shortcode, tetapi perilakunya submit GET biasa.
+        $atts['filter_mode'] = 'off';
         if (sanitize_key((string) $atts['filter_mode']) !== 'off') {
             wp_enqueue_script('alpinejs');
         }

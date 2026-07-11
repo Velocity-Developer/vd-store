@@ -7,6 +7,7 @@ $mode = isset($mode) ? sanitize_key((string) $mode) : 'auto';
 $use_js = $mode !== 'off';
 $locked_cats = isset($locked_cats) && is_array($locked_cats) ? array_values($locked_cats) : [];
 $locked_brands = isset($locked_brands) && is_array($locked_brands) ? array_values($locked_brands) : [];
+$show_category_filter = isset($show_category_filter) ? (bool) $show_category_filter : true;
 $category_tree = [];
 foreach ($categories as $cat) {
     if (!is_array($cat) || empty($cat['id'])) {
@@ -127,12 +128,14 @@ $render_category_rows = static function ($parent_id = 0, $depth = 0) use (&$rend
                 <span class="wps-text-sm wps-text-gray-700" x-text="formatCurrency(price_max_bound)"></span>
             </div>
         </div>
+        <?php if ($show_category_filter) : ?>
         <div class="wps-mt-3">
             <div class="wps-label">Kategori</div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <?php echo $render_category_rows(0, 0); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
             </div>
         </div>
+        <?php endif; ?>
         <?php if (!empty($brands)) : ?>
         <div class="wps-mt-3">
             <div class="wps-label">Brand</div>
@@ -190,15 +193,6 @@ document.addEventListener('alpine:init', () => {
             if (this.min_price_input === '') this.active_min_price = this.price_min_bound;
             if (this.max_price_input === '') this.active_max_price = this.price_max_bound;
             this.clampPrices();
-            this.$watch('sort', () => this.update());
-            this.$watch('cats', () => {
-                this.enforceLockedCats();
-                this.update();
-            });
-            this.$watch('brands', () => {
-                this.enforceLockedBrands();
-                this.update();
-            });
             this.initializing = false;
             window.addEventListener('popstate', () => {
                 this.parseQueryIntoState();
