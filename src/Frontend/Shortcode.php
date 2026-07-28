@@ -1158,40 +1158,31 @@ class Shortcode
             'per_page' => 12,
             'filter_mode' => 'off',
         ], $atts);
-        // Nilai mode lama dipertahankan di shortcode, tetapi perilakunya submit GET biasa.
+        // Filter tetap submit GET biasa, tetapi mobile memakai offcanvas agar ruang lebih lega.
         $atts['filter_mode'] = 'off';
-        if (sanitize_key((string) $atts['filter_mode']) !== 'off') {
-            wp_enqueue_script('alpinejs');
-        }
+        wp_enqueue_script('alpinejs');
+        wp_enqueue_script('wp-store-frontend');
         $filters = $this->render_filters(['mode' => $atts['filter_mode']]);
         $shop = $this->render_shop(['per_page' => $atts['per_page']]);
-        if (sanitize_key((string) $atts['filter_mode']) === 'off') {
-            return '<div class="wps-flex wps-gap-4"><div style="width:260px;flex:0 0 260px;">' . $filters . '</div><div style="flex:1 1 auto;">' . $shop . '</div></div>';
-        }
         ob_start();
 ?>
-<div x-data="{ openFilters:false, isMobile: window.matchMedia('(max-width: 768px)').matches } ?? {}" x-init="(() => {
-              const mq = window.matchMedia('(max-width: 768px)');
-              const update = () => { isMobile = mq.matches };
-              if (mq.addEventListener) { mq.addEventListener('change', update); } else if (mq.addListener) { mq.addListener(update); }
-              update();
-            })()">
-    <div class="wps-flex wps-justify-end wps-mb-2" x-show="isMobile" x-cloak>
-        <button class="wps-btn wps-btn-secondary"
+<div class="wps-shop-with-filters" x-data="{ openFilters:false }" style="padding-left: 20px; padding-right: 20px;">
+    <div class="wps-shop-with-filters__toolbar">
+        <button type="button" class="wps-btn wps-btn-secondary wps-shop-with-filters__toggle"
             @click="openFilters = true"><?php echo esc_html__('Filter', 'wp-store'); ?></button>
     </div>
-    <div class="wps-flex wps-gap-4">
-        <div x-show="!isMobile" x-cloak style="width:260px;flex:0 0 260px;"><?php echo $filters; ?></div>
-        <div style="flex:1 1 auto;"><?php echo $shop; ?></div>
+    <div class="wps-shop-with-filters__layout">
+        <div class="wps-shop-with-filters__sidebar"><?php echo $filters; ?></div>
+        <div class="wps-shop-with-filters__content"><?php echo $shop; ?></div>
     </div>
     <template x-if="openFilters">
         <div>
-            <div class="wps-offcanvas-backdrop" @click="openFilters=false"></div>
+            <div class="wps-offcanvas-backdrop" @click="openFilters = false"></div>
             <div class="wps-offcanvas">
                 <div class="wps-offcanvas-header">
                     <div><?php echo esc_html__('Filter', 'wp-store'); ?></div>
-                    <button class="wps-btn wps-btn-secondary"
-                        @click="openFilters=false"><?php echo esc_html__('Tutup', 'wp-store'); ?></button>
+                    <button type="button" class="wps-btn wps-btn-secondary"
+                        @click="openFilters = false"><?php echo esc_html__('Tutup', 'wp-store'); ?></button>
                 </div>
                 <div class="wps-offcanvas-body">
                     <?php echo $filters; ?>

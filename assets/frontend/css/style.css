@@ -960,6 +960,27 @@ button.wps-btn-dark {
   padding: 12px;
   border-top: 1px solid var(--gray-200);
 }
+.wps-shop-with-filters__toolbar {
+  display: none;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.wps-shop-with-filters__layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 100%;
+}
+.wps-shop-with-filters__sidebar {
+  width: 260px;
+  flex: 0 0 260px;
+}
+.wps-shop-with-filters__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
 .wps-checkout-box {
   margin-top: 12px;
   padding-top: 12px;
@@ -1635,6 +1656,22 @@ body.wps-gallery-viewer-open {
   }
   .wps-flex.wps-items-start > .wps-position-relative.wps-w-full {
     order: 1;
+  }
+  .wps-shop-with-filters__toolbar {
+    display: flex;
+  }
+  .wps-shop-with-filters__layout {
+    flex-direction: column;
+  }
+  .wps-shop-with-filters__sidebar {
+    display: none;
+  }
+  .wps-shop-with-filters__content {
+    width: 100%;
+  }
+  .wps-offcanvas {
+    width: 85vw;
+    max-width: 85vw;
   }
   .wps-img-320 {
     height: 240px;
