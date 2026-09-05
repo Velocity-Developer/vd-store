@@ -23,6 +23,8 @@
                 advName: (params.advName || ''),
                 advOptions: Array.isArray(params.advValues) ? params.advValues : [],
                 basePrice: Number(params.basePrice || 0),
+                buyNow: !!params.buyNow,
+                checkoutUrl: (params.checkoutUrl || ''),
                 selectedBasic: '',
                 selectedAdv: '',
                 showToast(msg, type) {
@@ -144,6 +146,10 @@
                         document.dispatchEvent(new CustomEvent('wp-store:cart-updated', {
                             detail: data
                         }));
+                        if (this.buyNow && this.checkoutUrl) {
+                            window.location.href = this.checkoutUrl;
+                            return;
+                        }
                         this.showToast('Ditambahkan ke keranjang', 'success');
                     } catch (e) {
                         this.showToast('Kesalahan jaringan', 'error');
@@ -182,7 +188,9 @@ $has_label = is_string($label) && trim($label) !== '';
         basicValues: JSON.parse('<?php echo esc_js(wp_json_encode($basic_values)); ?>'),
         advName: '<?php echo esc_js($adv_name); ?>',
         advValues: JSON.parse('<?php echo esc_js(wp_json_encode($adv_values)); ?>'),
-        basePrice: <?php echo isset($base_price) && is_numeric($base_price) ? (float) $base_price : 0; ?>
+        basePrice: <?php echo isset($base_price) && is_numeric($base_price) ? (float) $base_price : 0; ?>,
+        buyNow: <?php echo !empty($buy_now) ? 'true' : 'false'; ?>,
+        checkoutUrl: '<?php echo esc_js($checkout_url ?? ''); ?>'
     })">
     <div x-show="qtyEnabled" x-cloak class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
         <button type="button" class=" wps-btn wps-btn-secondary wps-btn-sm wps-decrement-qty" @click="decrementQty()">-</button>

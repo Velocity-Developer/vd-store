@@ -1411,7 +1411,8 @@ class Shortcode
             'label' => '+',
             'text' => '',
             'class' => 'wps-btn wps-btn-primary',
-            'qty' => 0
+            'qty' => 0,
+            'buy_now' => ''
         ], $atts);
         $btn_class = $atts['class'] ?? 'wps-btn wps-btn-primary';
         $id = $this->resolve_product_id((int) $atts['id']);
@@ -1447,6 +1448,14 @@ class Shortcode
             $label = (string) apply_filters('wp_store_not_purchasable_button_text', 'Hubungi Admin', $id, $atts);
             $wantQty = false;
         }
+        $buy_now_raw = strtolower(trim((string) $atts['buy_now']));
+        $buy_now = in_array($buy_now_raw, ['1', 'true', 'yes', 'ya'], true);
+        $checkout_url = '';
+        if ($buy_now && $is_purchasable) {
+            $settings = get_option('wp_store_settings', []);
+            $checkout_page_id = isset($settings['page_checkout']) ? absint($settings['page_checkout']) : 0;
+            $checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : '';
+        }
         return Template::render('components/add-to-cart', [
             'btn_class' => $btn_class,
             'id' => $id,
@@ -1460,6 +1469,8 @@ class Shortcode
             'show_qty' => $wantQty,
             'default_qty' => $default_qty,
             'is_purchasable' => $is_purchasable,
+            'buy_now' => $buy_now && $checkout_url !== '',
+            'checkout_url' => $checkout_url,
         ]);
     }
 

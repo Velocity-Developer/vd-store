@@ -278,7 +278,9 @@ class ProductRenderer
     private static function actions(int $product_id): string
     {
         return '<div class="wps-flex wps-gap-2 wps-items-center wps-mb-4"><div>'
-            . do_shortcode('[wp_store_add_to_cart id="' . esc_attr((string) $product_id) . '"]')
+            . do_shortcode('[wp_store_add_to_cart id="' . esc_attr((string) $product_id) . '" text="+ Keranjang"]')
+            . '</div><div>'
+            . do_shortcode('[wp_store_add_to_cart id="' . esc_attr((string) $product_id) . '" buy_now="yes" text="Beli Sekarang"]')
             . '</div><div>'
             . do_shortcode('[wp_store_add_to_wishlist id="' . esc_attr((string) $product_id) . '"]')
             . '</div></div>';
