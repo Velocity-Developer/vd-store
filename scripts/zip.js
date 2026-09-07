@@ -47,7 +47,6 @@ archive.glob(
       ".eslint*",
       ".prettier*",
       "README.md",
-      "DOKUMENTASI-DEVELOPER.md",
       "CHANGELOG.md",
       ".DS_Store",
       "Thumbs.db",

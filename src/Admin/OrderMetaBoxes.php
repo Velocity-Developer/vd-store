@@ -11,7 +11,32 @@ class OrderMetaBoxes
         add_action('add_meta_boxes', [$this, 'add_proofs_box']);
         add_action('add_meta_boxes', [$this, 'add_summary_box']);
         add_action('add_meta_boxes', [$this, 'add_editable_boxes']);
+        add_action('add_meta_boxes', [$this, 'add_checkout_fields_box']);
         add_action('save_post_store_order', [$this, 'save_native_meta_boxes']);
+    }
+
+    public function add_checkout_fields_box()
+    {
+        add_meta_box('wp-store-checkout-fields', 'Field Tambahan Checkout', [$this, 'render_checkout_fields_box'], 'store_order', 'normal');
+    }
+
+    public function render_checkout_fields_box($post)
+    {
+        $values = get_post_meta($post->ID, '_store_order_checkout_fields', true);
+        if (!is_array($values) || !$values) {
+            echo '<p>Tidak ada field tambahan.</p>';
+            return;
+        }
+        $fields = \WpStore\Domain\Order\CheckoutFields::definitions();
+        foreach ($values as $key => $value) {
+            $field = $fields[$key] ?? [];
+            if (($field['type'] ?? '') === 'checkbox') {
+                $value = $value === '1' ? 'Ya' : 'Tidak';
+            } elseif (($field['type'] ?? '') === 'select') {
+                $value = $field['options'][$value] ?? $value;
+            }
+            echo '<p><strong>' . esc_html($field['label'] ?? $key) . '</strong><br>' . nl2br(esc_html($value)) . '</p>';
+        }
     }
 
     public function enqueue_styles()

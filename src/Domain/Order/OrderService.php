@@ -154,6 +154,9 @@ class OrderService
         }
 
         update_post_meta($order_id, '_store_order_number', $order_number);
+        if (!empty($data['checkout_fields']) && is_array($data['checkout_fields'])) {
+            update_post_meta($order_id, '_store_order_checkout_fields', wp_slash($data['checkout_fields']));
+        }
         update_post_meta($order_id, '_store_order_email', sanitize_email((string) ($data['email'] ?? '')));
         if ($user_id > 0) {
             update_post_meta($order_id, '_store_order_user_id', $user_id);

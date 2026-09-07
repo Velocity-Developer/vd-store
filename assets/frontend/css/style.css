@@ -1253,6 +1253,21 @@ tr:not(:last-child) .wps-td {
   width: 40px;
   height: 40px;
 }
+.wps-cart-thumbnail {
+  width: 60px;
+  min-width: 60px;
+  height: 60px;
+  object-fit: cover;
+}
+@media (min-width: 769px) {
+  .wps-table .wps-td .wps-cart-thumbnail {
+    width: 80px;
+    max-width: 80px;
+    height: 80px;
+    max-height: 80px;
+    object-fit: cover;
+  }
+}
 @keyframes wps-skeleton-shimmer {
   0% {
     transform: translateX(-100%);

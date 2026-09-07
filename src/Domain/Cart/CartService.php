@@ -188,7 +188,7 @@ class CartService
                 'qty' => $qty,
                 'min_order' => $min_order,
                 'subtotal' => $subtotal,
-                'image' => get_the_post_thumbnail_url($product_id, 'thumbnail') ?: null,
+                'image' => get_the_post_thumbnail_url($product_id, 'medium') ?: null,
                 'link' => get_permalink($product_id),
                 'options' => $opts,
                 'is_digital' => $is_digital,

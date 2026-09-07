@@ -605,6 +605,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                             subdistrict_name: this.shouldShowDestinationFields() ? ((this.subdistricts.find(s => String(s.subdistrict_id) === String(this.selectedSubdistrict)) || {}).subdistrict_name || '') : '',
                             postal_code: this.shouldCollectAddress() ? (this.postalCode || '') : '',
                             notes: this.notes || '',
+                            checkout_fields: Object.fromEntries(Array.from(this.$root.querySelectorAll('[data-wp-store-checkout-field]:not(:disabled)'), field => [field.dataset.wpStoreCheckoutField, field.type === 'checkbox' ? (field.checked ? '1' : '0') : field.value])),
                             shipping_courier: this.shouldHideShipping() ? '' : (this.shippingCourier || String(this.selectedShippingKey || '').split(':')[0] || ''),
                             shipping_service: this.shouldHideShipping() ? '' : (this.shippingService || ''),
                             shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
@@ -833,6 +834,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                                 <label class="wps-label">Telepon/WA</label>
                                 <input class="wps-input" type="text" x-model="phone" placeholder="08xxxxxxxxxx" id="checkout-phone" name="phone">
                             </div>
+                            <?php \WpStore\Domain\Order\CheckoutFields::render(false, 'customer'); ?>
                         </div>
                     </div>
                     <?php if (is_user_logged_in()) : ?>
@@ -923,6 +925,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                                     <div class="wps-text-xs wps-text-gray-500" x-show="isLoadingSubdistricts">Memuat kecamatan...</div>
                                 </div>
                             </div>
+                            <?php \WpStore\Domain\Order\CheckoutFields::render(false, 'address'); ?>
                         </div>
                     </div>
                     <div class="wps-card">
@@ -932,6 +935,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                                 <?php do_action('wp_store_checkout_notes'); ?>
                                 <textarea class="wps-textarea" rows="3" x-model="notes" placeholder="Catatan tambahan untuk pesanan" id="checkout-notes" name="notes"></textarea>
                             </div>
+                            <?php \WpStore\Domain\Order\CheckoutFields::render(); ?>
                         </div>
                     </div>
                 </div>
@@ -1056,6 +1060,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                                     <?php echo \WpStore\Frontend\Captcha::render(['context' => 'checkout']); ?>
                                 </div>
 
+                                <?php \WpStore\Domain\Order\CheckoutFields::render(false, 'before_submit'); ?>
                                 <div class="wps-mt-4 wps-flex wps-justify-end">
                                     <button type="button" class="wps-btn wps-btn-primary" :disabled="submitting || _submitGuard || !allowSubmit" @click.prevent.stop="trySubmit()">
                                         <?php echo wps_icon(['name' => 'cart', 'size' => 16, 'class' => 'wps-mr-2']); ?>

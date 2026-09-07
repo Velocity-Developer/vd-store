@@ -97,6 +97,11 @@ class CheckoutController
         }
         $shipping_required = !$shipping_disabled && (!$disable_shipping_for_digital || !$all_digital);
         $address_required = !$all_digital && ($shipping_required || $collect_address);
+        $checkout_fields = \WpStore\Domain\Order\CheckoutFields::validate($data['checkout_fields'] ?? [], $address_required);
+        if (is_wp_error($checkout_fields)) {
+            return $checkout_fields;
+        }
+
 
         if ($payment_method_req === 'cod' && (!$allow_cod || !$shipping_required)) {
             return new WP_REST_RESPONSE(['message' => 'COD tidak tersedia tanpa ongkos kirim.'], 400);
@@ -281,6 +286,7 @@ class CheckoutController
             'subdistrict_name' => isset($data['subdistrict_name']) ? sanitize_text_field($data['subdistrict_name']) : '',
             'postal_code' => isset($data['postal_code']) ? sanitize_text_field($data['postal_code']) : '',
             'notes' => isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '',
+            'checkout_fields' => $checkout_fields,
             'items' => $lines,
             'payment_method' => $payment_method,
             'status' => '',

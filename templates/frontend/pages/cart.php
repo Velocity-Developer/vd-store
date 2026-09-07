@@ -21,7 +21,7 @@
                         <template x-for="i in 3">
                             <tr class="wps-divider">
                                 <td class="wps-td">
-                                    <div class="wps-skeleton wps-skeleton-img"></div>
+                                    <div class="wps-skeleton wps-skeleton-img wps-cart-thumbnail"></div>
                                 </td>
                                 <td class="wps-td">
                                     <div class="wps-skeleton wps-skeleton-text" style="width:60%;"></div>
@@ -39,7 +39,7 @@
                         <template x-for="item in cart" :key="item.id + ':' + (item.options ? JSON.stringify(item.options) : '')">
                             <tr class="wps-divider">
                                 <td class="wps-td">
-                                    <img :src="item.image ? item.image : '<?php echo esc_url(WP_STORE_URL . 'assets/frontend/img/noimg.webp'); ?>'" alt="" class="wps-img-40">
+                                    <img :src="item.image ? item.image : '<?php echo esc_url(WP_STORE_URL . 'assets/frontend/img/noimg.webp'); ?>'" alt="" class="wps-cart-thumbnail">
                                 </td>
                                 <td class="wps-td">
                                     <div x-text="item.title" class="wps-text-sm wps-text-gray-900"></div>
