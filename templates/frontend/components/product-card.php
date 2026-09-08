@@ -33,10 +33,6 @@ $thumbnail_crop = isset($thumbnail_crop) ? (string) $thumbnail_crop : 'true';
     <?php endif; ?>
     <?php if ($actions_html !== '') : ?>
       <?php echo $actions_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-    <?php else : ?>
-      <div>
-        <?php echo do_shortcode('[wp_store_add_to_cart id="' . esc_attr($item['id']) . '" size="sm"]'); ?>
-      </div>
     <?php endif; ?>
   </div>
 </div>
