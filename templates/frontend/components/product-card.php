@@ -9,25 +9,28 @@ $state_class = trim('wps-product-card wps-product-card--' . $context . ' wps-pro
 $thumbnail_width = isset($thumbnail_width) ? max(1, (int) $thumbnail_width) : 200;
 $thumbnail_height = isset($thumbnail_height) ? max(1, (int) $thumbnail_height) : 300;
 $thumbnail_crop = isset($thumbnail_crop) ? (string) $thumbnail_crop : 'true';
+$has_content_after_price = $extra_html !== '' || $actions_html !== '';
+$price_html = wps_product_price_html((int) $item['id'], [
+  'wrapper_class' => $has_content_after_price ? 'wps-mb-4' : '',
+  'sale_group_class' => 'wps-flex wps-items-baseline wps-gap-1',
+  'sale_class' => 'wps-text-gray-900 wps-font-medium',
+  'regular_class' => 'wps-text-gray-500',
+  'price_class' => 'wps-text-gray-900 wps-font-medium',
+  'show_empty' => false,
+]);
+$title_class = trim('wps-text-sm wps-text-gray-900 wps-text-bold wps-d-block wps-rel' . ($price_html !== '' || $has_content_after_price ? ' wps-mb-4' : ''));
 ?>
 <div class="wps-card wps-card-hover wps-transition h-100 <?php echo esc_attr($state_class); ?><?php echo $card_class !== '' ? ' ' . esc_attr($card_class) : ''; ?>">
   <div class="wps-p-2">
-    <a class="wps-text-sm wps-text-gray-900 wps-mb-4 wps-text-bold wps-d-block wps-rel" href="<?php echo esc_url($item['link']); ?>">
+    <a class="<?php echo esc_attr($title_class); ?>" href="<?php echo esc_url($item['link']); ?>">
       <div class="wps-mb-2">
         <?php echo do_shortcode('[wp_store_thumbnail id="' . esc_attr($item['id']) . '" width="' . esc_attr((string) $thumbnail_width) . '" height="' . esc_attr((string) $thumbnail_height) . '" crop="' . esc_attr($thumbnail_crop) . '"]'); ?>
       </div>
       <?php echo esc_html($item['title']); ?>
     </a>
-    <?php echo wps_product_price_html((int) $item['id'], [
-      'wrapper_class' => 'wps-mb-4',
-      'sale_group_class' => 'wps-flex wps-items-baseline wps-gap-1',
-      'sale_class' => 'wps-text-gray-900 wps-font-medium',
-      'regular_class' => 'wps-text-gray-500',
-      'price_class' => 'wps-text-gray-900 wps-font-medium',
-      'show_empty' => false,
-    ]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+    <?php echo $price_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     <?php if ($extra_html !== '') : ?>
-      <div class="wps-mb-4">
+      <div<?php echo $actions_html !== '' ? ' class="wps-mb-4"' : ''; ?>>
         <?php echo $extra_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
       </div>
     <?php endif; ?>
