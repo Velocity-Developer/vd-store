@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.7`
+Versi: `1.4.8`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -45,6 +45,14 @@ Pakai `VD Store` jika ingin membuat:
 - Integrasi ongkir dengan mode normal, gratis ongkir, dan nonaktif
 - Pengaturan checkout untuk tetap mengumpulkan alamat saat ongkir gratis/nonaktif
 - Integrasi pembayaran manual dan gateway
+
+## Ringkasan update 1.4.8
+
+- Mengubah tombol **Beli Sekarang** menjadi checkout langsung untuk satu produk, jumlah, dan varian yang dipilih.
+- Menyimpan checkout langsung dalam sesi sementara yang terikat pada pembeli dan hanya dapat menghasilkan satu pesanan.
+- Memvalidasi ulang produk, stok, varian, harga, kupon, dan ongkir pada server saat checkout.
+- Menjaga seluruh isi keranjang tetap utuh ketika checkout langsung selesai atau dibatalkan.
+- Menampilkan penanda pada halaman checkout agar pembeli mengetahui bahwa hanya produk pilihan yang sedang diproses.
 
 ## Ringkasan update 1.4.7
 
@@ -298,10 +306,11 @@ Catatan:
 [wp_store_add_to_cart id="123"]
 ```
 
-Dengan teks tombol khusus:
+Untuk tombol **Beli Sekarang** yang langsung memproses produk tersebut tanpa
+mengubah isi keranjang:
 
 ```text
-[wp_store_add_to_cart id="123" text="Beli Sekarang"]
+[wp_store_add_to_cart id="123" buy_now="yes" text="Beli Sekarang"]
 ```
 
 Dengan tombol icon saja:
@@ -316,6 +325,7 @@ Kalau dipakai di file PHP theme atau template:
 echo wp_store_add_to_cart_button(123, [
     'text' => 'Beli Sekarang',
     'class' => 'btn btn-primary btn-sm',
+    'buy_now' => 'yes',
 ]);
 ```
 
@@ -368,7 +378,7 @@ belum field bawaan checkout. Tidak ada field tambahan aktif secara default.
 Contoh kode dan kontrak integrasi tersedia pada
 [Field tambahan checkout](#13-field-tambahan-checkout).
 
-Versi plugin: `1.4.7`
+Versi plugin: `1.4.8`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -1416,7 +1426,7 @@ Jadi developer cukup ubah satu file product card.
 Untuk mengubah teks tombol add to cart, gunakan atribut `text`:
 
 ```text
-[wp_store_add_to_cart id="123" text="Beli Sekarang"]
+[wp_store_add_to_cart id="123" text="Masukkan Keranjang"]
 ```
 
 Prioritas label tombol: `text` jika atribut dikirim, lalu `label` lama. Jika `text=""`, tombol menjadi icon-only.

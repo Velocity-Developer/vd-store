@@ -24,6 +24,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
 <script>
     window.wpStoreCheckout = function() {
         return {
+            directToken: new URLSearchParams(window.location.search).has('direct_checkout') ? (new URLSearchParams(window.location.search).get('direct_checkout') || 'invalid') : '',
             loading: true,
             submitting: false,
             _submitGuard: false,
@@ -171,7 +172,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
             },
             allDigitalSelected() {
                 if (!Array.isArray(this.cart)) return false;
-                const selected = this.cart.filter(i => i.selected !== false);
+                const selected = this.directToken ? [] : this.cart.filter(i => i.selected !== false);
                 if (selected.length === 0) return false;
                 return selected.every(i => !!i.is_digital);
             },
@@ -242,6 +243,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                         },
                         body: JSON.stringify({
                             destination_province: this.selectedProvince,
+                            ...(this.directToken ? { direct_checkout: this.directToken } : {}),
                             destination_city: this.selectedCity,
                             destination_subdistrict: this.selectedSubdistrict,
                             courier: this.shippingCouriers.join(':'),
@@ -490,13 +492,14 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
             async fetchCart() {
                 this.loading = true;
                 try {
-                    const res = await fetch(wpStoreSettings.restUrl + 'cart', {
+                    const res = await fetch(wpStoreSettings.restUrl + (this.directToken ? 'checkout/direct?direct_checkout=' + encodeURIComponent(this.directToken) : 'cart'), {
                         credentials: 'same-origin',
                         headers: {
                             'X-WP-Nonce': wpStoreSettings.nonce
                         }
                     });
                     const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Checkout tidak dapat dimuat.');
                     this.cart = (Array.isArray(data.items) ? data.items.map(i => Object.assign({}, i, {
                         selected: true
                     })) : []);
@@ -504,6 +507,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                 } catch (e) {
                     this.cart = [];
                     this.total = 0;
+                    this.message = e.message || 'Checkout tidak dapat dimuat.';
                 } finally {
                     this.loading = false;
                     this.recomputeAllow();
@@ -526,6 +530,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                         },
                         body: JSON.stringify({
                             code,
+                            ...(this.directToken ? { direct_checkout: this.directToken } : {}),
                             shipping_cost: this.shouldHideShipping() ? 0 : (this.shippingCost || 0),
                             items: this.cart.filter(i => i.selected !== false).map(i => ({
                                 id: i.id,
@@ -592,6 +597,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                             'X-WP-Nonce': wpStoreSettings.nonce
                         },
                         body: JSON.stringify({
+                            ...(this.directToken ? { direct_checkout: this.directToken } : {}),
                             request_id: this.requestId,
                             name: this.name,
                             email: this.email,
@@ -646,12 +652,14 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                     } catch (_) {}
                     this.cart = [];
                     this.total = 0;
+                    if (!this.directToken) {
                     document.dispatchEvent(new CustomEvent('wp-store:cart-updated', {
                         detail: {
                             items: [],
                             total: 0
                         }
                     }));
+                    }
 
                     if (data && data.payment_url) {
                         window.location.href = data.payment_url;
@@ -700,6 +708,10 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
 </script>
 <div class="">
     <div x-data="wpStoreCheckout()" x-init="init()" x-effect="recomputeAllow()">
+        <div x-show="directToken && !loading && cart.length" x-cloak class="wps-p-4 wps-mb-4 wps-bg-gray-100">
+            Beli Sekarang: pesanan ini hanya berisi produk yang Anda pilih.
+        </div>
+        <div x-show="directToken && !loading && !cart.length && message" x-cloak class="wps-p-4 wps-text-red-700" x-text="message" role="alert"></div>
         <div x-show="loading" class="wps-p-4">
             <div class="wps-grid wps-grid-cols-1 wps-md-grid-cols-2 wps-gap-4">
                 <div>

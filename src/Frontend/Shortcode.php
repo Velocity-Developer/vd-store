@@ -1454,7 +1454,7 @@ class Shortcode
         if ($buy_now && $is_purchasable) {
             $settings = get_option('wp_store_settings', []);
             $checkout_page_id = isset($settings['page_checkout']) ? absint($settings['page_checkout']) : 0;
-            $checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : '';
+            $checkout_url = $checkout_page_id ? get_permalink($checkout_page_id) : site_url('/checkout/');
         }
         return Template::render('components/add-to-cart', [
             'btn_class' => $btn_class,

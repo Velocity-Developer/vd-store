@@ -32,6 +32,17 @@ class CouponController
     public function validate_coupon(WP_REST_Request $request)
     {
         $params = $request->get_json_params();
+        $direct_token = \WpStore\Domain\Order\DirectCheckout::token($request);
+        if ($direct_token !== '') {
+            $rows = \WpStore\Domain\Order\DirectCheckout::read($direct_token);
+            if (is_wp_error($rows)) {
+                return $rows;
+            }
+            $params['items'] = array_map(static function ($row) {
+                $row['options'] = $row['opts'];
+                return $row;
+            }, $rows);
+        }
         $code = isset($params['code']) ? sanitize_text_field($params['code']) : '';
         $items = isset($params['items']) && is_array($params['items']) ? $params['items'] : [];
         $shipping_cost = isset($params['shipping_cost']) ? max(0, (float) $params['shipping_cost']) : 0;

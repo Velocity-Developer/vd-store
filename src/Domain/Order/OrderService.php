@@ -128,6 +128,9 @@ class OrderService
         if (is_wp_error($order_id) || !$order_id) {
             return new \WP_Error('order_create_failed', 'Gagal membuat pesanan.');
         }
+        if (!empty($data['direct_checkout'])) {
+            DirectCheckout::complete($data['direct_checkout'], $order_id);
+        }
 
         $order_number = sanitize_text_field((string) ($data['order_number'] ?? ''));
         if ($order_number === '') {

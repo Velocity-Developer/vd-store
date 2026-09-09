@@ -140,6 +140,15 @@ class RajaOngkirController
             ];
         }
         $params = apply_filters('wp_store_before_calculate_shipping', $params, $request);
+        $direct_token = \WpStore\Domain\Order\DirectCheckout::token($request);
+        if ($direct_token !== '') {
+            $rows = \WpStore\Domain\Order\DirectCheckout::read($direct_token);
+            if (is_wp_error($rows)) {
+                return $rows;
+            }
+            $params['items'] = $rows;
+            unset($params['manual_weight_grams']);
+        }
         if ($disable_shipping_for_digital) {
             $items = isset($params['items']) && is_array($params['items']) ? $params['items'] : null;
             $all_digital = null;

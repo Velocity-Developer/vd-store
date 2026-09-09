@@ -19,6 +19,10 @@ class CheckoutController
 
     public function register_routes()
     {
+        register_rest_route('wp-store/v1', '/checkout/direct', [
+            ['methods' => 'POST', 'callback' => [$this, 'start_direct'], 'permission_callback' => [$this, 'require_rest_nonce']],
+            ['methods' => 'GET', 'callback' => [$this, 'get_direct'], 'permission_callback' => [$this, 'require_rest_nonce']],
+        ]);
         register_rest_route('wp-store/v1', '/checkout', [
             [
                 'methods' => 'POST',
@@ -40,8 +44,38 @@ class CheckoutController
 
     public function create_order(WP_REST_Request $request)
     {
+        return \WpStore\Domain\Order\DirectCheckout::submit($request, [$this, 'process_order']);
+    }
+
+    public function start_direct(WP_REST_Request $request)
+    {
+        return \WpStore\Domain\Order\DirectCheckout::create($request->get_json_params());
+    }
+
+    public function get_direct(WP_REST_Request $request)
+    {
+        $rows = \WpStore\Domain\Order\DirectCheckout::read(\WpStore\Domain\Order\DirectCheckout::token($request));
+        if (is_wp_error($rows)) {
+            return $rows;
+        }
+        $response = new WP_REST_Response((new \WpStore\Domain\Cart\CartService())->format_cart($rows));
+        $response->header('Cache-Control', 'no-store, private');
+        return $response;
+    }
+
+    public function process_order(WP_REST_Request $request)
+    {
         $data = $request->get_json_params();
         $data = apply_filters('wp_store_before_create_order', $data, $request);
+        $direct_token = \WpStore\Domain\Order\DirectCheckout::token($request);
+        if ($direct_token !== '') {
+            $rows = \WpStore\Domain\Order\DirectCheckout::read($direct_token);
+            if (is_wp_error($rows)) {
+                return $rows;
+            }
+            $data['items'] = $rows;
+            $data['request_id'] = 'direct-' . $direct_token;
+        }
         $settings = get_option('wp_store_settings', []);
         $disable_shipping_for_digital = !empty($settings['disable_shipping_for_digital']);
         $shipping_mode = function_exists('wp_store_shipping_mode')
@@ -125,6 +159,34 @@ class CheckoutController
             $shipping_cost_req = 0;
             if (!$address_required) {
                 $address_value = '';
+            }
+        }
+
+        if ($direct_token !== '' && $shipping_required && $shipping_mode !== 'free') {
+            $quote_request = new WP_REST_Request('POST');
+            $quote_request->set_header('Content-Type', 'application/json');
+            $quote_request->set_body(wp_json_encode([
+                'direct_checkout' => $direct_token,
+                'destination_province' => $province_id_req,
+                'destination_city' => $city_id_req,
+                'destination_subdistrict' => $subdistrict_id_req,
+                'courier' => $shipping_courier_req,
+            ]));
+            $quote = (new RajaOngkirController())->calculate_rajaongkir_cost($quote_request);
+            if (is_wp_error($quote)) {
+                return $quote;
+            }
+            $quote_data = $quote->get_data();
+            $matched = false;
+            foreach (($quote_data['data']['data'] ?? []) as $rate) {
+                if (($rate['code'] ?? '') === $shipping_courier_req && ($rate['service'] ?? '') === $shipping_service_req) {
+                    $shipping_cost_req = max(0, (float) $rate['cost']);
+                    $matched = true;
+                    break;
+                }
+            }
+            if (!$matched) {
+                return new WP_REST_Response(['message' => 'Layanan ongkir tidak tersedia. Silakan pilih ulang.'], 400);
             }
         }
 
@@ -287,6 +349,7 @@ class CheckoutController
             'postal_code' => isset($data['postal_code']) ? sanitize_text_field($data['postal_code']) : '',
             'notes' => isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '',
             'checkout_fields' => $checkout_fields,
+            'direct_checkout' => $direct_token,
             'items' => $lines,
             'payment_method' => $payment_method,
             'status' => '',
@@ -371,23 +434,25 @@ class CheckoutController
         ];
         $shipping_snapshot = apply_filters('wp_store_shipping_snapshot', $shipping_snapshot, $order_id, $data);
         $shipping_json = wp_json_encode($shipping_snapshot);
-        if (is_user_logged_in()) {
-            $user_id = get_current_user_id();
-            $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE user_id = %d LIMIT 1", $user_id));
-            if ($exists) {
-                $wpdb->update($table, ['shipping_data' => $shipping_json, 'total_price' => $order_total], ['user_id' => $user_id], ['%s', '%f'], ['%d']);
-            } else {
-                $wpdb->insert($table, ['user_id' => $user_id, 'cart' => wp_json_encode([]), 'shipping_data' => $shipping_json, 'total_price' => $order_total], ['%d', '%s', '%s', '%f']);
-            }
-        } else {
-            $cookie_key = 'wp_store_cart_key';
-            $key = isset($_COOKIE[$cookie_key]) && is_string($_COOKIE[$cookie_key]) && $_COOKIE[$cookie_key] !== '' ? sanitize_key($_COOKIE[$cookie_key]) : '';
-            if ($key !== '') {
-                $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE guest_key = %s LIMIT 1", $key));
+        if ($direct_token === '') {
+            if (is_user_logged_in()) {
+                $user_id = get_current_user_id();
+                $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE user_id = %d LIMIT 1", $user_id));
                 if ($exists) {
-                    $wpdb->update($table, ['shipping_data' => $shipping_json, 'total_price' => $order_total], ['guest_key' => $key], ['%s', '%f'], ['%s']);
+                    $wpdb->update($table, ['shipping_data' => $shipping_json, 'total_price' => $order_total], ['user_id' => $user_id], ['%s', '%f'], ['%d']);
                 } else {
-                    $wpdb->insert($table, ['guest_key' => $key, 'cart' => wp_json_encode([]), 'shipping_data' => $shipping_json, 'total_price' => $order_total], ['%s', '%s', '%s', '%f']);
+                    $wpdb->insert($table, ['user_id' => $user_id, 'cart' => wp_json_encode([]), 'shipping_data' => $shipping_json, 'total_price' => $order_total], ['%d', '%s', '%s', '%f']);
+                }
+            } else {
+                $cookie_key = 'wp_store_cart_key';
+                $key = isset($_COOKIE[$cookie_key]) && is_string($_COOKIE[$cookie_key]) && $_COOKIE[$cookie_key] !== '' ? sanitize_key($_COOKIE[$cookie_key]) : '';
+                if ($key !== '') {
+                    $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE guest_key = %s LIMIT 1", $key));
+                    if ($exists) {
+                        $wpdb->update($table, ['shipping_data' => $shipping_json, 'total_price' => $order_total], ['guest_key' => $key], ['%s', '%f'], ['%s']);
+                    } else {
+                        $wpdb->insert($table, ['guest_key' => $key, 'cart' => wp_json_encode([]), 'shipping_data' => $shipping_json, 'total_price' => $order_total], ['%s', '%s', '%s', '%f']);
+                    }
                 }
             }
         }

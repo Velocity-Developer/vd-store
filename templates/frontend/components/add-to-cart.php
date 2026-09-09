@@ -85,6 +85,7 @@
                         return;
                     }
                     if (this.hasOptions()) {
+                        this.loading = true;
                         const payload = {
                             basic_name: this.basicName,
                             basic_values: this.basicOptions,
@@ -104,6 +105,7 @@
                             this.confirmAdd();
                         };
                         const cancelHandler = () => {
+                            this.loading = false;
                             cleanup();
                         };
                         window.addEventListener('wp-store:options-selected', handler, {
@@ -121,11 +123,12 @@
                     await this.confirmAdd();
                 },
                 async confirmAdd() {
+                    this.loading = true;
                     try {
                         const minimumQty = this.minQty > 0 ? this.minQty : 1;
                         const requestedQty = this.qtyEnabled ? (this.qty > 0 ? this.qty : minimumQty) : minimumQty;
                         const addQty = Math.max(minimumQty, requestedQty);
-                        const res = await fetch(wpStoreSettings.restUrl + 'cart', {
+                        const res = await fetch(wpStoreSettings.restUrl + (this.buyNow ? 'checkout/direct' : 'cart'), {
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: {
@@ -135,6 +138,7 @@
                             body: JSON.stringify({
                                 id: params.id,
                                 add_qty: addQty,
+                                qty: addQty,
                                 options: this.getOptionsPayload()
                             })
                         });
@@ -143,13 +147,18 @@
                             this.showToast(data.message || 'Gagal menambah', 'error');
                             return;
                         }
+                        if (this.buyNow) {
+                            if (!data.token || !this.checkoutUrl) {
+                                throw new Error('Sesi checkout tidak tersedia.');
+                            }
+                            const checkout = new URL(this.checkoutUrl, window.location.origin);
+                            checkout.searchParams.set('direct_checkout', data.token);
+                            window.location.href = checkout.toString();
+                            return;
+                        }
                         document.dispatchEvent(new CustomEvent('wp-store:cart-updated', {
                             detail: data
                         }));
-                        if (this.buyNow && this.checkoutUrl) {
-                            window.location.href = this.checkoutUrl;
-                            return;
-                        }
                         this.showToast('Ditambahkan ke keranjang', 'success');
                     } catch (e) {
                         this.showToast('Kesalahan jaringan', 'error');
