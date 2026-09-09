@@ -18,7 +18,7 @@ $price_html = wps_product_price_html((int) $item['id'], [
   'price_class' => 'wps-text-gray-900 wps-font-medium',
   'show_empty' => false,
 ]);
-$title_class = trim('wps-text-sm wps-text-gray-900 wps-text-bold wps-d-block wps-rel' . ($price_html !== '' || $has_content_after_price ? ' wps-mb-4' : ''));
+$title_class = trim('wps-text-sm wps-text-gray-900 wps-text-bold wps-d-block wps-rel' . ($price_html !== '' || $has_content_after_price ? ' wps-mb-2' : ''));
 ?>
 <div class="wps-card wps-card-hover wps-transition h-100 <?php echo esc_attr($state_class); ?><?php echo $card_class !== '' ? ' ' . esc_attr($card_class) : ''; ?>">
   <div class="wps-p-2">

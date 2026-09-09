@@ -25,6 +25,9 @@
                 basePrice: Number(params.basePrice || 0),
                 buyNow: !!params.buyNow,
                 checkoutUrl: (params.checkoutUrl || ''),
+                checkoutRequiresLogin: !!params.checkoutRequiresLogin,
+                loggedIn: !!params.loggedIn,
+                loginUrl: (params.loginUrl || ''),
                 selectedBasic: '',
                 selectedAdv: '',
                 showToast(msg, type) {
@@ -84,6 +87,12 @@
                     if (this.loading) {
                         return;
                     }
+                    if (this.buyNow && this.checkoutRequiresLogin && !this.loggedIn) {
+                        if (this.loginUrl) {
+                            window.location.href = this.loginUrl;
+                        }
+                        return;
+                    }
                     if (this.hasOptions()) {
                         this.loading = true;
                         const payload = {
@@ -91,7 +100,8 @@
                             basic_values: this.basicOptions,
                             adv_name: this.advName,
                             adv_values: this.advOptions,
-                            base_price: this.basePrice
+                            base_price: this.basePrice,
+                            submit_label: this.buyNow ? 'Lanjut Pembelian' : 'Tambah'
                         };
                         const cleanup = () => {
                             window.removeEventListener('wp-store:options-selected', handler);
@@ -199,7 +209,10 @@ $has_label = is_string($label) && trim($label) !== '';
         advValues: JSON.parse('<?php echo esc_js(wp_json_encode($adv_values)); ?>'),
         basePrice: <?php echo isset($base_price) && is_numeric($base_price) ? (float) $base_price : 0; ?>,
         buyNow: <?php echo !empty($buy_now) ? 'true' : 'false'; ?>,
-        checkoutUrl: '<?php echo esc_js($checkout_url ?? ''); ?>'
+        checkoutUrl: '<?php echo esc_js($checkout_url ?? ''); ?>',
+        checkoutRequiresLogin: <?php echo !empty($checkout_requires_login) ? 'true' : 'false'; ?>,
+        loggedIn: <?php echo !empty($is_logged_in) ? 'true' : 'false'; ?>,
+        loginUrl: '<?php echo esc_js($login_url ?? ''); ?>'
     })">
     <div x-show="qtyEnabled" x-cloak class="wps-flex wps-items-center wps-gap-2 wps-mb-2">
         <button type="button" class=" wps-btn wps-btn-secondary wps-btn-sm wps-decrement-qty" @click="decrementQty()">-</button>

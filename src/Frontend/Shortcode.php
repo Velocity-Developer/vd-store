@@ -335,6 +335,10 @@ class Shortcode
 
     public function render_checkout($atts = [])
     {
+        if (function_exists('wp_store_checkout_requires_login') && wp_store_checkout_requires_login() && !is_user_logged_in()) {
+            $login_url = function_exists('wp_store_checkout_login_url') ? wp_store_checkout_login_url() : wp_login_url();
+            return '<div class="wps-card"><div class="wps-p-4 wps-text-center"><p class="wps-mb-4">Silakan masuk atau daftar untuk melanjutkan checkout.</p><a class="wps-btn wps-btn-primary" href="' . esc_url($login_url) . '">Masuk / Daftar</a></div></div>';
+        }
         wp_enqueue_script('alpinejs');
         wp_enqueue_script('wp-store-frontend');
         $settings = get_option('wp_store_settings', []);
@@ -1471,6 +1475,9 @@ class Shortcode
             'is_purchasable' => $is_purchasable,
             'buy_now' => $buy_now && $checkout_url !== '',
             'checkout_url' => $checkout_url,
+            'checkout_requires_login' => function_exists('wp_store_checkout_requires_login') && wp_store_checkout_requires_login(),
+            'is_logged_in' => is_user_logged_in(),
+            'login_url' => function_exists('wp_store_checkout_login_url') ? wp_store_checkout_login_url(get_permalink($id)) : wp_login_url(get_permalink($id)),
         ]);
     }
 

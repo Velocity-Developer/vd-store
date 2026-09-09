@@ -20,14 +20,14 @@ class CheckoutController
     public function register_routes()
     {
         register_rest_route('wp-store/v1', '/checkout/direct', [
-            ['methods' => 'POST', 'callback' => [$this, 'start_direct'], 'permission_callback' => [$this, 'require_rest_nonce']],
-            ['methods' => 'GET', 'callback' => [$this, 'get_direct'], 'permission_callback' => [$this, 'require_rest_nonce']],
+            ['methods' => 'POST', 'callback' => [$this, 'start_direct'], 'permission_callback' => [$this, 'check_checkout_permission']],
+            ['methods' => 'GET', 'callback' => [$this, 'get_direct'], 'permission_callback' => [$this, 'check_checkout_permission']],
         ]);
         register_rest_route('wp-store/v1', '/checkout', [
             [
                 'methods' => 'POST',
                 'callback' => [$this, 'create_order'],
-                'permission_callback' => [$this, 'require_rest_nonce'],
+                'permission_callback' => [$this, 'check_checkout_permission'],
             ],
         ]);
     }
@@ -40,6 +40,21 @@ class CheckoutController
         }
 
         return is_string($nonce) && wp_verify_nonce($nonce, 'wp_rest');
+    }
+
+    public function check_checkout_permission(WP_REST_Request $request)
+    {
+        if (!$this->require_rest_nonce($request)) {
+            return false;
+        }
+        if (function_exists('wp_store_checkout_requires_login') && wp_store_checkout_requires_login() && !is_user_logged_in()) {
+            $redirect_url = wp_get_referer() ?: home_url('/');
+            return new \WP_Error('wp_store_checkout_login_required', 'Silakan masuk atau daftar untuk melanjutkan checkout.', [
+                'status' => 401,
+                'login_url' => function_exists('wp_store_checkout_login_url') ? wp_store_checkout_login_url($redirect_url) : wp_login_url($redirect_url),
+            ]);
+        }
+        return true;
     }
 
     public function create_order(WP_REST_Request $request)

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js dengan pengaturan checkout, ongkir, dan pembayaran fleksibel.
- * Version:     1.4.9
+ * Version:     1.4.10
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,9 +13,26 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.9');
+define('WP_STORE_VERSION', '1.4.10');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
+
+function wp_store_checkout_requires_login()
+{
+    return (bool) apply_filters('wp_store_checkout_requires_login', false);
+}
+
+function wp_store_checkout_login_url($redirect_url = '')
+{
+    $redirect_url = is_string($redirect_url) ? trim($redirect_url) : '';
+    if ($redirect_url === '') {
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? wp_unslash((string) $_SERVER['REQUEST_URI']) : '/';
+        $redirect_url = home_url('/' . ltrim($request_uri, '/'));
+    }
+    $redirect_url = wp_validate_redirect($redirect_url, home_url('/'));
+
+    return (string) apply_filters('wp_store_checkout_login_url', wp_login_url($redirect_url), $redirect_url);
+}
 
 if (file_exists(WP_STORE_PATH . 'vendor/autoload.php')) {
     require_once WP_STORE_PATH . 'vendor/autoload.php';

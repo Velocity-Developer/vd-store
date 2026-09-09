@@ -219,6 +219,7 @@ class Assets
             basePrice: 0,
             selectedBasic: '',
             selectedAdv: '',
+            submitLabel: 'Tambah',
             open(payload) {
                 const p = payload || {};
                 this.basicName = p.basic_name || '';
@@ -226,6 +227,7 @@ class Assets
                 this.advName = p.adv_name || '';
                 this.advOptions = Array.isArray(p.adv_values) ? p.adv_values : [];
                 this.basePrice = Number(p.base_price || 0);
+                this.submitLabel = p.submit_label || 'Tambah';
                 this.selectedBasic = '';
                 this.selectedAdv = '';
                 this.show = true;
@@ -286,7 +288,7 @@ class Assets
                     <div class="wps-flex wps-justify-between wps-items-center">
                         <button type="button" class="wps-btn wps-btn-secondary wps-btn-sm" @click="cancel()">Batal</button>
                         <button type="button" class="wps-btn wps-btn-primary wps-btn-sm" @click="submit()">
-                            <span>Tambah</span>
+                            <span x-text="submitLabel"></span>
                         </button>
                     </div>
                 </div>

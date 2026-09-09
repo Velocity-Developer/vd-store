@@ -36,6 +36,12 @@ $component = static function ($key, $args = []) use ($id, $content) {
         </div>
     <?php endif; ?>
 
+    <?php if (has_action('wp_store_single_before_description')) : ?>
+        <div class="wps-mb-4 product-store-profile">
+            <?php do_action('wp_store_single_before_description', $id, ['id' => $id]); ?>
+        </div>
+    <?php endif; ?>
+
     <?php foreach (['description', 'reviews', 'related'] as $section) : ?>
         <?php if ($has($section)) : ?>
             <?php echo $component($section); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
