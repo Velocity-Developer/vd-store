@@ -64,6 +64,13 @@ class SettingsController
     public function get_settings(WP_REST_Request $request)
     {
         $settings = get_option('wp_store_settings', []);
+        if (isset($settings['store_bank_accounts']) && is_array($settings['store_bank_accounts'])) {
+            foreach ($settings['store_bank_accounts'] as &$account) {
+                $logo_id = isset($account['bank_logo_id']) ? absint($account['bank_logo_id']) : 0;
+                $account['bank_logo_url'] = $logo_id ? (wp_get_attachment_image_url($logo_id, 'medium') ?: '') : '';
+            }
+            unset($account);
+        }
         return new WP_REST_Response([
             'success' => true,
             'settings' => $settings
@@ -125,6 +132,12 @@ class SettingsController
                 if (isset($account['bank_name']) && isset($account['bank_account']) && isset($account['bank_holder'])) {
                     $bank_accounts[] = [
                         'bank_name'    => sanitize_text_field($account['bank_name']),
+                        'custom_bank_name' => isset($account['custom_bank_name']) && $account['bank_name'] === 'Lainnya'
+                            ? sanitize_text_field($account['custom_bank_name'])
+                            : '',
+                        'bank_logo_id' => $account['bank_name'] === 'Lainnya' && isset($account['bank_logo_id']) && wp_attachment_is_image(absint($account['bank_logo_id']))
+                            ? absint($account['bank_logo_id'])
+                            : 0,
                         'bank_account' => sanitize_text_field($account['bank_account']),
                         'bank_holder'  => sanitize_text_field($account['bank_holder']),
                     ];

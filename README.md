@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.10`
+Versi: `1.4.11`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -45,6 +45,12 @@ Pakai `VD Store` jika ingin membuat:
 - Integrasi ongkir dengan mode normal, gratis ongkir, dan nonaktif
 - Pengaturan checkout untuk tetap mengumpulkan alamat saat ongkir gratis/nonaktif
 - Integrasi pembayaran manual dan gateway
+
+## Ringkasan update 1.4.11
+
+- Menambahkan dukungan nama dan logo untuk rekening bank custom.
+- Menampilkan logo atau placeholder bank secara konsisten pada shortcode rekening, halaman selesai checkout, dan tracking pesanan.
+- Menambahkan BCA Syariah, Allo Bank, Bank BPD DIY, Bank Jateng, Bank Jatim, dan Bank BJB ke daftar bank.
 
 ## Ringkasan update 1.4.10
 
@@ -385,7 +391,7 @@ belum field bawaan checkout. Tidak ada field tambahan aktif secara default.
 Contoh kode dan kontrak integrasi tersedia pada
 [Field tambahan checkout](#13-field-tambahan-checkout).
 
-Versi plugin: `1.4.10`
+Versi plugin: `1.4.11`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin

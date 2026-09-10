@@ -304,8 +304,17 @@ if ($order_exists) {
                         <?php if (!empty($bank_accounts)) : ?>
                             <div class="wps-mt-3">
                                 <?php foreach ($bank_accounts as $acc) : ?>
+                                    <?php
+                                    $display_bank_name = function_exists('wp_store_bank_account_name') ? wp_store_bank_account_name($acc) : ($acc['bank_name'] ?? '');
+                                    $bank_logo_url = function_exists('wp_store_bank_account_logo') ? wp_store_bank_account_logo($acc) : '';
+                                    ?>
                                     <div class="wps-card wps-p-4 wps-mb-2">
-                                        <div class="wps-text-sm wps-text-gray-900 wps-font-medium" style="margin-bottom:6px;"><?php echo esc_html($acc['bank_name'] ?? ''); ?></div>
+                                        <?php if ($bank_logo_url) : ?>
+                                            <img src="<?php echo esc_url($bank_logo_url); ?>" alt="<?php echo esc_attr($display_bank_name); ?>" style="display:block; max-width:140px; max-height:40px; width:auto; margin-bottom:8px;">
+                                        <?php elseif (function_exists('wp_store_bank_logo_placeholder')) : ?>
+                                            <?php echo wp_store_bank_logo_placeholder($display_bank_name); ?>
+                                        <?php endif; ?>
+                                        <div class="wps-text-sm wps-text-gray-900 wps-font-medium" style="margin-bottom:6px;"><?php echo esc_html($display_bank_name); ?></div>
                                         <div class="wps-text-sm wps-text-gray-700">
                                             <div>No. Rekening: <span class="wps-font-medium"><?php echo esc_html($acc['bank_account'] ?? ''); ?></span></div>
                                             <div>Atas Nama: <span class="wps-font-medium"><?php echo esc_html($acc['bank_holder'] ?? ''); ?></span></div>

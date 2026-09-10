@@ -254,6 +254,21 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                                                 <option :value="bank" x-text="bank" :selected="account.bank_name === bank"></option>
                                             </template>
                                         </select>
+                                        <div x-show="account.bank_name === 'Lainnya'" x-cloak class="wp-store-mt-2">
+                                            <label class="wp-store-label">Nama Bank Lainnya</label>
+                                            <input type="text" x-model="account.custom_bank_name" class="wp-store-input" placeholder="Contoh: Bank BPD DIY" :required="account.bank_name === 'Lainnya'">
+                                            <label class="wp-store-label wp-store-mt-2">Logo Bank</label>
+                                            <div style="display:flex; align-items:center; gap:10px;">
+                                                <div style="width:100px; height:60px; border:1px solid #e5e7eb; border-radius:6px; display:flex; align-items:center; justify-content:center; background:#fff; overflow:hidden;">
+                                                    <img x-show="account.bank_logo_url" :src="account.bank_logo_url" :alt="account.custom_bank_name || 'Logo bank'" style="max-width:90%; max-height:50px; width:auto;">
+                                                    <span x-show="!account.bank_logo_url" class="wp-store-helper" style="margin:0; text-align:center;">Belum ada logo</span>
+                                                </div>
+                                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                                    <button type="button" class="wp-store-btn wp-store-btn-secondary" @click="selectBankLogo(index)">Pilih Gambar</button>
+                                                    <button type="button" class="wp-store-btn wp-store-btn-secondary" @click="clearBankLogo(index)" x-show="account.bank_logo_id">Hapus</button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="wp-store-label">Nomor Rekening</label>
@@ -903,7 +918,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             rateSubdistricts: [],
             isLoadingRateLocations: false,
 
-            indonesianBanks: <?php echo json_encode(array_values(function_exists('wp_store_bank_labels') ? wp_store_bank_labels() : ['Bank Mandiri', 'BRI', 'BCA', 'BNI', 'BTN', 'BSI', 'CIMB Niaga', 'OCBC NISP', 'Bank Permata', 'Bank Danamon', 'Panin Bank', 'Maybank Indonesia', 'Bank Mega', 'Bank Muamalat', 'Bank Sinarmas', 'BSN', 'Bank Mega Syariah', 'Bank Commonwealth', 'Bank UOB Indonesia', 'Bank DBS Indonesia', 'Bank Woori Saudara', 'Bank Hana Indonesia', 'Bank Resona Perdania', 'Bank J Trust Indonesia', 'Bank Ina Perdana', 'Bank Artha Graha', 'Bank Index Selindo', 'Bank Ganesha', 'Bank Maspion', 'Bank Bumi Arta', 'Bank Victoria', 'Bank Jago', 'Jenius / BTPN', 'SeaBank', 'Bank Neo Commerce', 'HSBC Indonesia', 'Lainnya'])); ?>,
+            indonesianBanks: <?php echo json_encode(array_values(function_exists('wp_store_bank_labels') ? wp_store_bank_labels() : ['Bank Mandiri', 'BRI', 'BCA', 'BCA Syariah', 'BNI', 'BTN', 'BSI', 'CIMB Niaga', 'OCBC NISP', 'Bank Permata', 'Bank Danamon', 'Panin Bank', 'Maybank Indonesia', 'Bank Mega', 'Bank Muamalat', 'Bank Sinarmas', 'BSN', 'Bank Mega Syariah', 'Bank Commonwealth', 'Bank UOB Indonesia', 'Bank DBS Indonesia', 'Bank Woori Saudara', 'Bank Hana Indonesia', 'Bank Resona Perdania', 'Bank J Trust Indonesia', 'Bank Ina Perdana', 'Bank Artha Graha', 'Bank Index Selindo', 'Bank Ganesha', 'Bank Maspion', 'Bank Bumi Arta', 'Bank Victoria', 'Bank Jago', 'Allo Bank', 'Bank SMBC Indonesia', 'SeaBank', 'Bank Neo Commerce', 'HSBC Indonesia', 'Bank BPD DIY', 'Bank Jateng', 'Bank Jatim', 'Bank BJB', 'Lainnya'])); ?>,
 
             provinces: [],
             cities: [],
@@ -974,13 +989,13 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         this.customShippingRates = Array.isArray(s.custom_shipping_rates) ? s.custom_shipping_rates : [];
                         // Bank accounts (with legacy fallback if present)
                         if (Array.isArray(s.store_bank_accounts) && s.store_bank_accounts.length > 0) {
-                            this.bankAccounts = s.store_bank_accounts;
+                            this.bankAccounts = s.store_bank_accounts.map(account => this.normalizeBankAccount(account));
                         } else if (s.bank_name || s.bank_account || s.bank_holder) {
-                            this.bankAccounts = [{
+                            this.bankAccounts = [this.normalizeBankAccount({
                                 bank_name: s.bank_name || '',
                                 bank_account: s.bank_account || '',
                                 bank_holder: s.bank_holder || ''
-                            }];
+                            })];
                         } else if (this.bankAccounts.length === 0) {
                             this.addBankAccount();
                         }
@@ -994,9 +1009,32 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
             addBankAccount() {
                 this.bankAccounts.push({
                     bank_name: 'BCA',
+                    custom_bank_name: '',
+                    bank_logo_id: 0,
+                    bank_logo_url: '',
                     bank_account: '',
                     bank_holder: ''
                 });
+            },
+
+            normalizeBankAccount(account = {}) {
+                let bankName = account.bank_name || 'BCA';
+                let customBankName = account.custom_bank_name || '';
+
+                // Rekening lama mungkin menyimpan nama bank custom langsung di bank_name.
+                if (bankName && !this.indonesianBanks.includes(bankName)) {
+                    customBankName = customBankName || bankName;
+                    bankName = 'Lainnya';
+                }
+
+                return {
+                    bank_name: bankName,
+                    custom_bank_name: customBankName,
+                    bank_logo_id: Number(account.bank_logo_id) || 0,
+                    bank_logo_url: account.bank_logo_url || '',
+                    bank_account: account.bank_account || '',
+                    bank_holder: account.bank_holder || ''
+                };
             },
 
             removeBankAccount(index) {
@@ -1409,6 +1447,32 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                 this.settings.qris_image_id = '';
                 const img = document.querySelector('.wp-store-tab-content [alt=""]');
                 if (img) img.src = '<?php echo esc_js(WP_STORE_URL . 'assets/frontend/img/noimg.webp'); ?>';
+            },
+
+            selectBankLogo(index) {
+                const frame = wp.media({
+                    title: 'Pilih Logo Bank',
+                    button: {
+                        text: 'Gunakan Logo Ini'
+                    },
+                    library: {
+                        type: 'image'
+                    },
+                    multiple: false
+                });
+                frame.on('select', () => {
+                    const attachment = frame.state().get('selection').first().toJSON();
+                    this.bankAccounts[index].bank_logo_id = attachment.id;
+                    this.bankAccounts[index].bank_logo_url = attachment.sizes && attachment.sizes.medium
+                        ? attachment.sizes.medium.url
+                        : attachment.url;
+                });
+                frame.open();
+            },
+
+            clearBankLogo(index) {
+                this.bankAccounts[index].bank_logo_id = 0;
+                this.bankAccounts[index].bank_logo_url = '';
             },
 
             async saveSettings() {

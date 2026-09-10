@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js dengan pengaturan checkout, ongkir, dan pembayaran fleksibel.
- * Version:     1.4.10
+ * Version:     1.4.11
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.10');
+define('WP_STORE_VERSION', '1.4.11');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -837,6 +837,7 @@ function wp_store_bank_labels()
         'mandiri' => 'Bank Mandiri',
         'bri' => 'BRI',
         'bca' => 'BCA',
+        'bca_syariah' => 'BCA Syariah',
         'bni' => 'BNI',
         'btn' => 'BTN',
         'bsi' => 'BSI',
@@ -866,10 +867,15 @@ function wp_store_bank_labels()
         'bumi_arta' => 'Bank Bumi Arta',
         'victoria' => 'Bank Victoria',
         'jago' => 'Bank Jago',
+        'allo' => 'Allo Bank',
         'smbc' => 'Bank SMBC Indonesia',
         'seabank' => 'SeaBank',
         'neocommerce' => 'Bank Neo Commerce',
         'hsbc' => 'HSBC Indonesia',
+        'bpd_diy' => 'Bank BPD DIY',
+        'bank_jateng' => 'Bank Jateng',
+        'bank_jatim' => 'Bank Jatim',
+        'bjb' => 'Bank BJB',
         'lainnya' => 'Lainnya',
     ];
 }
@@ -890,6 +896,48 @@ function wp_store_bank_logo($bank_name)
     }
 
     return WP_STORE_URL . 'assets/frontend/img/bank/' . $file;
+}
+
+function wp_store_bank_account_name($account)
+{
+    if (!is_array($account)) {
+        return '';
+    }
+
+    $bank_name = isset($account['bank_name']) ? (string) $account['bank_name'] : '';
+    if ($bank_name === 'Lainnya' && !empty($account['custom_bank_name'])) {
+        return (string) $account['custom_bank_name'];
+    }
+
+    return $bank_name;
+}
+
+function wp_store_bank_account_logo($account)
+{
+    if (!is_array($account)) {
+        return '';
+    }
+
+    $is_custom_bank = isset($account['bank_name']) && (string) $account['bank_name'] === 'Lainnya';
+    $custom_logo_id = $is_custom_bank && isset($account['bank_logo_id']) ? absint($account['bank_logo_id']) : 0;
+    if ($custom_logo_id > 0) {
+        $custom_logo_url = wp_get_attachment_image_url($custom_logo_id, 'medium');
+        if ($custom_logo_url) {
+            return $custom_logo_url;
+        }
+    }
+
+    return wp_store_bank_logo(wp_store_bank_account_name($account));
+}
+
+function wp_store_bank_logo_placeholder($bank_name = '', $centered = false)
+{
+    $margin = $centered ? '0 auto 6px' : '0 0 8px';
+
+    return '<span role="img" aria-label="' . esc_attr(sprintf('Logo %s belum tersedia', (string) $bank_name)) . '" style="display:flex; align-items:center; justify-content:center; gap:6px; width:120px; height:40px; margin:' . esc_attr($margin) . '; border:1px solid #e5e7eb; border-radius:6px; box-sizing:border-box; background:#f8fafc; color:#64748b;">'
+        . '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"/><path d="M5 10v8"/><path d="M9 10v8"/><path d="M15 10v8"/><path d="M19 10v8"/><path d="M3 18h18"/><path d="M12 3 3 8h18l-9-5Z"/></svg>'
+        . '<span style="font-size:11px; font-weight:700; letter-spacing:.08em; line-height:1;">BANK</span>'
+        . '</span>';
 }
 
 function wp_store_order_status_labels()

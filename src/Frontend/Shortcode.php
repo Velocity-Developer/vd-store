@@ -592,18 +592,19 @@ class Shortcode
         foreach ($accounts as $index => $acc) {
             if (empty($acc['bank_name']) || empty($acc['bank_account'])) continue;
 
-            $bank_name = (string) $acc['bank_name'];
+            $bank_name = function_exists('wp_store_bank_account_name') ? wp_store_bank_account_name($acc) : (string) $acc['bank_name'];
             if ($bank_name === 'Bank BTN Syariah') {
                 $bank_name = 'BSN';
             }
-            $logo_url = function_exists('wp_store_bank_logo') ? wp_store_bank_logo($bank_name) : '';
+            $logo_url = function_exists('wp_store_bank_account_logo') ? wp_store_bank_account_logo($acc) : (function_exists('wp_store_bank_logo') ? wp_store_bank_logo($bank_name) : '');
 
             echo '<div class="wps-bank-item wps-mb-2">';
             if ($logo_url) {
                 echo '<img src="' . esc_url($logo_url) . '" alt="' . esc_attr($bank_name) . '" class="wps-mx-auto wps-mb-1" style="max-height: 40px; width: auto;">';
             } else {
-                echo '<div class="wps-font-normal wps-text-lg wps-mb-1">' . esc_html($bank_name) . '</div>';
+                echo function_exists('wp_store_bank_logo_placeholder') ? wp_store_bank_logo_placeholder($bank_name, true) : '';
             }
+            echo '<div class="wps-text-sm wps-font-medium wps-mb-1">' . esc_html($bank_name) . '</div>';
             echo '<div class="wps-text-sm wps-font-normal wps-mb-1">' . esc_html($acc['bank_account']);
             if (!empty($acc['bank_holder']) && !empty($acc['bank_account'])) {
                 echo '<span class="wps-text-gray-700"> a/n </span>' . esc_html($acc['bank_holder']);
