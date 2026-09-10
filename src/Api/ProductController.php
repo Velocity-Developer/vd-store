@@ -195,6 +195,7 @@ class ProductController
             'gallery_ids' => $data['gallery_ids'],
             'variant_name' => $data['variant_name'],
             'variant_options' => $data['variant_options'],
+            'price_option_mode' => $data['price_option_mode'],
             'price_adjustment_name' => $data['price_adjustment_name'],
             'price_adjustment_options' => $data['price_adjustment_options'],
         ];

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js dengan pengaturan checkout, ongkir, dan pembayaran fleksibel.
- * Version:     1.4.11
+ * Version:     1.4.12
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.11');
+define('WP_STORE_VERSION', '1.4.12');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 

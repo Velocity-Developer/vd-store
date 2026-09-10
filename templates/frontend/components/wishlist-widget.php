@@ -126,6 +126,7 @@
                                 basic_values: Array.isArray(item.variant_options) ? item.variant_options : [],
                                 adv_name: item.price_adjustment_name || '',
                                 adv_values: Array.isArray(item.price_adjustment_options) ? item.price_adjustment_options : [],
+                                price_option_mode: item.price_option_mode === 'absolute' ? 'absolute' : 'adjustment',
                                 base_price: Number(item.base_price || item.price || 0)
                             }
                         }));

@@ -22,6 +22,7 @@
                 basicOptions: Array.isArray(params.basicValues) ? params.basicValues : [],
                 advName: (params.advName || ''),
                 advOptions: Array.isArray(params.advValues) ? params.advValues : [],
+                priceOptionMode: params.priceOptionMode === 'absolute' ? 'absolute' : 'adjustment',
                 basePrice: Number(params.basePrice || 0),
                 buyNow: !!params.buyNow,
                 checkoutUrl: (params.checkoutUrl || ''),
@@ -100,6 +101,7 @@
                             basic_values: this.basicOptions,
                             adv_name: this.advName,
                             adv_values: this.advOptions,
+                            price_option_mode: this.priceOptionMode,
                             base_price: this.basePrice,
                             submit_label: this.buyNow ? 'Lanjut Pembelian' : 'Tambah'
                         };
@@ -207,6 +209,7 @@ $has_label = is_string($label) && trim($label) !== '';
         basicValues: JSON.parse('<?php echo esc_js(wp_json_encode($basic_values)); ?>'),
         advName: '<?php echo esc_js($adv_name); ?>',
         advValues: JSON.parse('<?php echo esc_js(wp_json_encode($adv_values)); ?>'),
+        priceOptionMode: '<?php echo esc_js($price_option_mode ?? 'adjustment'); ?>',
         basePrice: <?php echo isset($base_price) && is_numeric($base_price) ? (float) $base_price : 0; ?>,
         buyNow: <?php echo !empty($buy_now) ? 'true' : 'false'; ?>,
         checkoutUrl: '<?php echo esc_js($checkout_url ?? ''); ?>',

@@ -38,6 +38,7 @@ class ProductData
             'gallery_ids' => ProductMeta::gallery_ids($post_id),
             'variant_name' => (string) ProductMeta::get($post_id, 'variant_name', ''),
             'variant_options' => ProductMeta::get_list($post_id, 'variant_options'),
+            'price_option_mode' => self::price_option_mode($post_id),
             'price_adjustment_name' => (string) ProductMeta::get($post_id, 'price_adjustment_name', ''),
             'price_adjustment_options' => ProductMeta::get_list($post_id, 'price_adjustment_options'),
         ];
@@ -162,12 +163,20 @@ class ProductData
                 }
 
                 if ($label === $selected) {
-                    return $base + max(0, $amount);
+                    return self::price_option_mode((int) $product_id) === 'absolute'
+                        ? max(0, $amount)
+                        : $base + max(0, $amount);
                 }
             }
         }
 
         return $base;
+    }
+
+    public static function price_option_mode($product_id)
+    {
+        $mode = sanitize_key((string) ProductMeta::get((int) $product_id, 'price_option_mode', 'adjustment'));
+        return $mode === 'absolute' ? 'absolute' : 'adjustment';
     }
 
     public static function increment_sold_count($product_id, $qty = 1)

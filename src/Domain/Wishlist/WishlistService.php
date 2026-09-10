@@ -139,6 +139,7 @@ class WishlistService
                 'min_order' => is_array($product) && isset($product['min_order']) ? max(1, (int) $product['min_order']) : 1,
                 'variant_name' => is_array($product) && isset($product['variant_name']) ? (string) $product['variant_name'] : '',
                 'variant_options' => is_array($product) && isset($product['variant_options']) && is_array($product['variant_options']) ? array_values($product['variant_options']) : [],
+                'price_option_mode' => is_array($product) && isset($product['price_option_mode']) ? (string) $product['price_option_mode'] : 'adjustment',
                 'price_adjustment_name' => is_array($product) && isset($product['price_adjustment_name']) ? (string) $product['price_adjustment_name'] : '',
                 'price_adjustment_options' => is_array($product) && isset($product['price_adjustment_options']) && is_array($product['price_adjustment_options']) ? array_values($product['price_adjustment_options']) : [],
             ];

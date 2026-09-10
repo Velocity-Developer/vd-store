@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.11`
+Versi: `1.4.12`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -34,7 +34,7 @@ Pakai `VD Store` jika ingin membuat:
 - Taxonomy kategori produk: `store_product_cat`
 - Produk fisik dan digital
 - Harga reguler dan harga promo. Harga boleh kosong untuk produk katalog/inquiry.
-- Opsi varian dan opsi harga tambahan
+- Opsi varian dengan harga tambahan atau harga akhir per pilihan
 - Keranjang dan wishlist
 - Checkout dan tracking order
 - Kupon produk dan kupon ongkir
@@ -45,41 +45,6 @@ Pakai `VD Store` jika ingin membuat:
 - Integrasi ongkir dengan mode normal, gratis ongkir, dan nonaktif
 - Pengaturan checkout untuk tetap mengumpulkan alamat saat ongkir gratis/nonaktif
 - Integrasi pembayaran manual dan gateway
-
-## Ringkasan update 1.4.11
-
-- Menambahkan dukungan nama dan logo untuk rekening bank custom.
-- Menampilkan logo atau placeholder bank secara konsisten pada shortcode rekening, halaman selesai checkout, dan tracking pesanan.
-- Menambahkan BCA Syariah, Allo Bank, Bank BPD DIY, Bank Jateng, Bank Jatim, dan Bank BJB ke daftar bank.
-
-## Ringkasan update 1.4.10
-
-- Menambahkan filter `wp_store_checkout_requires_login` untuk membatasi checkout keranjang dan checkout langsung bagi pengguna yang sudah login.
-- Melindungi tampilan checkout dan endpoint REST ketika kebijakan wajib login diaktifkan oleh custom plugin.
-- Menambahkan posisi ekstensi selebar halaman sebelum deskripsi produk untuk integrasi profil toko marketplace.
-- Merapikan jarak antar-elemen pada card produk tanpa menambah CSS khusus.
-
-## Ringkasan update 1.4.8
-
-- Mengubah tombol **Beli Sekarang** menjadi checkout langsung untuk satu produk, jumlah, dan varian yang dipilih.
-- Menyimpan checkout langsung dalam sesi sementara yang terikat pada pembeli dan hanya dapat menghasilkan satu pesanan.
-- Memvalidasi ulang produk, stok, varian, harga, kupon, dan ongkir pada server saat checkout.
-- Menjaga seluruh isi keranjang tetap utuh ketika checkout langsung selesai atau dibatalkan.
-- Menampilkan penanda pada halaman checkout agar pembeli mengetahui bahwa hanya produk pilihan yang sedang diproses.
-
-## Ringkasan update 1.4.7
-
-- Mendukung field checkout tambahan melalui hook `wp_store_checkout_fields`.
-- Menambahkan pilihan section `customer`, `address`, `notes`, dan `before_submit`, dengan urutan per section.
-- Field alamat hanya diproses saat checkout meminta alamat.
-- Menyertakan contoh plugin siap tempel dan panduan pilihan section dalam README.
-
-## Ringkasan update 1.4.5
-
-- Filter produk sekarang diterapkan hanya saat tombol `Terapkan` diklik, sehingga aman dipakai pada halaman Beaver Builder.
-- Pada archive kategori, kategori dari URL menjadi scope tetap dan filter kategori lain disembunyikan.
-- Menambahkan gambar taxonomy kategori dan brand, termasuk Quick Edit.
-- Menambahkan shortcode carousel taxonomy untuk kategori atau brand.
 
 ## Instalasi singkat
 
@@ -391,7 +356,7 @@ belum field bawaan checkout. Tidak ada field tambahan aktif secara default.
 Contoh kode dan kontrak integrasi tersedia pada
 [Field tambahan checkout](#13-field-tambahan-checkout).
 
-Versi plugin: `1.4.11`
+Versi plugin: `1.4.12`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -915,9 +880,25 @@ Meta order yang sering dipakai:
 - `collect_address` dan `allow_cod` default aktif jika belum ada nilai tersimpan
 - `allow_cod` mengontrol COD, dan otomatis false saat mode `off`
 
-### Opsi harga tambahan
-- harga akhir item = harga dasar + tambahan opsi
-- jangan ganti harga dasar dengan nilai opsi saja
+### Pilihan harga
+- meta `_store_option_price_mode` menentukan cara menghitung nilai pada `_store_advanced_options`
+- **Tambahan Harga** (`adjustment`) menghitung harga akhir = harga produk + angka pilihan
+- **Harga Tetap** (`absolute`) memakai angka pilihan sebagai harga akhir
+- produk lama tanpa meta mode otomatis memakai `adjustment`
+
+Contoh **Tambahan Harga** dengan harga produk Rp100.000:
+
+```text
+Small=0
+Large=20000
+```
+
+Contoh **Harga Tetap**:
+
+```text
+Small=100000
+Large=120000
+```
 
 ### Harga promo
 - filtering

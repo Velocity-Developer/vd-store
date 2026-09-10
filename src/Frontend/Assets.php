@@ -217,6 +217,7 @@ class Assets
             advName: '',
             advOptions: [],
             basePrice: 0,
+            priceOptionMode: 'adjustment',
             selectedBasic: '',
             selectedAdv: '',
             submitLabel: 'Tambah',
@@ -227,6 +228,7 @@ class Assets
                 this.advName = p.adv_name || '';
                 this.advOptions = Array.isArray(p.adv_values) ? p.adv_values : [];
                 this.basePrice = Number(p.base_price || 0);
+                this.priceOptionMode = p.price_option_mode === 'absolute' ? 'absolute' : 'adjustment';
                 this.submitLabel = p.submit_label || 'Tambah';
                 this.selectedBasic = '';
                 this.selectedAdv = '';
@@ -243,7 +245,10 @@ class Assets
                 if (!label || rawAdjustment === undefined || rawAdjustment === null || rawAdjustment === '') {
                     return label;
                 }
-                return label + ' - ' + this.formatOptionPrice(this.basePrice + Math.max(0, adjustment));
+                const finalPrice = this.priceOptionMode === 'absolute'
+                    ? Math.max(0, adjustment)
+                    : this.basePrice + Math.max(0, adjustment);
+                return label + ' - ' + this.formatOptionPrice(finalPrice);
             },
             submit() {
                 const detail = {

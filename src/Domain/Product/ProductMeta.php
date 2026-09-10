@@ -110,6 +110,7 @@ class ProductMeta
             'label' => '_store_label',
             'variant_name' => '_store_option_name',
             'variant_options' => '_store_options',
+            'price_option_mode' => '_store_option_price_mode',
             'price_adjustment_name' => '_store_option2_name',
             'price_adjustment_options' => '_store_advanced_options',
         ];
