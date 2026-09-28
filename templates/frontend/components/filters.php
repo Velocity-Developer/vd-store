@@ -92,7 +92,32 @@ $render_category_rows = static function ($parent_id = 0, $depth = 0) use (&$rend
             </option>
         </select>
     </div>
-    <div class="wps-mt-3">
+    <?php
+    // Mode off: slider tetap perlu scope Alpine sendiri agar bisa mengisi kotak Min/Max (form tetap submit biasa).
+    $price_scope_attr = '';
+    if (!$use_js) {
+        $bound_min = isset($price_min_global) ? (float) $price_min_global : 0;
+        $bound_max = isset($price_max_global) ? (float) $price_max_global : 0;
+        $cur_min = is_numeric($current['min_price'] ?? '') ? (string) ((float) $current['min_price']) : '';
+        $cur_max = is_numeric($current['max_price'] ?? '') ? (string) ((float) $current['max_price']) : '';
+        $price_scope = '{'
+            . 'price_min_bound:' . wp_json_encode($bound_min) . ','
+            . 'price_max_bound:' . wp_json_encode($bound_max) . ','
+            . 'min_price_input:' . wp_json_encode($cur_min) . ','
+            . 'max_price_input:' . wp_json_encode($cur_max) . ','
+            . 'active_min_price:0,active_max_price:0,updating:false,'
+            . 'init(){this.syncFromInputs();},'
+            . 'get rangeFillStyle(){const span=Math.max(1,this.price_max_bound-this.price_min_bound);const a=Math.max(0,Math.min(100,((this.active_min_price-this.price_min_bound)/span)*100));const b=Math.max(0,Math.min(100,((this.active_max_price-this.price_min_bound)/span)*100));return `left:${Math.min(a,b)}%; right:${Math.max(0,100-Math.max(a,b))}%;`;},'
+            . 'clampPrices(){if(this.active_min_price<this.price_min_bound)this.active_min_price=this.price_min_bound;if(this.active_max_price>this.price_max_bound)this.active_max_price=this.price_max_bound;if(this.active_min_price>this.active_max_price)this.active_min_price=this.active_max_price;},'
+            . 'syncInputsFromRange(){this.min_price_input=this.active_min_price<=this.price_min_bound?\'\':String(Math.round(this.active_min_price));this.max_price_input=this.active_max_price>=this.price_max_bound?\'\':String(Math.round(this.active_max_price));},'
+            . 'syncFromInputs(){const mn=String(this.min_price_input||\'\').trim();const mx=String(this.max_price_input||\'\').trim();this.active_min_price=mn===\'\'?this.price_min_bound:parseFloat(mn);this.active_max_price=mx===\'\'?this.price_max_bound:parseFloat(mx);if(!Number.isFinite(this.active_min_price))this.active_min_price=this.price_min_bound;if(!Number.isFinite(this.active_max_price))this.active_max_price=this.price_max_bound;this.clampPrices();},'
+            . 'update(){},'
+            . 'formatCurrency(v){const n=parseFloat(v);return \'Rp \'+(Number.isFinite(n)?n.toLocaleString(\'id-ID\'):\'0\');}'
+            . '}';
+        $price_scope_attr = 'x-data="' . esc_attr($price_scope) . '" x-init="init()"';
+    }
+    ?>
+    <div class="wps-mt-3" <?php echo $price_scope_attr; ?>>
         <label class="wps-label">Rentang Harga</label>
         <div class="wps-price-range">
             <div class="wps-slider">
@@ -111,13 +136,13 @@ $render_category_rows = static function ($parent_id = 0, $depth = 0) use (&$rend
             <div class="wps-form-group wps-mb-0">
                 <input class="wps-input" type="number" min="0" step="1" name="min_price"
                     value="<?php echo esc_attr((string) ($current['min_price'] ?? '')); ?>"
-                    <?php echo $use_js ? 'x-model="min_price_input" @input="syncFromInputs(); update()"' : ''; ?>
+                    <?php echo $use_js ? 'x-model="min_price_input" @input="syncFromInputs(); update()"' : 'x-model="min_price_input" @input="syncFromInputs()"'; ?>
                     placeholder="Min">
             </div>
             <div class="wps-form-group wps-mb-0">
                 <input class="wps-input" type="number" min="0" step="1" name="max_price"
                     value="<?php echo esc_attr((string) ($current['max_price'] ?? '')); ?>"
-                    <?php echo $use_js ? 'x-model="max_price_input" @input="syncFromInputs(); update()"' : ''; ?>
+                    <?php echo $use_js ? 'x-model="max_price_input" @input="syncFromInputs(); update()"' : 'x-model="max_price_input" @input="syncFromInputs()"'; ?>
                     placeholder="Max">
             </div>
         </div>

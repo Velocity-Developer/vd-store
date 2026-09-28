@@ -1120,6 +1120,8 @@ class Shortcode
         }
         $stats_filters = $request;
         $stats_filters['sort'] = 'latest';
+        // Batas slider harga tidak boleh ikut menyempit oleh filter harga yang sedang aktif.
+        unset($stats_filters['min_price'], $stats_filters['max_price']);
         if (!empty($current['cats'])) {
             $stats_filters['cats'] = $current['cats'];
         } elseif (!empty($locked_cats)) {
