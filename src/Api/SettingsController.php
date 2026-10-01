@@ -181,7 +181,7 @@ class SettingsController
         }
 
         if (isset($params['shipping_couriers']) && is_array($params['shipping_couriers'])) {
-            $settings['shipping_couriers'] = array_map('sanitize_text_field', $params['shipping_couriers']);
+            $settings['shipping_couriers'] = array_values(array_diff(array_map('sanitize_text_field', $params['shipping_couriers']), wp_store_disabled_couriers()));
         }
 
         if (isset($params['disable_shipping_for_digital'])) {

@@ -236,6 +236,7 @@ class RajaOngkirController
         $destination_city = isset($params['destination_city']) ? sanitize_text_field($params['destination_city']) : '';
         $destination_province = isset($params['destination_province']) ? sanitize_text_field($params['destination_province']) : '';
         $courier = isset($params['courier']) ? sanitize_text_field($params['courier']) : '';
+        $courier = implode(':', array_diff(preg_split('/[:,]+/', strtolower($courier), -1, PREG_SPLIT_NO_EMPTY), wp_store_disabled_couriers()));
 
         // Custom Rates
         $custom_services = [];

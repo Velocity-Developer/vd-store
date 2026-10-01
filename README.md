@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.13`
+Versi: `1.4.14`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -356,7 +356,7 @@ belum field bawaan checkout. Tidak ada field tambahan aktif secara default.
 Contoh kode dan kontrak integrasi tersedia pada
 [Field tambahan checkout](#13-field-tambahan-checkout).
 
-Versi plugin: `1.4.13`
+Versi plugin: `1.4.14`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
@@ -815,7 +815,7 @@ Fungsi:
 
 Meta canonical produk:
 - `_store_product_type`
-- `_store_price` boleh kosong. Produk tanpa harga tampil sebagai katalog/inquiry dan tombol beli menjadi disabled `Hubungi Admin`.
+- `_store_price` boleh kosong. Produk tanpa harga, tanpa berat (produk fisik), atau stok `0` tampil sebagai katalog/inquiry: tombol Beli Sekarang disembunyikan dan tombol keranjang menjadi `Hubungi Admin` yang membuka WhatsApp toko (Pengaturan → WhatsApp). Stok kosong berarti tidak dibatasi.
 - `_store_sale_price`
 - `_store_flashsale_until`
 - `_store_digital_file`

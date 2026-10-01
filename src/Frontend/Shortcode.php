@@ -344,7 +344,7 @@ class Shortcode
         $settings = get_option('wp_store_settings', []);
         $currency = ($settings['currency_symbol'] ?? 'Rp');
         $origin_subdistrict = isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '';
-        $active_couriers = $settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide'];
+        $active_couriers = wp_store_active_couriers();
         $shipping_mode = function_exists('wp_store_shipping_mode')
             ? wp_store_shipping_mode()
             : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
@@ -373,7 +373,7 @@ class Shortcode
         $settings = get_option('wp_store_settings', []);
         $currency = ($settings['currency_symbol'] ?? 'Rp');
         $origin_subdistrict = isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '';
-        $active_couriers = $settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide'];
+        $active_couriers = wp_store_active_couriers();
         $shipping_mode = function_exists('wp_store_shipping_mode')
             ? wp_store_shipping_mode()
             : (!empty($settings['disable_shipping']) ? 'off' : 'normal');
@@ -1451,12 +1451,18 @@ class Shortcode
             $wantQty = in_array(strtolower((string) $atts['qty']), ['1', 'true', 'yes'], true);
         }
         $default_qty = max(1, (int) $product['min_order']);
-        if (!$is_purchasable) {
-            $label = (string) apply_filters('wp_store_not_purchasable_button_text', 'Hubungi Admin', $id, $atts);
-            $wantQty = false;
-        }
         $buy_now_raw = strtolower(trim((string) $atts['buy_now']));
         $buy_now = in_array($buy_now_raw, ['1', 'true', 'yes', 'ya'], true);
+        $contact_url = '';
+        if (!$is_purchasable) {
+            // Harga kosong, berat kosong, atau stok 0: tombol Beli Sekarang disembunyikan, tombol keranjang jadi Hubungi Admin.
+            if ($buy_now) {
+                return '';
+            }
+            $label = (string) apply_filters('wp_store_not_purchasable_button_text', 'Hubungi Admin', $id, $atts);
+            $wantQty = false;
+            $contact_url = wp_store_admin_whatsapp_url($id);
+        }
         $checkout_url = '';
         if ($buy_now && $is_purchasable) {
             $settings = get_option('wp_store_settings', []);
@@ -1477,6 +1483,7 @@ class Shortcode
             'show_qty' => $wantQty,
             'default_qty' => $default_qty,
             'is_purchasable' => $is_purchasable,
+            'contact_url' => $contact_url,
             'buy_now' => $buy_now && $checkout_url !== '',
             'checkout_url' => $checkout_url,
             'checkout_requires_login' => function_exists('wp_store_checkout_requires_login') && wp_store_checkout_requires_login(),
@@ -1812,7 +1819,7 @@ class Shortcode
         ], $atts);
 
         $settings = get_option('wp_store_settings', []);
-        $active_couriers = $settings['shipping_couriers'] ?? [];
+        $active_couriers = wp_store_active_couriers([]);
 
         if (empty($active_couriers)) {
             return '';

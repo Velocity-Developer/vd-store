@@ -420,7 +420,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         <div class="wp-store-grid-3 wp-store-mt-2">
                             <?php
                             $couriers = function_exists('wp_store_courier_labels') ? wp_store_courier_labels() : [];
-                            $active_couriers = $settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide'];
+                            $active_couriers = wp_store_active_couriers();
                             foreach ($couriers as $code => $label) :
                             ?>
                                 <label class="wp-store-checkbox-label">

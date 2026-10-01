@@ -2,7 +2,7 @@
 $settings = get_option('wp_store_settings', []);
 $currency = isset($currency) ? (string) $currency : ($settings['currency_symbol'] ?? 'Rp');
 $origin_subdistrict = isset($origin_subdistrict) ? (string) $origin_subdistrict : (isset($settings['shipping_origin_subdistrict']) ? (string) $settings['shipping_origin_subdistrict'] : '');
-$active_couriers = isset($active_couriers) && is_array($active_couriers) ? $active_couriers : ($settings['shipping_couriers'] ?? ['jne', 'sicepat', 'ide']);
+$active_couriers = isset($active_couriers) && is_array($active_couriers) ? $active_couriers : wp_store_active_couriers();
 $shipping_disabled = isset($shipping_disabled) ? (bool) $shipping_disabled : (function_exists('wp_store_shipping_disabled') ? wp_store_shipping_disabled() : !empty($settings['disable_shipping']));
 $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
 ?>

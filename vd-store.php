@@ -3,7 +3,7 @@
 /**
  * Plugin Name: VD Store
  * Description: Plugin ecommerce VD Store berbasis REST API dan Alpine.js dengan pengaturan checkout, ongkir, dan pembayaran fleksibel.
- * Version:     1.4.13
+ * Version:     1.4.14
  * Author:      Dev Team Velocitydeveloper.com
  * Author URI:  https://velocitydeveloper.com
  * Text Domain: vd-store
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_STORE_VERSION', '1.4.13');
+define('WP_STORE_VERSION', '1.4.14');
 define('WP_STORE_PATH', plugin_dir_path(__FILE__));
 define('WP_STORE_URL', plugin_dir_url(__FILE__));
 
@@ -776,7 +776,6 @@ function wp_store_courier_labels()
     return [
         'jne' => 'JNE',
         'pos' => 'POS Indonesia',
-        'tiki' => 'TIKI',
         'sicepat' => 'SiCepat',
         'jnt' => 'J&T',
         'ninja' => 'Ninja Xpress',
@@ -787,6 +786,43 @@ function wp_store_courier_labels()
         'ide' => 'IDExpress',
         'sentral' => 'Sentral Cargo',
     ];
+}
+
+// Kurir yang dimatikan: API ongkir TIKI gagal lambat (±10 dtk) dan ikut mengosongkan kurir lain di checkout.
+function wp_store_disabled_couriers()
+{
+    return (array) apply_filters('wp_store_disabled_couriers', ['tiki']);
+}
+
+function wp_store_active_couriers($default = ['jne', 'sicepat', 'ide'])
+{
+    $settings = get_option('wp_store_settings', []);
+    $couriers = isset($settings['shipping_couriers']) && is_array($settings['shipping_couriers']) ? $settings['shipping_couriers'] : (array) $default;
+
+    return array_values(array_diff(array_map('strval', $couriers), wp_store_disabled_couriers()));
+}
+
+function wp_store_admin_whatsapp_url($product_id = 0)
+{
+    $settings = get_option('wp_store_settings', []);
+    $number = preg_replace('/\D+/', '', (string) ($settings['store_wa'] ?? ''));
+    if ($number === '') {
+        return '';
+    }
+    if (substr($number, 0, 1) === '0') {
+        $number = '62' . substr($number, 1);
+    } elseif (substr($number, 0, 1) === '8') {
+        $number = '62' . $number;
+    }
+
+    $product_id = (int) $product_id;
+    $message = 'Halo ' . wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
+    if ($product_id > 0) {
+        $message .= ', saya ingin menanyakan produk ' . wp_specialchars_decode(get_the_title($product_id), ENT_QUOTES) . ' ' . get_permalink($product_id);
+    }
+    $message = (string) apply_filters('wp_store_admin_whatsapp_message', $message, $product_id);
+
+    return (string) apply_filters('wp_store_admin_whatsapp_url', 'https://wa.me/' . $number . '?text=' . rawurlencode($message), $product_id, $number);
 }
 
 function wp_store_shipping_disabled()

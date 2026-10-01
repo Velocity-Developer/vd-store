@@ -199,7 +199,18 @@
 <?php
 $is_purchasable = !isset($is_purchasable) || (bool) $is_purchasable;
 $has_label = is_string($label) && trim($label) !== '';
+$contact_url = isset($contact_url) ? (string) $contact_url : '';
 ?>
+<?php if (!$is_purchasable && $contact_url !== '') : ?>
+<div>
+    <a href="<?php echo esc_url($contact_url); ?>" target="_blank" rel="noopener" class="<?php echo esc_attr($btn_class); ?> wps-add-to-cart wps-contact-admin">
+        <?php echo wps_icon(['name' => 'whatsapp', 'size' => 18, 'class' => $has_label ? 'wps-mr-2' : '']); ?>
+        <?php if ($has_label) : ?>
+            <?php echo esc_html($label); ?>
+        <?php endif; ?>
+    </a>
+</div>
+<?php return; endif; ?>
 <div x-data="wpStoreAddToCart({
         id: <?php echo (int) $id; ?>,
         qtyEnabled: <?php echo isset($show_qty) && $show_qty ? 'true' : 'false'; ?>,

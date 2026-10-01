@@ -114,7 +114,17 @@ class ProductData
             return false;
         }
 
+        if (self::is_out_of_stock($product_id)) {
+            return false;
+        }
+
         return true;
+    }
+
+    public static function is_out_of_stock($product_id)
+    {
+        $stock = ProductMeta::get((int) $product_id, 'stock', '');
+        return $stock !== '' && is_numeric($stock) && (int) $stock <= 0;
     }
 
     public static function weight_grams($product_id, $minimum = 1)
