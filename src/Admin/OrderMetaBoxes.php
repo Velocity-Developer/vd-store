@@ -6,7 +6,6 @@ class OrderMetaBoxes
 {
     public function register()
     {
-        add_action('cmb2_admin_init', [$this, 'register_metaboxes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_styles']);
         add_action('add_meta_boxes', [$this, 'add_proofs_box']);
         add_action('add_meta_boxes', [$this, 'add_summary_box']);
@@ -58,91 +57,6 @@ class OrderMetaBoxes
                 true
             );
         }
-    }
-
-    public function register_metaboxes()
-    {
-        if (!function_exists('new_cmb2_box')) {
-            return;
-        }
-
-        $status_box = new_cmb2_box([
-            'id'            => 'wp_store_order_status_box',
-            'title'         => 'Status Pesanan',
-            'object_types'  => ['store_order'],
-            'context'       => 'side',
-            'priority'      => 'high',
-            'show_names'    => true,
-        ]);
-
-        $status_box->add_field([
-            'name'    => 'Status',
-            'id'      => '_store_order_status',
-            'type'    => 'select',
-            'options' => [
-                'pending'           => 'Pending',
-                'awaiting_payment'  => 'Menunggu Pembayaran',
-                'paid'              => 'Sudah Dibayar',
-                'processing'        => 'Diproses',
-                'shipped'           => 'Dikirim',
-                'completed'         => 'Selesai',
-                'cancelled'         => 'Dibatalkan',
-            ],
-            'default' => 'pending',
-        ]);
-
-        $status_box->add_field([
-            'name' => 'No. Resi',
-            'id'   => '_store_order_tracking_number',
-            'type' => 'text',
-        ]);
-
-        $details = new_cmb2_box([
-            'id'            => 'wp_store_order_details',
-            'title'         => 'Detail Pengiriman & Pembayaran',
-            'object_types'  => ['store_order'],
-            'context'       => 'normal',
-            'priority'      => 'high',
-            'show_names'    => true,
-        ]);
-
-        $details->add_field([
-            'name' => 'Kurir',
-            'id'   => '_store_order_shipping_courier',
-            'type' => 'text',
-        ]);
-
-        $details->add_field([
-            'name' => 'Layanan',
-            'id'   => '_store_order_shipping_service',
-            'type' => 'text',
-        ]);
-
-        $details->add_field([
-            'name'       => 'Biaya Ongkir',
-            'id'         => '_store_order_shipping_cost',
-            'type'       => 'text',
-            'attributes' => [
-                'pattern'     => '^[0-9,.]+$',
-                'inputmode'   => 'decimal',
-                'placeholder' => 'Contoh: 25000',
-            ],
-        ]);
-
-        $details->add_field([
-            'name'       => 'Total Tagihan',
-            'id'         => '_store_order_total',
-            'type'       => 'text',
-            'attributes' => [
-                'readonly' => 'readonly',
-            ],
-        ]);
-
-        $details->add_field([
-            'name' => 'Catatan Admin',
-            'id'   => '_store_order_admin_note',
-            'type' => 'textarea_small',
-        ]);
     }
 
     public function add_editable_boxes()

@@ -1,6 +1,6 @@
 # VD Store
 
-Versi: `1.4.14`
+Versi: `1.4.15`
 
 `VD Store` adalah plugin inti untuk toko online.
 
@@ -356,7 +356,7 @@ belum field bawaan checkout. Tidak ada field tambahan aktif secara default.
 Contoh kode dan kontrak integrasi tersedia pada
 [Field tambahan checkout](#13-field-tambahan-checkout).
 
-Versi plugin: `1.4.14`
+Versi plugin: `1.4.15`
 
 Dokumen ini ditujukan untuk developer yang ingin:
 - memahami struktur plugin
