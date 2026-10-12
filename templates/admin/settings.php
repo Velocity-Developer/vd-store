@@ -1494,6 +1494,10 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                         data[key] = value;
                     }
                 });
+                // Semua kurir dicentang-lepas: FormData tidak mengirim apa pun, kirim array kosong agar tersimpan
+                if (!data.shipping_couriers && this.$refs.form.querySelector('input[name="shipping_couriers[]"]')) {
+                    data.shipping_couriers = [];
+                }
                 // Handle payment methods from Alpine state
                 data.payment_methods = Array.isArray(this.paymentMethods) ? JSON.parse(JSON.stringify(this.paymentMethods)) : [];
 
