@@ -234,7 +234,19 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                                 <input type="checkbox" name="payment_methods[]" value="qris" x-model="paymentMethods" style="position:absolute;opacity:0;width:0;height:0;">
                                 QRIS
                             </label>
-                            <!-- duitku -->
+                            <?php
+                            // Gateway online (Duitku, DOKU) hanya muncul bila sudah aktif di plugin VD Payment Gateway / Velocity Addons.
+                            $payment_registry = new \WpStore\Domain\Payment\PaymentMethodRegistry();
+                            foreach (['duitku', 'doku'] as $gateway_method) :
+                                if (!$payment_registry->is_available($gateway_method)) {
+                                    continue;
+                                }
+                            ?>
+                                <label class="wp-store-btn" :class="{'wp-store-btn-primary': paymentMethods.includes('<?php echo esc_attr($gateway_method); ?>')}">
+                                    <input type="checkbox" name="payment_methods[]" value="<?php echo esc_attr($gateway_method); ?>" x-model="paymentMethods" style="position:absolute;opacity:0;width:0;height:0;">
+                                    <?php echo esc_html($payment_registry->label($gateway_method)); ?>
+                                </label>
+                            <?php endforeach; ?>
                             <?php do_action('wp_store_settings_payment_methods_end'); ?>
                         </div>
                     </div>

@@ -866,10 +866,15 @@ class SettingsController
             ? wp_store_shipping_allow_cod()
             : (!isset($settings['allow_cod']) || (string) $settings['allow_cod'] !== '0');
 
-        $payment_methods = array_map(function ($method) {
-            $nama = str_replace('_', ' ', $method);
-            $nama = ucwords($nama);
-            return ['id' => $method, 'name' => $nama];
+        // Gateway yang dicentang tapi sedang nonaktif (plugin gateway mati / kredensial kosong) tidak ditawarkan.
+        $registry = new \WpStore\Domain\Payment\PaymentMethodRegistry();
+        $known = $registry->all();
+        $payment_methods = array_values(array_filter((array) $payment_methods, function ($method) use ($known) {
+            $method = sanitize_key((string) $method);
+            return !isset($known[$method]) || !empty($known[$method]['available']);
+        }));
+        $payment_methods = array_map(function ($method) use ($registry) {
+            return ['id' => $method, 'name' => $registry->label($method)];
         }, $payment_methods);
         if (!$allow_cod) {
             $payment_methods = array_values(array_filter($payment_methods, function ($method) {

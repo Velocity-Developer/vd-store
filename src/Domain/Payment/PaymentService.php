@@ -45,6 +45,25 @@ class PaymentService
             ];
         }
 
+        if (VdPaymentGateway::handles($payment_method) && $this->registry()->is_available($payment_method)) {
+            $gateway_response = VdPaymentGateway::create_payment($payment_method, $order_id, $data, $total);
+            if (is_wp_error($gateway_response)) {
+                return $gateway_response;
+            }
+
+            $payment_info = [
+                'payment_url' => (string) ($gateway_response['payment_url'] ?? ''),
+                'payment_token' => sanitize_text_field((string) ($gateway_response['token'] ?? '')),
+                'expires_at' => (int) ($gateway_response['expires_at'] ?? 0),
+                'extra' => [
+                    'gateway' => $payment_method,
+                    'gateway_status' => 'pending',
+                    'reference' => sanitize_text_field((string) ($gateway_response['reference'] ?? '')),
+                    'transaction_id' => (int) ($gateway_response['transaction_id'] ?? 0),
+                ],
+            ];
+        }
+
         $payment_info = apply_filters('wp_store_payment_init', $payment_info, $order_id, $payment_method, $data, $total);
 
         return is_array($payment_info) ? $payment_info : [
@@ -82,6 +101,18 @@ class PaymentService
             'gateway_status' => sanitize_text_field((string) ($payload['resultCode'] ?? '')) === '00' ? 'paid' : 'failed',
             'callback_at' => current_time('mysql'),
         ];
+
+        $this->apply_gateway_result($order_id, $normalized, $payload);
+    }
+
+    /**
+     * Simpan hasil pembayaran gateway ke pesanan lalu ubah statusnya.
+     * $normalized berisi gateway, invoice, reference, payment_code, amount, result_code, gateway_status, callback_at.
+     */
+    public function apply_gateway_result($order_id, array $normalized, array $payload)
+    {
+        $order_id = (int) $order_id;
+        $gateway = sanitize_key((string) ($normalized['gateway'] ?? ''));
 
         $this->persist_callback_payment_data($order_id, $normalized, $payload);
         do_action('wp_store_payment_callback_received', $order_id, $gateway, $normalized, $payload);

@@ -359,7 +359,9 @@ if ($order_exists) {
                     <?php endif; ?>
                     <?php if (in_array($status, ['pending', 'awaiting_payment'], true)) : ?>
                         <div class="wps-text-lg wps-font-medium wps-text-gray-900 wps-mt-6">Informasi Pembayaran</div>
-                        <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>
+                        <?php if (!\WpStore\Domain\Payment\VdPaymentGateway::handles($payment_method)) : ?>
+                            <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>
+                        <?php endif; ?>
                         <div class="wps-mt-3">
                             <div class="wps-flex wps-justify-between wps-items-center">
                                 <div class="wps-text-sm wps-text-gray-500">Total yang harus dibayar</div>
@@ -379,6 +381,8 @@ if ($order_exists) {
                                 </div>
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-2">Scan untuk membayar via QRIS.</div>
                             </div>
+                        <?php elseif (\WpStore\Domain\Payment\VdPaymentGateway::handles($payment_method)) : ?>
+                            <?php \WpStore\Domain\Payment\VdPaymentGateway::render_pay_box($order_id, $payment_method); ?>
                         <?php elseif ($payment_method === 'duitku') : ?>
                             <?php
                             $reference = get_post_meta($order_id, '_store_order_payment_token', true);
@@ -476,7 +480,7 @@ if ($order_exists) {
                                 <div class="wps-text-xs wps-text-gray-500 wps-mt-4">Setelah pembayaran, kirim bukti transfer melalui kontak yang tersedia atau tunggu konfirmasi dari kami.</div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <?php if ($payment_method !== 'duitku') : ?>
+                        <?php if ($payment_method !== 'duitku' && !\WpStore\Domain\Payment\VdPaymentGateway::handles($payment_method)) : ?>
                             <?php
                             $ajax_url = admin_url('admin-ajax.php');
                             $nonce_upload = wp_create_nonce('wp_store_upload_payment_proof');

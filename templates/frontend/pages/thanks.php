@@ -206,7 +206,7 @@ if ($order_exists) {
                 </div>
                 <div>
                     <div class="wps-text-lg wps-font-medium wps-text-gray-900">Informasi Pembayaran</div>
-                    <?php if (!in_array($payment_method, ['duitku', 'qris'])) : ?>
+                    <?php if (!in_array($payment_method, ['duitku', 'doku', 'qris'])) : ?>
                         <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>
                     <?php endif; ?>
                     <div class="wps-mt-3">
@@ -228,6 +228,12 @@ if ($order_exists) {
                             </div>
                             <div class="wps-text-xs wps-text-gray-500 wps-mt-2">Scan untuk membayar via QRIS.</div>
                         </div>
+                    <?php elseif (\WpStore\Domain\Payment\VdPaymentGateway::handles($payment_method)) : ?>
+                        <?php if (in_array((string) get_post_meta($order_id, '_store_order_status', true), ['pending', 'awaiting_payment'], true)) : ?>
+                            <?php \WpStore\Domain\Payment\VdPaymentGateway::render_pay_box($order_id, $payment_method); ?>
+                        <?php else : ?>
+                            <div class="wps-text-sm wps-text-gray-700 wps-mt-3">Pembayaran sudah kami terima. Terima kasih!</div>
+                        <?php endif; ?>
                     <?php elseif ($payment_method === 'duitku') : ?>
                          <?php
                          $reference = get_post_meta($order_id, '_store_order_payment_token', true);

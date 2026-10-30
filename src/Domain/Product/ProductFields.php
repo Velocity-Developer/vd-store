@@ -41,10 +41,25 @@ class ProductFields
                         'type' => 'string',
                     ],
                 ];
-            } elseif (in_array($meta_key, ['_store_options', '_store_advanced_options'], true)) {
+            } elseif ($meta_key === '_store_options') {
                 $show_in_rest = [
                     'schema' => [
                         'type' => 'array',
+                        'items' => ['type' => 'string'],
+                    ],
+                ];
+            } elseif ($meta_key === '_store_advanced_options') {
+                $show_in_rest = [
+                    'schema' => [
+                        'type' => 'array',
+                        'items' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'label' => ['type' => 'string'],
+                                'price' => ['type' => 'number'],
+                            ],
+                            'additionalProperties' => true,
+                        ],
                     ],
                 ];
             }
