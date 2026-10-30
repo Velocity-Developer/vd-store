@@ -99,6 +99,13 @@ class VdPaymentGateway
             return $url;
         }
 
+        // Halaman ini bisa dibuka siapa saja yang tahu nomor pesanan: batasi buat ulang 1x per 5 menit.
+        $lock = 'wp_store_pay_regen_' . $order_id;
+        if (get_transient($lock)) {
+            return new \WP_Error('wp_store_pay_regen_wait', __('Link pembayaran sedang dibuat ulang, coba beberapa menit lagi.', 'vd-store'));
+        }
+        set_transient($lock, 1, 5 * MINUTE_IN_SECONDS);
+
         $title = (string) get_the_title($order_id);
         $data = [
             'order_number' => (string) get_post_meta($order_id, '_store_order_number', true),
@@ -172,6 +179,12 @@ class VdPaymentGateway
 
         $order_id = (int) $transaction->ref_id;
         if ($order_id <= 0 || get_post_type($order_id) !== 'store_order') {
+            return;
+        }
+
+        // Refund bukan gagal bayar: status pesanan dibiarkan, cukup kabari lewat action sendiri.
+        if ($status === 'refunded') {
+            do_action('wp_store_payment_refunded', $order_id, (string) $transaction->gateway, $transaction, is_array($payload) ? $payload : []);
             return;
         }
 

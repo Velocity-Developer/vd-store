@@ -160,8 +160,8 @@ Setelah checkout selesai, customer diarahkan ke halaman tracking order.
 ### Pembayaran online (DOKU, Duitku)
 - Butuh plugin **VD Payment Gateway**. Aktifkan gateway dan isi kredensialnya di menu *Payment Gateway*, lalu centang metodenya di *Pengaturan > Pembayaran*.
 - Gateway yang nonaktif tidak ditawarkan di checkout walaupun masih dicentang.
-- Setelah checkout, customer langsung diarahkan ke halaman bayar gateway. Halaman terima kasih dan tracking menampilkan tombol *Bayar Sekarang*; link DOKU yang kedaluwarsa dibuat ulang selama pesanan belum dibayar.
-- Notifikasi pembayaran diterima oleh VD Payment Gateway. Begitu lunas, status pesanan menjadi `processing` (bisa diubah lewat filter `wp_store_payment_success_status`) dan action `wp_store_payment_completed` dijalankan.
+- Setelah checkout, customer langsung diarahkan ke halaman bayar gateway. Halaman terima kasih dan tracking menampilkan tombol *Bayar Sekarang*; link DOKU yang kedaluwarsa dibuat ulang (paling sering 1x per 5 menit per pesanan) selama pesanan belum dibayar.
+- Notifikasi pembayaran diterima oleh VD Payment Gateway. Begitu lunas, status pesanan menjadi `processing` (bisa diubah lewat filter `wp_store_payment_success_status`) dan action `wp_store_payment_completed` dijalankan. Refund tidak mengubah status pesanan; yang dijalankan action `wp_store_payment_refunded`.
 - Duitku masih lewat kelas `Velocity_Addons_Duitku` (dari Velocity Addons lama atau alias VD Payment Gateway).
 
 ### Tracking order
