@@ -99,6 +99,13 @@ class VdPaymentGateway
             return $url;
         }
 
+        // Pesanan dari plugin lain (mis. vd-marketplace: tagihan hanya bagian non-COD) tidak boleh
+        // dibuat ulang dengan _store_order_total; plugin itu mengurus link bayarnya sendiri.
+        $can_regenerate = apply_filters('wp_store_payment_link_can_regenerate', !metadata_exists('post', $order_id, 'vmp_pay_now_total'), $order_id, $method);
+        if (!$can_regenerate) {
+            return new \WP_Error('wp_store_pay_link_expired', __('Link pembayaran sudah kedaluwarsa.', 'vd-store'));
+        }
+
         // Halaman ini bisa dibuka siapa saja yang tahu nomor pesanan: batasi buat ulang 1x per 5 menit.
         $lock = 'wp_store_pay_regen_' . $order_id;
         if (get_transient($lock)) {
