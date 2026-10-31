@@ -162,7 +162,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                     if (res.ok && data && data.success && Array.isArray(data.data)) {
                         this.paymentMethods = data.data;
                         if (!this.allowCod && this.isCodPayment()) {
-                            this.paymentMethod = this.paymentMethods[0] ? this.paymentMethods[0].id : 'bank_transfer';
+                            this.paymentMethod = this.fallbackPaymentMethod();
                         }
 
                     }
@@ -187,6 +187,13 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
             },
             shouldCollectAddress() {
                 return !this.allDigitalSelected() && (!this.shouldHideShipping() || this.collectAddress);
+            },
+            isCodPayment() {
+                return String(this.paymentMethod || '') === 'cod';
+            },
+            fallbackPaymentMethod() {
+                const first = (this.paymentMethods || []).find((m) => m && m.id && m.id !== 'cod');
+                return first ? first.id : 'bank_transfer';
             },
             shouldHideShipping() {
                 return this.isShippingOff() || (this.disableShippingForDigital && this.allDigitalSelected());
@@ -574,11 +581,8 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
             async submit() {
                 if (this._submitGuard) return;
                 this._submitGuard = true;
-                if (!this.allowCod && this.isCodPayment()) {
-                    this.form.payment_method = defaultPaymentMethod;
-                }
-                if (this.shouldHideShipping() && this.isCodPayment()) {
-                    this.form.payment_method = defaultPaymentMethod;
+                if ((!this.allowCod || this.shouldHideShipping()) && this.isCodPayment()) {
+                    this.paymentMethod = this.fallbackPaymentMethod();
                 }
                 const err = this.getValidationError();
                 if (err) {
