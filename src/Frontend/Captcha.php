@@ -178,7 +178,7 @@ class Captcha
             . 'function gField(){return q("textarea[name=\'g-recaptcha-response\'],input[name=\'g-recaptcha-response\']");}'
             . 'function read(){var g=gField();var t=q("input[name=\'vd_captcha_token\']");var i=q("input[name=\'vd_captcha_input\']");return [g&&g.value?g.value:"",t&&t.value?t.value:"",i&&i.value?i.value:""].join("|");}'
             . 'function notify(){var now=read();if(now===last){return;}last=now;wrap.dispatchEvent(new Event("input",{bubbles:true}));wrap.dispatchEvent(new Event("change",{bubbles:true}));}'
-            . 'function reset(){var g=gField();if(g&&window.grecaptcha&&typeof grecaptcha.reset==="function"){var m=/^g-recaptcha-response(?:-(\\d+))?$/.exec(g.id||"");try{if(m){grecaptcha.reset(m[1]?parseInt(m[1],10):0);}else{grecaptcha.reset();}}catch(e){g.value="";}}'
+            . 'function reset(){var g=gField();if(g&&window.grecaptcha&&typeof grecaptcha.reset==="function"){var m=/^g-recaptcha-response(?:-(\\d+))?$/.exec(g.id||"");if(m){try{grecaptcha.reset(m[1]?parseInt(m[1],10):0);}catch(e){g.value="";}}else{g.value="";}}'
             . 'var i=q("input[name=\'vd_captcha_input\']");if(i){i.value="";var img=q("img");if(img&&img.src){img.src=img.src.split("&r=")[0]+"&r="+Date.now();}}notify();}'
             . 'document.addEventListener("wp-store:captcha-reset",function(e){var t=e.target;if(t===document||(t&&t.contains&&t.contains(wrap))){reset();}});'
             . 'wrap.addEventListener("input",function(){setTimeout(notify,0);},true);wrap.addEventListener("change",function(){setTimeout(notify,0);},true);'

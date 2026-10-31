@@ -98,7 +98,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
             captchaRequired: <?php echo is_user_logged_in() ? 'false' : 'true'; ?>,
             captchaFieldValue(name) {
                 const root = document.getElementById('checkout-captcha');
-                const field = (root ? root.querySelector('[name="' + name + '"]') : null) || document.querySelector('[name="' + name + '"]');
+                const field = root ? root.querySelector('[name="' + name + '"]') : null;
                 return String(field && field.value ? field.value : '').trim();
             },
             // Token Google dan kode captcha hanya berlaku sekali; setelah pesanan gagal, minta captcha baru.
