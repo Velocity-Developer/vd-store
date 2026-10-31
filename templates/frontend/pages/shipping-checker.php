@@ -48,7 +48,7 @@ $nonce = isset($nonce) ? (string) $nonce : wp_create_nonce('wp_rest');
       },
       captchaFieldValue(name) {
         const root = document.getElementById('shipping-captcha');
-        const field = (root ? root.querySelector('[name="' + name + '"]') : null) || document.querySelector('[name="' + name + '"]');
+        const field = root ? root.querySelector('[name="' + name + '"]') : null;
         return String(field && field.value ? field.value : '').trim();
       },
       isCaptchaReady() {

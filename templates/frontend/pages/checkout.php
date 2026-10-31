@@ -98,8 +98,19 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
             captchaRequired: <?php echo is_user_logged_in() ? 'false' : 'true'; ?>,
             captchaFieldValue(name) {
                 const root = document.getElementById('checkout-captcha');
-                const field = (root ? root.querySelector('[name="' + name + '"]') : null) || document.querySelector('[name="' + name + '"]');
+                const field = root ? root.querySelector('[name="' + name + '"]') : null;
                 return String(field && field.value ? field.value : '').trim();
+            },
+            // Token Google dan kode captcha hanya berlaku sekali; setelah pesanan gagal, minta captcha baru.
+            resetCaptcha() {
+                if (!this.captchaRequired) return;
+                const root = document.getElementById('checkout-captcha');
+                if (root) {
+                    root.dispatchEvent(new CustomEvent('wp-store:captcha-reset', {
+                        bubbles: true
+                    }));
+                }
+                this.recomputeAllow();
             },
             collectCaptcha() {
                 return {
@@ -633,6 +644,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                     const data = await res.json();
                     if (!res.ok) {
                         this.message = data.message || 'Gagal membuat pesanan.';
+                        this.resetCaptcha();
                         return;
                     }
                     this.message = data.message || 'Pesanan berhasil dibuat.';
@@ -682,6 +694,7 @@ $shipping_disabled = ($shipping_mode === 'off'); ?>
                     } catch (e) {}
                 } catch (e) {
                     this.message = 'Terjadi kesalahan jaringan.';
+                    this.resetCaptcha();
                 } finally {
                     this.submitting = false;
                     this.requestId = '';

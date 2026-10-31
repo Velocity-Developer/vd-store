@@ -90,9 +90,33 @@ $uid = substr(md5(uniqid('', true)), 0, 8);
                             bubbles: true
                         }));
                     }
+                } else {
+                    loadFailed();
                 }
-            });
+            }).catch(loadFailed);
         }
+
+        function loadFailed() {
+            if (idf) idf.value = '';
+            if (verifiedInput) verifiedInput.value = '';
+            if (checkIcon) checkIcon.style.display = 'none';
+            if (topWrap) topWrap.style.display = '';
+            if (bottomWrap) bottomWrap.style.display = '';
+            showToast('Captcha gagal dimuat. Klik tombol muat ulang di samping captcha.', 'error');
+            if (root) {
+                root.dispatchEvent(new Event('change', {
+                    bubbles: true
+                }));
+            }
+        }
+
+        // Kode captcha hanya berlaku sekali: form mengirim event ini setelah dikirim ke server.
+        document.addEventListener('wp-store:captcha-reset', function(e) {
+            var t = e.target;
+            if (!root || !(t === document || (t && t.contains && t.contains(root)))) return;
+            if (valInput) valInput.value = '';
+            load();
+        });
         if (document.readyState !== 'loading') {
             load();
         } else {
