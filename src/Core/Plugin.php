@@ -25,6 +25,9 @@ class Plugin
 
         $duitku_callback = new \WpStore\Domain\Payment\DuitkuCallbackListener();
         $duitku_callback->register();
+
+        $vd_payment_gateway = new \WpStore\Domain\Payment\VdPaymentGateway();
+        $vd_payment_gateway->register();
     }
 
     private function load_admin()

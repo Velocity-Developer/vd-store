@@ -19,6 +19,10 @@ class PaymentMethodRegistry
                 'label' => 'Duitku',
                 'available' => DuitkuGateway::is_available(),
             ],
+            'doku' => [
+                'label' => 'DOKU',
+                'available' => VdPaymentGateway::is_available('doku'),
+            ],
             'cod' => [
                 'label' => 'COD',
                 'available' => true,
@@ -53,5 +57,13 @@ class PaymentMethodRegistry
         $all = $this->all();
 
         return !empty($all[$method]['available']);
+    }
+
+    public function label($method)
+    {
+        $all = $this->all();
+        $method = sanitize_key((string) $method);
+
+        return isset($all[$method]['label']) ? (string) $all[$method]['label'] : ucwords(str_replace('_', ' ', $method));
     }
 }
