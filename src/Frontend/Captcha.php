@@ -162,8 +162,13 @@ class Captcha
         return is_array($options) ? $options : [];
     }
 
+    /**
+     * reCAPTCHA Google mengisi g-recaptcha-response tanpa event, jadi nilainya dipantau tiap 500 ms
+     * selama halaman terbuka (tanpa batas waktu: pembeli sering mencentang captcha lebih dari 2 menit
+     * setelah halaman dibuka, dan token yang kedaluwarsa dikosongkan Google tanpa event juga).
+     */
     private static function bridge_script($uid)
     {
-        return '<script>(function(){try{var wrap=document.getElementById("' . esc_js($uid) . '");if(!wrap){return;}var last="";function read(){var g=document.querySelector("textarea[name=\'g-recaptcha-response\'],input[name=\'g-recaptcha-response\']");var t=wrap.querySelector("input[name=\'vd_captcha_token\']");var i=wrap.querySelector("input[name=\'vd_captcha_input\']");return [g&&g.value?g.value:"",t&&t.value?t.value:"",i&&i.value?i.value:""].join("|");}function notify(){var now=read();if(now===last){return;}last=now;wrap.dispatchEvent(new Event("input",{bubbles:true}));wrap.dispatchEvent(new Event("change",{bubbles:true}));}wrap.addEventListener("input",function(){setTimeout(notify,0);},true);wrap.addEventListener("change",function(){setTimeout(notify,0);},true);var count=0;var timer=setInterval(function(){notify();count++;if(count>240){clearInterval(timer);}},500);notify();}catch(e){}})();</script>';
+        return '<script>(function(){try{var wrap=document.getElementById("' . esc_js($uid) . '");if(!wrap){return;}var last="";function read(){var g=document.querySelector("textarea[name=\'g-recaptcha-response\'],input[name=\'g-recaptcha-response\']");var t=wrap.querySelector("input[name=\'vd_captcha_token\']");var i=wrap.querySelector("input[name=\'vd_captcha_input\']");return [g&&g.value?g.value:"",t&&t.value?t.value:"",i&&i.value?i.value:""].join("|");}function notify(){var now=read();if(now===last){return;}last=now;wrap.dispatchEvent(new Event("input",{bubbles:true}));wrap.dispatchEvent(new Event("change",{bubbles:true}));}wrap.addEventListener("input",function(){setTimeout(notify,0);},true);wrap.addEventListener("change",function(){setTimeout(notify,0);},true);setInterval(notify,500);notify();}catch(e){}})();</script>';
     }
 }
