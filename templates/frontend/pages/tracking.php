@@ -634,6 +634,10 @@ if ($order_exists) {
                                         })
                                         .finally(function() {
                                             if (btn) btn.disabled = false;
+                                            // Captcha hanya berlaku sekali, berhasil maupun gagal.
+                                            f.dispatchEvent(new CustomEvent('wp-store:captcha-reset', {
+                                                bubbles: true
+                                            }));
                                         });
                                 });
                             })();
