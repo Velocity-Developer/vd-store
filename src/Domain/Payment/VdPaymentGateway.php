@@ -3,7 +3,7 @@
 namespace WpStore\Domain\Payment;
 
 /**
- * Jembatan ke plugin VD Payment Gateway (DOKU, dst.). Duitku tetap lewat DuitkuGateway
+ * Jembatan ke plugin VD Payment Gateway (DOKU, Midtrans, dst.). Duitku tetap lewat DuitkuGateway
  * (kelas Velocity_Addons_Duitku, baik asli addons maupun alias dari vd-payment-gateway).
  */
 class VdPaymentGateway
@@ -13,7 +13,7 @@ class VdPaymentGateway
     /** Metode pembayaran vd-store yang ditangani langsung oleh vd-payment-gateway. */
     public static function methods()
     {
-        return ['doku' => 'DOKU'];
+        return ['doku' => 'DOKU', 'midtrans' => 'Midtrans'];
     }
 
     public static function handles($method)

@@ -235,9 +235,9 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general
                                 QRIS
                             </label>
                             <?php
-                            // Gateway online (Duitku, DOKU) hanya muncul bila sudah aktif di plugin VD Payment Gateway / Velocity Addons.
+                            // Gateway online (Duitku, DOKU, Midtrans) hanya muncul bila sudah aktif di plugin VD Payment Gateway / Velocity Addons.
                             $payment_registry = new \WpStore\Domain\Payment\PaymentMethodRegistry();
-                            foreach (['duitku', 'doku'] as $gateway_method) :
+                            foreach (['duitku', 'doku', 'midtrans'] as $gateway_method) :
                                 if (!$payment_registry->is_available($gateway_method)) {
                                     continue;
                                 }
