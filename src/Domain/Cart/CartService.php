@@ -297,8 +297,13 @@ class CartService
         }
 
         $key = sanitize_key(wp_generate_uuid4());
-        setcookie($this->cookie_key, $key, time() + (DAY_IN_SECONDS * 30), '/', '', is_ssl(), true);
         $_COOKIE[$this->cookie_key] = $key;
+        // GET/HEAD (fetchCart/wishlist saat halaman dimuat, sering 2-4 serentak) tidak mengirim Set-Cookie:
+        // kalau selesai sesudah POST tambah-keranjang, kunci kosongnya menimpa kunci POST dan keranjang hilang.
+        $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string) $_SERVER['REQUEST_METHOD']) : 'GET';
+        if (!in_array($method, ['GET', 'HEAD'], true)) {
+            setcookie($this->cookie_key, $key, time() + (DAY_IN_SECONDS * 30), '/', '', is_ssl(), true);
+        }
 
         return $key;
     }
