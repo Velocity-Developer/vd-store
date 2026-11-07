@@ -167,23 +167,13 @@ class PaymentService
             'countryCode' => 'ID',
         ];
 
-        $item_details = [];
-        foreach ((array) ($data['items'] ?? []) as $line) {
-            if (!is_array($line)) {
-                continue;
-            }
-            $item_details[] = [
-                'name' => (string) ($line['title'] ?? 'Produk'),
-                'price' => (int) round((float) ($line['price'] ?? 0)),
-                'quantity' => max(1, (int) ($line['qty'] ?? 1)),
-            ];
-        }
+        $item_details = self::duitku_item_details((array) ($data['items'] ?? []), (int) round((float) $total));
 
         $return_url = trim((string) ($data['return_url'] ?? ''));
         $callback_url = trim((string) ($data['callback_url'] ?? ''));
         $expiry_period = max(1, (int) ($data['expiry_period'] ?? 60));
 
-        return DuitkuGateway::create_invoice([
+        $params = [
             'paymentAmount' => (int) round((float) $total),
             'merchantOrderId' => $invoice,
             'productDetails' => 'Pembayaran pesanan ' . $invoice,
@@ -192,7 +182,6 @@ class PaymentService
             'customerVaName' => $customer_name !== '' ? $customer_name : 'Customer',
             'email' => $email,
             'phoneNumber' => $phone,
-            'itemDetails' => $item_details,
             'customerDetail' => [
                 'firstName' => $first_name,
                 'lastName' => $last_name,
@@ -204,7 +193,48 @@ class PaymentService
             'callbackUrl' => $callback_url,
             'returnUrl' => $return_url,
             'expiryPeriod' => $expiry_period,
-        ]);
+        ];
+        if (!empty($item_details)) {
+            $params['itemDetails'] = $item_details;
+        }
+
+        return DuitkuGateway::create_invoice($params);
+    }
+
+    /**
+     * Rincian barang Duitku: "price" adalah total baris (harga satuan x qty) dan jumlah semua baris
+     * wajib sama dengan paymentAmount. Selisih (ongkir, biaya lain) jadi satu baris tambahan.
+     * Bila total barang melebihi total bayar (mis. ada diskon), rincian dikosongkan karena opsional.
+     */
+    public static function duitku_item_details(array $items, $amount)
+    {
+        $lines = [];
+        $sum = 0;
+        foreach ($items as $line) {
+            if (!is_array($line)) {
+                continue;
+            }
+            $qty = max(1, (int) ($line['qty'] ?? 1));
+            $price = (int) round((float) ($line['price'] ?? 0)) * $qty;
+            if ($price <= 0) {
+                continue;
+            }
+            $lines[] = [
+                'name' => mb_substr(wp_strip_all_tags((string) ($line['title'] ?? 'Produk')), 0, 255),
+                'price' => $price,
+                'quantity' => $qty,
+            ];
+            $sum += $price;
+        }
+
+        if (empty($lines) || $sum > $amount) {
+            return [];
+        }
+        if ($sum < $amount) {
+            $lines[] = ['name' => __('Ongkir dan biaya lain', 'vd-store'), 'price' => $amount - $sum, 'quantity' => 1];
+        }
+
+        return $lines;
     }
 
     private function persist_callback_payment_data($order_id, array $normalized, array $payload)
