@@ -23,6 +23,10 @@ class PaymentMethodRegistry
                 'label' => 'DOKU',
                 'available' => VdPaymentGateway::is_available('doku'),
             ],
+            'midtrans' => [
+                'label' => 'Midtrans',
+                'available' => VdPaymentGateway::is_available('midtrans'),
+            ],
             'cod' => [
                 'label' => 'COD',
                 'available' => true,

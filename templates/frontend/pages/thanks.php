@@ -206,7 +206,7 @@ if ($order_exists) {
                 </div>
                 <div>
                     <div class="wps-text-lg wps-font-medium wps-text-gray-900">Informasi Pembayaran</div>
-                    <?php if (!in_array($payment_method, ['duitku', 'doku', 'qris'])) : ?>
+                    <?php if (!in_array($payment_method, ['duitku', 'qris']) && !\WpStore\Domain\Payment\VdPaymentGateway::handles($payment_method)) : ?>
                         <div class="wps-text-sm wps-text-gray-700 wps-mt-1">Gunakan nomor pesanan <span class="wps-font-medium">#<?php echo esc_html($order_number); ?></span> sebagai berita.</div>
                     <?php endif; ?>
                     <div class="wps-mt-3">
